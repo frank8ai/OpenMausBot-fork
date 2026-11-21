@@ -5,6 +5,7 @@ import { BUILT_IN_BROWSER_SYSTEM_PROMPT } from "./browser-engine.ts";
 import {
   longCommandsPrompt,
   buildSystemPrompt,
+  VOLATILE_SECTIONS,
   CONVERSATIONAL_STYLE_PROMPT,
   CLOUD_HOME_PLACE,
   CLOUD_ENGINES_HERE,
@@ -125,23 +126,40 @@ describe("buildSystemPrompt", () => {
 
     expect(built.stable).toBe(`You are Kiwi. Search past sessions.${REPLY_HABITS_PROMPT}`);
     // A German person once read "Now the edits." between a bot's German lines: every line they see is in their language.
-    expect(REPLY_HABITS_PROMPT).toContain("in the language they use with you, including a short note between steps and a message you pass on for them");
+    expect(REPLY_HABITS_PROMPT).toContain("Write every line they see in their language, notes between steps and messages you pass on included");
     expect(built.volatile).toContain("likes tea");
     expect(built.volatile).toContain("@Fig");
     expect(built.volatile).toContain("today 20:48");
     expect(built.volatile).not.toContain("Search past sessions");
   });
 
-  it("keeps a turn's switched-on instructions volatile, and setup and the webhook's untrusted-data rule stable", () => {
+  // How memory works and how to choose a computer are the same every turn, so they are cached; what memory holds and
+  // whether this turn may choose are not.
+  it("keeps the memory and computer-selection rules stable and their turn's facts volatile", () => {
+    const built = buildSystemPrompt("You are Kiwi.", "", [
+      { id: "plan", label: "Surface", text: " This turn you may choose." },
+      { id: "computer-selection", label: "Choosing a computer", text: " Choosing a computer: rules." },
+      { id: "memory-rules", label: "How memory works", text: " Memory rules." },
+      { id: "memory", label: "Memory", text: " Your memory: likes tea." },
+    ]);
+    expect(built.stable).toBe(`You are Kiwi. Choosing a computer: rules. Memory rules.${REPLY_HABITS_PROMPT}`);
+    expect(built.volatile).toBe(" This turn you may choose. Your memory: likes tea.");
+  });
+
+  it("keeps a turn's switched-on instructions and setup volatile, and the webhook's untrusted-data rule stable", () => {
     const built = buildSystemPrompt("You are Kiwi.", "", [
       { id: "setup", label: "Setup", text: " Set yourself up." },
       { id: "skill-instructions", label: "Skill instructions", text: " Use the deploy skill." },
       { id: "routine-execution", label: "Routine execution", text: ROUTINE_EXECUTION_PROMPT },
+      { id: "automation-reply", label: "Automation reply", text: AUTOMATION_REPLY_PROMPT },
       { id: "webhook", label: "Webhook provenance", text: WEBHOOK_PROMPT },
     ]);
+    expect(built.volatile).toContain("Set yourself up.");
     expect(built.volatile).toContain("Use the deploy skill.");
     expect(built.volatile).toContain(ROUTINE_EXECUTION_PROMPT);
-    expect(built.stable).toBe(`You are Kiwi. Set yourself up.${WEBHOOK_PROMPT}${REPLY_HABITS_PROMPT}`);
+    // a routine run that reports elsewhere reads the bot's own cached prefix
+    expect(built.volatile).toContain(AUTOMATION_REPLY_PROMPT);
+    expect(built.stable).toBe(`You are Kiwi.${WEBHOOK_PROMPT}${REPLY_HABITS_PROMPT}`);
   });
 
   it("keeps the phone part stable and where the person is volatile, so a turn from the phone keeps the cached prefix", () => {
@@ -291,6 +309,10 @@ describe("computerPrompt", () => {
     const many = Array.from({ length: 45 }, (_, index) => ({ name: `key ${index}` }));
     expect(savedSecretsPrompt(many)).toContain('"key 39" and 5 more.');
     expect(savedSecretsPrompt([{ name: "x".repeat(200) }])).toContain(`"${"x".repeat(80)}"`);
+    expect(savedSecretsPrompt([{ name: "Stripe key" }], ["1password"])).toMatch(/value\. A 1Password reference \(op:\/\/vault\/item\/field\) the person gives you works as the label too\.$/u);
+    expect(savedSecretsPrompt([{ name: "Stripe key" }], ["1password", "bitwarden"]))
+      .toMatch(/ A 1Password reference \(op:\/\/vault\/item\/field\) or a Bitwarden reference \(bw:\/\/item\/field\) the person gives you works as the label too\.$/u);
+    expect(savedSecretsPrompt([{ name: "Stripe key" }])).not.toContain("op://");
   });
 });
 
@@ -472,9 +494,9 @@ describe("longCommandsPrompt", () => {
   it("names Bash's limit everywhere and vm_exec's own limit only with a Local VM", () => {
     for (const kind of [null, "local", "vps", "box"] as const) {
       const text = longCommandsPrompt(kind);
-      expect(text).toContain("`timeout` in milliseconds, up to 86400000, which is 1440 minutes, unless a lower limit is set here");
-      expect(text).toContain("Never wait inside a command for CI, a deploy or any other job to finish (no sleep loops or repeated polls): check it once");
-      expect(text).toContain("tell the person what you made (with links). Only on a turn the person started in their own chat, set wait_until or a one-time trigger to check back and end your turn");
+      expect(text).toContain("pass `timeout` in milliseconds, up to 86400000, which is 1440 minutes, unless a lower limit is set here");
+      expect(text).toContain("Never wait inside a command for CI, a deploy or any other job to finish (no sleep loops or polls): check once");
+      expect(text).toContain("tell the person what you made, with links. Only on a turn the person started in their own chat, set check_back (a time) or wait_until (a condition) and end your turn");
       expect(text).toContain("When the person writes while you work, answer them first.");
       expect(text).not.toContain("vm_exec");
     }
@@ -486,13 +508,13 @@ describe("longCommandsPrompt", () => {
   it("keeps a long command in the foreground, and trusts only its own fresh exit code", () => {
     for (const kind of [null, "local", "vps", "box"] as const) {
       const text = longCommandsPrompt(kind);
-      expect(text).toContain("keep the command in the foreground until it exits");
-      expect(text).toContain("split work that cannot finish within that into shorter pieces");
-      expect(text).toContain("A detached job may be killed when the call ends");
+      expect(text).toContain("stay in the foreground until it exits");
+      expect(text).toContain("split work that cannot finish within that");
+      expect(text).toContain("A detached job may die when the call ends");
       expect(text).not.toContain("nohup");
       expect(text).toContain("trust only the command's own fresh exit code and output");
-      expect(text).toContain("cannot set a wait, so finish it in this turn");
-      expect(text).toContain("Work a bot handed you for the person's own request may set one wait_until (not a trigger), cannot cancel it");
+      expect(text).toContain("cannot set a wait, so finish in this turn");
+      expect(text).toContain("work a bot handed you for the person's own request may set one wait_until (not a trigger), cannot cancel it");
     }
   });
 
@@ -547,27 +569,27 @@ describe("how every bot replies", () => {
 
   it("asks for an opening line on longer work, the answer first, one question at most, plain words and money facts first", () => {
     for (const habit of [
-      "first send one short line saying what you are doing and why",
-      "add one line with what they will get and roughly how long",
-      "A quick answer skips both.",
-      "open with the verdict, result or answer",
-      "say in one line where they came from and when",
-      "Use the units, currency, time zone and numbers the person has told you about",
+      "send one short line in their words on what you are doing and why",
+      "add what they will get and roughly how long",
+      "Quick answers skip both.",
+      "Answer first (verdict, result or answer), then support.",
+      "Say in one line where and when looked-up facts came from",
+      "Use and convert to their units, currency, time zone and numbers",
       "no \"let me know if…\", no \"hope this helps\", no offers or questions out of habit",
-      "Add at most one concrete next step, and only when it clearly helps.",
-      "first check what you can already reach",
-      "ask for exactly one thing, in plain words, with the reason",
-      "do the parts that do not depend on it in the same turn",
-      "Never name tools or functions, the files that hold your notes or settings, MCP",
+      "at most one concrete next step, only when it clearly helps.",
+      "check what you can reach",
+      "ask for exactly one thing, plainly, with the reason",
+      "do the parts that do not depend on it now",
+      "never name tools, functions, files holding your notes or settings, MCP",
       "state the money facts you found: price, fees, deposit, cancellation terms",
       "Nothing that cannot be undone happens until they explicitly pick an option or say go",
       "Never ask for passwords, one-time codes or card numbers in chat.",
-      "say plainly what you did not do, offer the simplest other way (drag the file into the chat, or paste the text)",
+      "say plainly what you did not do, offer the simplest other way (drag the file in, or paste the text)",
     ]) expect(REPLY_HABITS_PROMPT).toContain(habit);
   });
 
   it("asks one thing with tap-to-answer choices, keeps forms for real edits, and confirms a routine in plain words", () => {
-    expect(WIDGET_PROMPT).toContain("Unless the person asked you, in this chat or in your instructions, to check with them first, ask only what you cannot find or sensibly default yourself, and one thing at a time.");
+    expect(WIDGET_PROMPT).toContain("Unless the person asked (here or in your instructions) to check with them first, ask only what you cannot find or sensibly default, one thing at a time.");
     expect(WIDGET_PROMPT).toContain("a Card with a Row of Buttons, one per option, whose onClickAction sends that option in one tap");
     expect(WIDGET_PROMPT).not.toContain("never end a turn with a question in text that a form could ask");
     expect(TRIGGER_PROMPT).toContain("weekdays at 9:00 AM India time\", never a zone id such as Asia/Kolkata");
@@ -576,7 +598,7 @@ describe("how every bot replies", () => {
 
   it("at Full access still asks first when the person says to, all at once", () => {
     expect(JUST_DO_IT_PROMPT).toContain("do not stop to ask the person to confirm a step or choose between options");
-    expect(JUST_DO_IT_PROMPT).toContain("When the person asks you, in this chat or in your instructions, to check with them first, to ask clarifying questions or not to assume, do that instead: ask everything you need in one message and wait for their answers before you start.");
+    expect(JUST_DO_IT_PROMPT).toContain("If they ask (here or in your instructions) that you check with them first, ask clarifying questions or not assume, do that instead: ask everything in one message and wait for their answers before starting.");
   });
 });
 
@@ -612,5 +634,49 @@ describe("a heavy bot", () => {
     // a long Soul with little memory: tidying would not help
     expect(heavyPrompt([section("memory", 1_000), section("soul", HEAVY_PROMPT_BYTES)])).toBe(false);
   });
-});
+  it("keeps volatile sections (team-memory, skills, setup, to-connect, mcp, people, cloud-home) out of systemStable", () => {
+    for (const id of ["team-memory", "skills", "setup", "to-connect", "mcp", "people", "cloud-home"]) {
+      expect(VOLATILE_SECTIONS.has(id), `VOLATILE_SECTIONS should have ${id}`).toBe(true);
+    }
+    const built = buildSystemPrompt("You are Kiwi.", "My soul.", [
+      { id: "team-memory", label: "Team memory", text: " Shared facts." },
+      { id: "skills", label: "Skills index", text: " Available skills." },
+      { id: "setup", label: "Setup", text: " Setup instructions." },
+      { id: "to-connect", label: "To connect", text: " Apps to connect." },
+      { id: "mcp", label: "MCP", text: " MCP servers." },
+      { id: "people", label: "People", text: " Team people." },
+      { id: "cloud-home", label: "My Cloud", text: " Cloud home facts." },
+      { id: "computer", label: "Computer", text: " Computer rules." },
+    ]);
+    expect(built.volatile).toContain("Shared facts.");
+    expect(built.volatile).toContain("Available skills.");
+    expect(built.volatile).toContain("Setup instructions.");
+    expect(built.volatile).toContain("Apps to connect.");
+    expect(built.volatile).toContain("MCP servers.");
+    expect(built.volatile).toContain("Team people.");
+    expect(built.volatile).toContain("Cloud home facts.");
 
+    // systemStable must stay pure and not contain any of the volatile sections
+    expect(built.stable).not.toContain("Shared facts.");
+    expect(built.stable).not.toContain("Available skills.");
+    expect(built.stable).not.toContain("Setup instructions.");
+    expect(built.stable).not.toContain("Apps to connect.");
+    expect(built.stable).not.toContain("MCP servers.");
+    expect(built.stable).not.toContain("Team people.");
+    expect(built.stable).not.toContain("Cloud home facts.");
+    expect(built.stable).toContain("Computer rules.");
+  });
+
+  it("adjusts array order so soul precedes user-profile", () => {
+    const profile = userProfileSystemPrompt({ aboutMe: "Prefer concise code." });
+    const built = buildSystemPrompt("Persona", "Strict instructions.", [
+      { id: "user-profile", label: "About the user", text: profile },
+      { id: "computer", label: "Computer", text: " Computer." },
+    ]);
+    const soulIdx = built.sections.findIndex((s) => s.id === "soul");
+    const profileIdx = built.sections.findIndex((s) => s.id === "user-profile");
+    expect(soulIdx).toBeGreaterThanOrEqual(0);
+    expect(profileIdx).toBeGreaterThanOrEqual(0);
+    expect(soulIdx).toBeLessThan(profileIdx);
+  });
+});

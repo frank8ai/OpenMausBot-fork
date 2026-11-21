@@ -51,6 +51,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
   }> = [];
   const runOns: string[] = [];
   const triggerSources: string[] = [];
+  const runIds: string[] = [];
   const taskTitles: string[] = [];
   const goalTasks: Array<{ groupId: string; title: string }> = [];
   const interruptedTurns: Array<{ botId: string; threadId: string }> = [];
@@ -77,10 +78,11 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
       goalTasks.push({ groupId, title });
       return { threadId: `goal-thread-${++goalTask}` };
     },
-    startTurn: async (botId, threadId, prompt, runOn, triggerSource) => {
+    startTurn: async (botId, threadId, prompt, runOn, triggerSource, _onDispatchError, runId) => {
       started.push({ botId, threadId, prompt });
       runOns.push(runOn);
       triggerSources.push(triggerSource);
+      runIds.push(runId);
     },
     startGoal: async (groupId, threadId, prompt, coordinatorBotId, runId, onDispatchError) => {
       startedGoals.push({ groupId, threadId, prompt, coordinatorBotId, runId, onDispatchError });
@@ -104,6 +106,7 @@ function harness(start = new Date(2026, 7, 17, 8, 0, 0).getTime()) {
     startedGoals,
     runOns,
     triggerSources,
+    runIds,
     taskTitles,
     goalTasks,
     interruptedTurns,
@@ -2394,6 +2397,59 @@ describe("RoutineManager", () => {
     ]);
   });
 
+  it("keeps a run that already delivered its report as partly done when its limit stops it", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Bounded check",
+      prompt: "Check the queue",
+      botId: "maus-timeout",
+      schedule: { type: "daily", time: "23:59", weekdays: [1] },
+      timeoutMinutes: 5,
+    });
+    const run = h.manager.runNow(routine.id)!;
+    await h.manager.tick();
+    const startedAt = h.manager.listRuns().find((candidate) => candidate.id === run.id)?.startedAt;
+    h.manager.handleRuntimeEvent({ eventId: "reply", provider: "fake", threadId: "thread-1", createdAt: new Date().toISOString(), type: "item.completed", itemType: "assistant_text", itemId: "reply", text: "The invoice is issued and validated." } as Parameters<typeof h.manager.handleRuntimeEvent>[0]);
+
+    h.setNow(startedAt! + 5 * 60_000);
+    await h.manager.tick();
+
+    expect(h.manager.listRuns().find((candidate) => candidate.id === run.id)).toMatchObject({
+      status: "failed",
+      partial: true,
+      output: "The invoice is issued and validated.",
+      error: "Stopped after reaching the 5-minute run limit",
+    });
+  });
+
+  it("keeps the report it delivered when a later empty item arrives before its limit stops it", async () => {
+    const h = harness();
+    const routine = h.manager.create({
+      name: "Bounded check",
+      prompt: "Check the queue",
+      botId: "maus-timeout",
+      schedule: { type: "daily", time: "23:59", weekdays: [1] },
+      timeoutMinutes: 5,
+    });
+    const run = h.manager.runNow(routine.id)!;
+    await h.manager.tick();
+    const startedAt = h.manager.listRuns().find((candidate) => candidate.id === run.id)?.startedAt;
+    const say = (itemId: string, text: string) => h.manager.handleRuntimeEvent({ eventId: itemId, provider: "fake", threadId: "thread-1", createdAt: new Date().toISOString(), type: "item.completed", itemType: "assistant_text", itemId, text } as Parameters<typeof h.manager.handleRuntimeEvent>[0]);
+    say("reply", "The invoice is issued and validated.");
+    say("blank", "   ");
+    say("empty", "");
+
+    h.setNow(startedAt! + 5 * 60_000);
+    await h.manager.tick();
+
+    expect(h.manager.listRuns().find((candidate) => candidate.id === run.id)).toMatchObject({
+      status: "failed",
+      partial: true,
+      output: "The invoice is issued and validated.",
+      error: "Stopped after reaching the 5-minute run limit",
+    });
+  });
+
   it("keeps legacy duration metadata without imposing a timeout", async () => {
     const h = harness();
     const routine = h.manager.create({
@@ -2900,6 +2956,7 @@ describe("RoutineManager", () => {
     expect(h.started).toEqual([{ botId: "maus-webhook", threadId: "thread-1", prompt: "Handle ticket 42" }]);
     expect(h.runOns).toEqual(["cloud"]);
     expect(h.triggerSources).toEqual(["webhook"]);
+    expect(h.runIds).toEqual([queued.id]);
     expect(h.taskTitles).toHaveLength(1);
   });
 

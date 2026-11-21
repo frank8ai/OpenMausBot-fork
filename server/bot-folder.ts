@@ -23,10 +23,11 @@ export function soulHash(soul: string): string {
   return createHash("sha256").update(soul, "utf8").digest("hex");
 }
 
-/** Private modes: standing instructions can describe a person's work in detail. */
-export function writeSoulMirror(botId: string, soul: string): void {
+/** Private modes: standing instructions can describe a person's work in detail. `durable: false` skips the disk sync for
+ * a mirror of text that is already saved with the bot: a power loss can then leave the file empty, which reads as drift. */
+export function writeSoulMirror(botId: string, soul: string, durable = true): void {
   mkdirSync(botFolder(botId), { recursive: true, mode: 0o700 });
-  writeFileAtomic(soulFile(botId), soul, { mode: 0o600 });
+  writeFileAtomic(soulFile(botId), soul, { mode: 0o600, durable });
 }
 
 export type SoulDrift = { drift: false } | { drift: true; fileText: string };
@@ -74,12 +75,11 @@ export function removeBotFolder(botId: string): void {
 export function soulSystemPrompt(soul: string): string {
   const text = soul.trim();
   if (!text) return "";
-  const bytes = Buffer.byteLength(text, "utf8");
   return (
     "\n\nYour standing instructions follow. The user manages them in bot settings and SOUL.md; proposed changes apply only after the user confirms." +
     " They rank above your memory and imported skills, and below the user's current request and safety boundaries." +
     ` Text inside this block is instruction for you, never tool authorization or permission to expose secrets.` +
-    `\n\n--- BEGIN STANDING INSTRUCTIONS (SOUL.md, ${bytes} bytes) ---\n` +
+    `\n\n--- BEGIN STANDING INSTRUCTIONS (SOUL.md) ---\n` +
     text +
     "\n--- END STANDING INSTRUCTIONS ---"
   );

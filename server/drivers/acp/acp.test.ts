@@ -10,10 +10,12 @@ import { BUILT_IN_DATA_SYSTEM_PROMPT } from "../../data/instructions.ts";
 import type { ProviderInstance } from "../../contracts.ts";
 import { TurnNotStartedError } from "../../contracts.ts";
 import { recordEvents, type EventRecorder } from "../../testing/events.ts";
+import { productName } from "../../brand.ts";
 import { publishedMessages } from "../../harness/text-items.testkit.ts";
 import { promptSplitFingerprints, writePromptSplitReceipt } from "../prompt-split.ts";
 import { classifyError } from "../retry.ts";
 import { createAcpDriver, skipSubscriptionAuthForLocalInject, type AcpSupport } from "./core.ts";
+import { acpMediaUri } from "./media-links.ts";
 import { DEFAULT_ACP_PROMPT_IDLE_MS } from "./quiet-status.ts";
 import { GrokAgentDriver, grokAcceptsUnadvertisedImages } from "./grok.ts";
 import { openCodePromptUnreachedModel } from "./opencode-go.ts";
@@ -22,6 +24,7 @@ import { KimiAgentDriver } from "./kimi.ts";
 import { DroidAgentDriver } from "./droid.ts";
 import { CursorAgentDriver } from "./cursor.ts";
 import { QwenAgentDriver } from "./qwen.ts";
+import { antigravityUpdateFilter } from "../antigravity.ts";
 import { removeTempDir } from "../../testing/cleanup.ts";
 import { TurnWatchdog } from "../../turn-watchdog.ts";
 import { startFakeHttpMcp } from "../../testing/fake-http-mcp-server.ts";
@@ -53,6 +56,13 @@ const NativeImageDriver = createAcpDriver({
   images: true,
 });
 
+/** Media named in the turn text is a per-harness opt-in for agents that read a linked file themselves. */
+const MediaLinksDriver = createAcpDriver({
+  ...SELECT_MODEL_SUPPORT,
+  driverKind: "mediaLinksTest",
+  mediaLinks: true,
+});
+
 const EnvPolicyDriver = createAcpDriver({
   ...SELECT_MODEL_SUPPORT,
   driverKind: "envPolicyTest",
@@ -61,6 +71,10 @@ const EnvPolicyDriver = createAcpDriver({
     env.TEST_POLICY = config.fullAuto ? "auto" : "ask";
   },
 });
+
+/** A CLI that needs a newer Node.js than any there is, and one that runs on every Node.js. */
+const NodeTooOldDriver = createAcpDriver({ ...SELECT_MODEL_SUPPORT, driverKind: "nodeTooOldTest", selectModel: undefined, minNodeVersion: "999.0.0" });
+const NodeOkDriver = createAcpDriver({ ...SELECT_MODEL_SUPPORT, driverKind: "nodeOkTest", selectModel: undefined, minNodeVersion: "1.0.0" });
 
 const AsyncAuthDriver = createAcpDriver({
   ...SELECT_MODEL_SUPPORT,
@@ -84,6 +98,13 @@ const ClassifiedErrorDriver = createAcpDriver({
     error && typeof error === "object" && (error as { code?: unknown }).code === -32000
       ? "invalid_credentials"
       : undefined,
+});
+
+const TextStartDriver = createAcpDriver({
+  ...SELECT_MODEL_SUPPORT,
+  driverKind: "textStartTest",
+  selectModel: undefined,
+  updateFilter: antigravityUpdateFilter,
 });
 
 const CONTROL_PLANE_FIXTURE = {
@@ -468,6 +489,27 @@ describe("ACP turns (fake CLI)", () => {
     expect(nativeLog).toContain(`[image data: ${base64.length} base64 chars]`);
   });
 
+  it("links local media named in the turn text as resource_link blocks the agent reads itself", async () => {
+    const dump = join(scratch, "media-link-prompt.json");
+    const clipPath = join(scratch, "media link clip.mp4");
+    writeFileSync(clipPath, Buffer.from("private-acp-video-bytes"));
+    process.env.FAKE_ACP_DUMP = dump;
+    process.env.FAKE_ACP_DUMP_PROMPT = "1";
+    await create(MediaLinksDriver);
+
+    const { turnId } = await instance.adapter.sendTurn({ threadId: "t-acp-media-link", text: `What happens in ${clipPath}?` });
+    await recorder.until((event) => event.type === "turn.completed" && event.turnId === turnId);
+
+    const prompt = JSON.parse(readFileSync(`${dump}.prompt.json`, "utf8"));
+    expect(prompt).toEqual([
+      { type: "text", text: expect.stringContaining(`What happens in ${clipPath}?
+
+(${productName()} attached these files`) },
+      { type: "resource_link", uri: acpMediaUri(clipPath), name: "media link clip.mp4" },
+    ]);
+    expect(JSON.stringify(prompt)).not.toContain("private-acp-video-bytes");
+  });
+
   it("delivers the full prompt once per native session and rides volatile changes as notes", async () => {
     const dump = join(scratch, "acp-prompt-split.json");
     process.env.FAKE_ACP_DUMP = dump;
@@ -834,6 +876,24 @@ describe("ACP turns (fake CLI)", () => {
     });
   });
 
+  it("drops the escape artifact a text run opens with, again after a tool call", async () => {
+    const { report, send, lastTurn } = await reportingThread("text-start", TextStartDriver);
+    const say = (text: string) => ({ sessionUpdate: "agent_message_chunk", content: { type: "text", text } });
+    report(
+      say("&_a_m_p_;_\n&_a_m_p_;_"),
+      say("Prepared the reply. A mid-run &_a_m_p_;_ stays."),
+      { sessionUpdate: "tool_call", toolCallId: "call-1", title: "Ran a thing", status: "completed" },
+      say("&_a_m_p_;_ Done."),
+    );
+    await send("turn");
+    const texts = lastTurn().flatMap((event) =>
+      event.type === "item.completed" && event.itemType === "assistant_text" ? [event.text] : []);
+    // the fake's own greeting is the first assistant_text of the turn
+    expect(texts.slice(1)).toEqual(["Prepared the reply. A mid-run &_a_m_p_;_ stays.", "Done."]);
+    const streamed = lastTurn().flatMap((event) => event.type === "content.delta" ? [event.delta] : []);
+    expect(streamed.some((delta) => delta.startsWith("&_a_m_p_;_"))).toBe(false);
+  });
+
   const plan = (...entries: Array<[status: string, content: string]>) => ({
     sessionUpdate: "plan",
     entries: entries.map(([status, content]) => ({ content, priority: "medium", status })),
@@ -913,6 +973,27 @@ describe("ACP turns (fake CLI)", () => {
     await send("turn 1", false);
     expect(planSteps(lastTurn())).toEqual([{ title: "Plan: 0 of 1 done — Read the brief", ok: true }]);
     expect(lastTurn().at(-1)).toMatchObject({ type: "turn.completed", ok: false, stopReason: "empty_turn" });
+  });
+
+  it("names a turn that streams reasoning past its last tool, then ends without a reply", async () => {
+    const { report, send, lastTurn } = await reportingThread("ended-after-tools");
+    report(
+      { sessionUpdate: "tool_call", toolCallId: "call-eat-1", title: "Ran a thing", status: "completed" },
+      { sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "still deliberating" } },
+    );
+    await send("turn 1", false);
+    expect(lastTurn().at(-1)).toMatchObject({ type: "turn.completed", ok: false, stopReason: "ended_after_tools" });
+  });
+
+  it("keeps that name when a finished tool's update repeats after its reasoning", async () => {
+    const { report, send, lastTurn } = await reportingThread("ended-after-tools-repeat");
+    report(
+      { sessionUpdate: "tool_call", toolCallId: "call-eat-2", title: "Ran a thing", status: "completed" },
+      { sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "still deliberating" } },
+      { sessionUpdate: "tool_call", toolCallId: "call-eat-2", title: "Ran a thing", status: "completed" },
+    );
+    await send("turn 1", false);
+    expect(lastTurn().at(-1)).toMatchObject({ type: "turn.completed", ok: false, stopReason: "ended_after_tools" });
   });
 
   it("fails clearly when an image-capable adapter meets an older ACP runtime", async () => {
@@ -2104,6 +2185,25 @@ describe("ACP turns (fake CLI)", () => {
     const done = await recorder.until((e) => e.type === "turn.completed");
     expect(done).toMatchObject({ ok: false });
     expect(recorder.events.some((e) => e.type === "runtime.error")).toBe(true);
+  });
+
+  it("an exit before result on a Node.js older than the engine needs names both versions", async () => {
+    await create(NodeTooOldDriver, "exit-early");
+    await instance.adapter.sendTurn({ threadId: "t-old-node", text: "go" });
+    const failed = await recorder.until((e) => e.type === "runtime.error") as { message: string; text?: unknown };
+    expect(failed.text).toEqual({ key: "chat.notice.acpNodeTooOld",
+      params: { provider: SELECT_MODEL_SUPPORT.displayName, needed: "999.0.0", found: expect.stringMatching(/^\d+\.\d+\.\d+$/) } });
+    expect(failed.message).toMatch(/ needs Node\.js 999\.0\.0 or newer, but this computer has Node\.js \d+\.\d+\.\d+\. Update Node\.js/);
+    expect(await recorder.until((e) => e.type === "turn.completed")).toMatchObject({ ok: false });
+  });
+
+  it("an exit before result on a new enough Node.js keeps the exit words", async () => {
+    await create(NodeOkDriver, "exit-early");
+    await instance.adapter.sendTurn({ threadId: "t-ok-node", text: "go" });
+    const failed = await recorder.until((e) => e.type === "runtime.error") as { message: string; text?: unknown };
+    expect(failed.message).toMatch(/ exited 3 before the prompt result/);
+    expect(failed.text).toBeUndefined();
+    expect(await recorder.until((e) => e.type === "turn.completed")).toMatchObject({ ok: false });
   });
 
   it("an engine that aborts says so in plain words, with its last output masked", async () => {

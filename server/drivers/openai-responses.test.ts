@@ -216,16 +216,35 @@ describe("the Responses request", () => {
       ],
     });
     expect(body).toEqual({
-      model: MODEL, stream: true, store: false, instructions: "Be brief.",
+      model: MODEL, stream: true, store: false,
       reasoning: { summary: "auto" },
       tools: [{ type: "function", name: "audit_write", description: "Writes", parameters: { type: "object" }, strict: false }],
       input: [
+        { role: "developer", content: "Be brief." },
         { role: "user", content: [{ type: "input_text", text: "Look" }, { type: "input_image", image_url: "data:image/png;base64,AAAA", detail: "auto" }] },
         { role: "assistant", content: "Looking." },
         { type: "function_call", call_id: "call_9", name: "audit_write", arguments: "{}" },
         { type: "function_call_output", call_id: "call_9", output: '{"ok":true}' },
       ],
     });
+  });
+
+  it("migrates system messages to input[0] as developer role and leaves top-level instructions unset", () => {
+    const body = responsesRequest({
+      model: MODEL,
+      summaries: false,
+      replay: () => undefined,
+      tools: [],
+      messages: [
+        { role: "system", content: "Static developer instructions." },
+        { role: "user", content: "Hi" },
+      ],
+    });
+    expect(body).not.toHaveProperty("instructions");
+    expect(body.input).toEqual([
+      { role: "developer", content: "Static developer instructions." },
+      { role: "user", content: "Hi" },
+    ]);
   });
 });
 
@@ -240,8 +259,8 @@ describe("a model that refuses tools over Chat Completions, at OpenAI's address"
     expect(f.paths()).toEqual(["/v1/chat/completions", "/v1/responses"]);
     expect(f.calls[0]!.body).not.toHaveProperty("reasoning_effort");
     expect(textOf(first.events, "assistant_text")).toBe("Hello there.");
-    expect(first.events.find((event) => event.type === "thread.token-usage.updated")).toMatchObject({ input: 40, output: 12 });
-    expect(first.end).toMatchObject({ usage: { input: 40, output: 12 } });
+    expect(first.events.find((event) => event.type === "thread.token-usage.updated")).toMatchObject({ input: 40, output: 12, cachedInput: 8 });
+    expect(first.end).toMatchObject({ usage: { input: 40, output: 12, cachedInput: 8 } });
 
     expect(await f.turn()).toMatchObject({ end: { ok: true } });
     expect(f.paths()).toEqual(["/v1/chat/completions", "/v1/responses", "/v1/responses"]);
@@ -259,6 +278,17 @@ describe("a model that refuses tools over Chat Completions, at OpenAI's address"
     expect(f.calls[0]!.body).toMatchObject({ reasoning_effort: "low" });
     expect(f.calls[1]!.body.reasoning).toEqual({ effort: "low", summary: "auto" });
     expect(f.calls[2]!.body.reasoning).toEqual({ summary: "auto" });
+  });
+
+  it("keeps a nested reasoning level when the request moves to Responses", async () => {
+    const f = await fixture((call, response) => {
+      if (call.path.endsWith("/chat/completions")) reject(response, 400, refusalOf(MODEL));
+      else answer(response);
+    }, OPENAI, [{ id: MODEL, supported_parameters: ["reasoning"], reasoning_efforts: ["max"] }]);
+    await f.instance.refreshModels?.();
+    expect(await f.turn({ variant: "max" })).toMatchObject({ end: { ok: true } });
+    expect(f.calls[0]!.body.reasoning).toEqual({ effort: "max" });
+    expect(f.calls[1]!.body.reasoning).toEqual({ effort: "max", summary: "auto" });
   });
 
   it("leaves a model that accepts tools on Chat Completions", async () => {
@@ -310,17 +340,17 @@ describe("tool rounds over Responses", () => {
       expect(call.body).not.toHaveProperty("reasoning_effort");
       expect(call.body).not.toHaveProperty("messages");
     }
-    expect(first!.body.input.map((item: any) => item.type ?? item.role)).toEqual(["user"]);
-    expect(first!.body.tools[0]).toMatchObject({ type: "function", name: "audit_write", strict: false, parameters: { required: ["name"] } });
+    expect(first!.body.input.map((item: any) => item.type ?? item.role)).toEqual(["developer", "user"]);
+    expect(first!.body.tools.find((t: any) => t.name === "audit_write")).toMatchObject({ type: "function", name: "audit_write", strict: false, parameters: { required: ["name"] } });
     expect(first!.body.tools[0]).not.toHaveProperty("function");
 
-    expect(second!.body.input.slice(1)).toEqual([
+    expect(second!.body.input.slice(2)).toEqual([
       reasoningItem(),
       callItem(),
       { type: "function_call_output", call_id: "call_1", output: JSON.stringify({ ok: true, result: "Stored." }) },
     ]);
-    expect(third!.body.input.slice(1, 3)).toEqual([reasoningItem(), callItem()]);
-    expect(third!.body.input.slice(4)).toEqual([
+    expect(third!.body.input.slice(2, 4)).toEqual([reasoningItem(), callItem()]);
+    expect(third!.body.input.slice(5)).toEqual([
       reasoningItem("rs_2"),
       messageItem("Checking once more.", "msg_2", "commentary"),
       callItem("audit_write", '{"name":"second"}', "call_2", "fc_2"),
@@ -328,7 +358,7 @@ describe("tool rounds over Responses", () => {
     ]);
     expect(textOf(seen, "reasoning_text")).toBe("Thinking it over.Thinking it over.");
     expect(seen.filter((event) => event.type === "item.completed" && event.itemType === "tool").map((event) => event.ok)).toEqual([true, true]);
-    expect(seen.find((event) => event.type === "turn.completed")).toMatchObject({ usage: { input: 120, output: 36 } });
+    expect(seen.find((event) => event.type === "turn.completed")).toMatchObject({ usage: { input: 120, output: 36, cachedInput: 24 } });
   });
 
   it("keeps encrypted reasoning out of everything it logs or shows", async () => {
@@ -607,6 +637,16 @@ describe("the fallback when Responses is not an option", () => {
 });
 
 describe("the same refusal from another provider", () => {
+  it("reports a refusal rather than silently switching a selected effort off", async () => {
+    const f = await fixture((_call, response) => reject(response, 400, refusalOf(MODEL)), "relay", [{ id: MODEL }]);
+    await f.instance.refreshModels?.();
+    const { end, events: seen } = await f.turn({ variant: "max" });
+    expect(end).toMatchObject({ ok: false });
+    expect(f.paths()).toEqual(["/v1/chat/completions"]);
+    expect(f.calls[0]!.body.reasoning_effort).toBe("max");
+    expect(failureOf(seen)).toContain("selected effort was not changed");
+  });
+
   it("stays on Chat Completions with reasoning off, and remembers per model", async () => {
     const f = await fixture((call, response) => {
       if (call.body.reasoning_effort !== "none") return reject(response, 400, refusalOf(MODEL));
