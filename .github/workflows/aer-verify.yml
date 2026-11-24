@@ -39,11 +39,13 @@ jobs:
 
           CONTRACT_BLOB=$(git hash-object -w .aer/acceptance/default.yml)
           SCRIPT_BLOB=$(git hash-object -w scripts/reproduce_katex_multiline_leak.py)
+          MANIFEST_BLOB=$(git hash-object -w config/verification-manifest.json)
 
           TMP_INDEX=$(mktemp)
           GIT_INDEX_FILE="$TMP_INDEX" git read-tree "$BASE_REF"
           GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$CONTRACT_BLOB",".aer/acceptance/default.yml"
           GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100755,"$SCRIPT_BLOB","scripts/reproduce_katex_multiline_leak.py"
+          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$MANIFEST_BLOB","config/verification-manifest.json"
 
           ALIGNED_TREE=$(GIT_INDEX_FILE="$TMP_INDEX" git write-tree)
           rm -f "$TMP_INDEX"
