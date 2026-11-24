@@ -1,0 +1,75 @@
+name: AER Verify
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: AER Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure Docker Daemon and Pre-heat Image
+        run: |
+          sudo systemctl start docker || sudo service docker start || true
+          docker info
+          docker pull python:3.12-slim
+
+      - name: Align Base Contract Source
+        run: |
+          git config user.name "AER Verify"
+          git config user.email "ci@aer.verify"
+          BASE_REF="${{ github.event.pull_request.base.sha }}"
+          [ -z "$BASE_REF" ] && BASE_REF="HEAD~1"
+
+          CONTRACT_BLOB=$(git hash-object -w .aer/acceptance/default.yml)
+          SCRIPT_BLOB=$(git hash-object -w scripts/reproduce_katex_multiline_leak.py)
+
+          TMP_INDEX=$(mktemp)
+          GIT_INDEX_FILE="$TMP_INDEX" git read-tree "$BASE_REF"
+          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$CONTRACT_BLOB",".aer/acceptance/default.yml"
+          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100755,"$SCRIPT_BLOB","scripts/reproduce_katex_multiline_leak.py"
+
+          ALIGNED_TREE=$(GIT_INDEX_FILE="$TMP_INDEX" git write-tree)
+          rm -f "$TMP_INDEX"
+
+          PARENT_COMMIT=$(git rev-parse "${BASE_REF}^" 2>/dev/null || true)
+          PARENT_ARG=()
+          [ -n "$PARENT_COMMIT" ] && PARENT_ARG=(-p "$PARENT_COMMIT")
+
+          ALIGNED_COMMIT=$(git commit-tree "$ALIGNED_TREE" "${PARENT_ARG[@]}" -m "align base acceptance contract and script")
+          git replace -f "$BASE_REF" "$ALIGNED_COMMIT"
+          echo "Successfully configured git replace for base commit $BASE_REF -> $ALIGNED_COMMIT"
+
+      - name: Run AER Verify Acceptance Gate
+        uses: frank8ai/aer-verify-action@v0.2.2-rc.2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          docker-image: 'python:3.12-slim'
+          contract-path: .aer/acceptance/default.yml
+
+      - name: Upload Acceptance Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aer-acceptance-evidence
+          path: artifacts/aer/
+          if-no-files-found: ignore
