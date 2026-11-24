@@ -502,8 +502,7 @@ function protectDisplayMath(text: string): { text: string; displayMath: string[]
       }
 
       const token = `\u0000OMB_MATH_${display.length}\u0000`;
-      const trimmed = body.replace(/^\n+|\n+$/g, "");
-      const fullMath = `$$\n${trimmed}\n$$`;
+      const fullMath = text.slice(start, closeIndex + 2);
       display.push(fullMath);
       result += token;
       i = closeIndex + 2;
