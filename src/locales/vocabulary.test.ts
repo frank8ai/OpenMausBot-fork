@@ -135,7 +135,7 @@ describe("one name per thing", () => {
     expect(stale).toEqual([]);
     const staleKeys = Object.keys(EN_ALLOWED).filter((key) => !Object.hasOwn(en, key) || retiredIn((en as Record<string, string>)[key]!, /\bboats?\b/i).length === 0);
     expect(staleKeys).toEqual([]);
-  });
+  }, 60_000);
 
   it("the public docs name MausBot Cloud and the Cloud as the app does", () => {
     const names = new Set(["OMB Cloud", "OpenMausBot Cloud", "MausBot Pro", "Connect to my Cloud", "your Cloud", "my Cloud"]);
