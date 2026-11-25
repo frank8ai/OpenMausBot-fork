@@ -349,7 +349,7 @@ describe("CI on Boat", () => {
       ? interpolate(workflow.jobs.static["runs-on"], context)
       : workflow.jobs.static["runs-on"],
     name: interpolate(workflow.jobs.static.name, context),
-    timeout: interpolate(String(workflow.jobs.static["timeout-minutes"]), context),
+    timeout: Number(interpolate(String(workflow.jobs.static["timeout-minutes"]), context)),
   });
   const boat = { runsOn: "boat-xlarge", name: "preflight + Linux tests (Boat)", timeout: 45 };
   const github = (timeout: number) => ({ runsOn: "ubuntu-latest", name: "preflight", timeout });
@@ -386,7 +386,7 @@ describe("CI on Boat", () => {
     if (isSelfHosted) {
       expect(res.runsOn).toEqual(["self-hosted", "Linux", "X64"]);
       expect(res.name).toBe(github(timeout).name);
-      expect(res.timeout).toBe(github(timeout).timeout);
+      expect(res.timeout).toBe(45);
     } else {
       expect(res).toEqual(github(timeout));
     }

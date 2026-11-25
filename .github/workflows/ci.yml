@@ -56,7 +56,7 @@ jobs:
       && github.event.pull_request.user.login == github.repository_owner)
       && 'preflight + Linux tests (Boat)' || 'preflight' }}
     runs-on: [self-hosted, Linux, X64]
-    timeout-minutes: ${{ vars.BOAT_CI == 'on' && 45 || 15 }}
+    timeout-minutes: 45
     permissions:
       contents: read
       # ci-scope reads whether the commit before a push got its own green run,
