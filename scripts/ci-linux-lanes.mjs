@@ -84,7 +84,7 @@ export async function runLanes(lanes, { dir, timeoutMs, heartbeatMs = 60_000, co
   }
 
   const limit = Math.max(1, concurrency);
-  const results = new Array(lanes.length);
+  const results = Array.from({ length: lanes.length });
   const workers = Array.from({ length: Math.min(limit, lanes.length) }, async () => {
     while (nextIndex < lanes.length) {
       const idx = nextIndex++;
