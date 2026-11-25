@@ -36,7 +36,7 @@ import { toolSchemaProfileFor } from "../tool-schema-profile.ts";
 import { classifyContinuable, writeTurnHandoff } from "../turn-continuation.ts";
 import { KEY_REJECTED_REASON, keyRejected, noteKeyAccepted, noteKeyRejected, rejectsKey } from "../key-rejections.ts";
 import { FETCH_LIMIT_MS, fetchPastLimit, prepareChatModel } from "./openai-chat-fetch.ts";
-import { announcesAction } from "./chat-announcement.ts";
+import { announcesAction, detectUnverifiedDispatchClaim } from "./chat-announcement.ts";
 export interface OpenAIChatMessage {
   role: "system" | "user" | "assistant" | "tool" | "developer";
   content: string | ChatContentPart[] | null;
@@ -141,6 +141,13 @@ const asError = (value: unknown): Error =>
 
 const MAX_TURN_TOOL_CALLS = 200;
 const MAX_ANNOUNCEMENT_NUDGES = 3;
+const MAX_DISPATCH_NUDGES = 2;
+const DISPATCH_TOOL_NAMES = new Set(["agents_coordinate_bots", "coordinate_bots"]);
+const NUDGE_UNVERIFIED_DISPATCH =
+  "[SYSTEM HARD GATE] You claimed in text that a bot/task was dispatched or is now executing, " +
+  "but ZERO successful `agents_coordinate_bots` tool calls occurred in this turn. " +
+  "Do NOT repeat the status report. Either invoke `agents_coordinate_bots` RIGHT NOW to physically create the assignment, " +
+  "or explicitly retract the claim and state that nothing was dispatched.";
 
 interface DeliveredUserMessage {
   text: string;
@@ -591,7 +598,9 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
       let correctiveRounds = 0;
       const denials: string[] = [], failedCalls: string[] = [];
       const seenCalls = new Set<string>();
+      const succeededTools = new Set<string>();
       let nudges = 0;
+      let dispatchNudges = 0;
       let unread: string[] = [];
       const deliveredAsides: string[] = [];
       let callsAtNudge = -1;
@@ -765,6 +774,27 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
               stopReason = "tool_error";
               throw new ChatProtocolError(toolFailureMessage(failedCalls, denials.filter((name) => name !== ASK_USER_TOOL)));
             }
+            const hasDispatchTool = tools ? tools.definitions.some((d) => DISPATCH_TOOL_NAMES.has(d.function.name)) : false;
+            const didDispatch = [...DISPATCH_TOOL_NAMES].some((n) => succeededTools.has(n));
+            const guardEnabled = process.env.OMB_PHANTOM_DISPATCH_GUARD !== "0";
+
+            if (guardEnabled && hasDispatchTool && !didDispatch) {
+              const claim = detectUnverifiedDispatchClaim(completion.text);
+              if (claim.claimed) {
+                if (dispatchNudges >= MAX_DISPATCH_NUDGES) {
+                  stopReason = "unverified_dispatch";
+                  throw new ChatProtocolError(
+                    `Blocked phantom dispatch after ${MAX_DISPATCH_NUDGES} nudges: reply claimed "${claim.matchedEvidence}" with 0 successful coordinate_bots calls.`
+                  );
+                }
+                dispatchNudges += 1;
+                messages.push(
+                  assistantReply(model, completion, completion.text),
+                  { role: "user", content: NUDGE_UNVERIFIED_DISPATCH }
+                );
+                continue;
+              }
+            }
             if (options.nudgeAnnouncedAction && tools.definitions.length && announcesAction(completion.text)) {
               if (nudges >= MAX_ANNOUNCEMENT_NUDGES) {
                 stopReason = "incomplete_action";
@@ -874,7 +904,7 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
             const text = safeText(result.text);
             const output = preview({ ok: result.ok, result: text });
             emit({ ...base(turn.threadId, turnId), type: "item.completed", itemType: "tool", itemId: call.id, ok: result.ok, output });
-            if (!result.ok) { toolFailed = true; failedCalls.push(title); }
+            if (!result.ok) { toolFailed = true; failedCalls.push(title); } else { succeededTools.add(call.function.name); }
             messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ ok: result.ok, result: repeatNote ? `${text}\n\n${repeatNote}` : text }) });
             screenshotParts.push(...chatToolImages(call.id, result.images));
             abort.signal.throwIfAborted();
