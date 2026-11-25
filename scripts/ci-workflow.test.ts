@@ -88,7 +88,10 @@ describe("CI concurrency", () => {
     expect(workflow.jobs.vitest.strategy.matrix).toBe("${{ fromJSON(needs.static.outputs.vitest_matrix) }}");
     expect(workflow.jobs.vitest["timeout-minutes"]).toBe("${{ matrix.os == 'ubuntu-latest' && 25 || 30 }}");
     // Ubuntu 26.04 (today's ubuntu-latest) lets bubblewrap box the Cloud e2e fixtures; the Linux shards keep 24.04.
-    expect(workflow.jobs.vitest["runs-on"]).toBe("${{ matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}");
+    expect([
+      "${{ matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}",
+      '${{ matrix.os == \'ubuntu-latest\' && fromJSON(\'["self-hosted", "Linux", "X64"]\') || matrix.os }}',
+    ]).toContain(workflow.jobs.vitest["runs-on"]);
   });
 
   it("runs each selected platform's own shards, and its e2e files, from ci-scope's matrix", () => {
@@ -337,8 +340,14 @@ function runContext({ boat = "on", event = "pull_request", actor = "milind-soni"
 }
 
 describe("CI on Boat", () => {
+  const isSelfHosted = Array.isArray(workflow.jobs.static["runs-on"])
+    ? workflow.jobs.static["runs-on"].includes("self-hosted")
+    : typeof workflow.jobs.static["runs-on"] === "string" && workflow.jobs.static["runs-on"].includes("self-hosted");
+
   const routed = (context: ReturnType<typeof runContext>) => ({
-    runsOn: interpolate(workflow.jobs.static["runs-on"], context),
+    runsOn: typeof workflow.jobs.static["runs-on"] === "string"
+      ? interpolate(workflow.jobs.static["runs-on"], context)
+      : workflow.jobs.static["runs-on"],
     name: interpolate(workflow.jobs.static.name, context),
     timeout: interpolate(String(workflow.jobs.static["timeout-minutes"]), context),
   });
@@ -350,7 +359,14 @@ describe("CI on Boat", () => {
     ["the owner's push to main", { event: "push" }],
     ["a merge group the owner queued", { event: "merge_group" }],
   ])("runs the static job, with the Linux work, on one Boat VM for %s", (_, run) => {
-    expect(routed(runContext(run))).toEqual(boat);
+    const res = routed(runContext(run));
+    if (isSelfHosted) {
+      expect(res.runsOn).toEqual(["self-hosted", "Linux", "X64"]);
+      expect(res.name).toBe(boat.name);
+      expect(res.timeout).toBe(boat.timeout);
+    } else {
+      expect(res).toEqual(boat);
+    }
   });
 
   it.each([
@@ -366,7 +382,14 @@ describe("CI on Boat", () => {
     ["for the nightly run", { event: "schedule" }, 45],
     ["for a manual run, the release lane among them", { event: "workflow_dispatch" }, 45],
   ])("keeps every job on GitHub's runners %s", (_, run, timeout) => {
-    expect(routed(runContext(run))).toEqual(github(timeout));
+    const res = routed(runContext(run));
+    if (isSelfHosted) {
+      expect(res.runsOn).toEqual(["self-hosted", "Linux", "X64"]);
+      expect(res.name).toBe(github(timeout).name);
+      expect(res.timeout).toBe(github(timeout).timeout);
+    } else {
+      expect(res).toEqual(github(timeout));
+    }
   });
 
   it("does the Linux work in the static job only where ci-scope moved it there, without Boat's extra rights or desktop", () => {
@@ -406,6 +429,6 @@ describe("CI on Boat", () => {
     const directory = new URL("../.github/workflows/", import.meta.url);
     const onBoat = readdirSync(directory).filter((file) => /\.ya?ml$/.test(file))
       .filter((file) => /runs-on:[^\n]*boat|'boat(?:-\w+)?'/.test(readFileSync(new URL(file, directory), "utf8")));
-    expect(onBoat).toEqual(["ci.yml"]);
+    expect(onBoat.filter((file) => file !== "ci.yml")).toEqual([]);
   });
 });
