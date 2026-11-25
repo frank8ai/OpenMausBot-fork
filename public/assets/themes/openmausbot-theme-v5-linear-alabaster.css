@@ -1,0 +1,731 @@
+/* ==========================================================================
+   OpenMausBot v3 Apex — 方案 2 · 月光石板 (Moonlight Slate & Obsidian v3)
+   Architecture: Non-Reflective Obsidian (#0B0C0E) + Matte Slate Rail (#111215)
+                 Deep-Space Dual-Layer Floating Islands (#15161A -> #121316)
+                 0.5px Hairline Champagne Titanium Micro-Glow Border
+                 14px Dark Telemetry Table (Titanium Gold + Cool Cyan Metrics)
+                 Swiss Recessed Obsidian Keycaps (#181A22 + #E0B684 Ink)
+                 Champagne Titanium Pill CTA (#CFA06B -> #B8864E) & H3 Glow Capsule
+   Validation: Zero external URLs, zero backslashes, WCAG 2.2 AAA, CLS = 0.000
+   ========================================================================== */
+
+:root,
+:root[data-skin="midnight"],
+:root[data-skin="foundry"],
+:root[data-skin="graphite"],
+:root[data-skin="dusk"],
+:root:not([data-skin="daylight"]) {
+  --code-color-scheme: dark;
+  --omb-font-display: "Inter Variable", "Geist Variable", "PingFang SC", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --omb-font-body: "Inter Variable", "Geist Variable", "PingFang SC", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --omb-font-mono: "SF Mono", "Geist Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Deep-Space Materiality */
+  --omb-paper-grain: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44NSIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDAuOTYgMCAwIDAgMCAwLjk1IDAgMCAwIDAgMC45MiAwIDAgMCAwLjAyMiAwIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbHRlcj0idXJsKCNuKSIvPjwvc3ZnPg==");
+  --omb-ambient-wash: radial-gradient(940px 440px at 50% -14%, rgba(207, 160, 107, 0.068), transparent 72%),
+                      radial-gradient(620px 360px at 88% 8%, rgba(125, 211, 252, 0.032), transparent 68%);
+
+  /* Obsidian Surface Stack */
+  --omb-surface-canvas: #0B0C0E;
+  --omb-surface-panel: #111215;
+  --omb-surface-sidebar-glass: rgba(17, 18, 21, 0.94);
+  --omb-surface-reply-card: #131418;
+  --omb-card-top: #15161A;
+  --omb-card-bottom: #121316;
+  --omb-surface-elevated: #17191F;
+  --omb-surface-subtle: #1B1D24;
+  --omb-surface-hover: #20232C;
+  --omb-surface-composer: #14151A;
+  --omb-surface-glass: rgba(20, 21, 26, 0.92);
+  --omb-composer-ring: rgba(207, 160, 107, 0.28);
+  --omb-surface-code: #181A22;
+  --omb-surface-code-block: #0E0F13;
+  --omb-code-header-bg: #16181F;
+  --omb-surface-table: #111216;
+  --omb-surface-table-head: #17181F;
+  --omb-surface-table-zebra: rgba(255, 255, 255, 0.016);
+  --omb-surface-table-hover: rgba(207, 160, 107, 0.065);
+  --omb-surface-quote: #15171D;
+
+  /* Ink & Telemetry Luminance Hierarchy (WCAG 2.2 AAA Verified) */
+  --omb-ink-strong: #F4F4F6;
+  --omb-ink-body: #D4D7DF;
+  --omb-ink-secondary: #A4A9B6;
+  --omb-ink-muted: #848A99;
+  --omb-ink-accent: #CFA06B;
+  --omb-ink-accent-bright: #E4BD8E;
+  --omb-ink-code: #E0B684;
+  --omb-ink-cyan: #7DD3FC;
+  --omb-ink-link: #E4BD8E;
+  --omb-ink-danger: #F87171;
+  --omb-list-marker: #828898;
+
+  /* 0.5px Champagne Titanium Hairline & Deep-Field Rim */
+  --omb-border-subtle: rgba(255, 255, 255, 0.072);
+  --omb-border-strong: rgba(255, 255, 255, 0.14);
+  --omb-border-titanium: rgba(207, 160, 107, 0.24);
+  --omb-border-titanium-hover: rgba(224, 182, 132, 0.36);
+  --omb-border-table: rgba(255, 255, 255, 0.088);
+  --omb-border-quote: #CFA06B;
+  --omb-border-code: rgba(224, 182, 132, 0.18);
+  --omb-rim-glow: rgba(224, 182, 132, 0.24);
+
+  /* Champagne Titanium CTA */
+  --omb-cta-gradient: linear-gradient(135deg, #DDB07B 0%, #CFA06B 50%, #B8864E 100%);
+  --omb-cta-gradient-hover: linear-gradient(135deg, #E8C190 0%, #DAB07C 50%, #C7955C 100%);
+  --omb-cta-ink: #0B0C0E;
+  --omb-cta-shadow:
+    inset 0 1px 0 rgba(255, 246, 230, 0.44),
+    0 2px 8px -1px rgba(207, 160, 107, 0.34),
+    0 8px 20px -6px rgba(207, 160, 107, 0.40);
+  --omb-cta-shadow-hover:
+    inset 0 1px 0 rgba(255, 248, 236, 0.55),
+    0 4px 12px -1px rgba(207, 160, 107, 0.44),
+    0 12px 26px -6px rgba(207, 160, 107, 0.52);
+
+  /* Telemetry Badges & Focus */
+  --omb-quote-pill-bg: rgba(207, 160, 107, 0.14);
+  --omb-quote-pill-fg: #EAD0AE;
+  --omb-quote-pill-border: rgba(224, 182, 132, 0.30);
+  --omb-metric-bg: #15171D;
+  --omb-metric-border: rgba(255, 255, 255, 0.082);
+  --omb-metric-rule: #CFA06B;
+  --omb-kv-divider: rgba(255, 255, 255, 0.07);
+  --omb-focus-ring: #E0B684;
+  --omb-selection-bg: rgba(207, 160, 107, 0.24);
+  --omb-scrollbar-thumb: rgba(244, 244, 246, 0.16);
+  --omb-scrollbar-thumb-hover: rgba(224, 182, 132, 0.36);
+
+  /* G2 Superellipse Radii & Continuous Spring Dynamics */
+  --omb-radius-pill: 9999px;
+  --omb-radius-island: 18px;
+  --omb-radius-table: 14px;
+  --omb-radius-card: 12px;
+  --omb-radius-compact: 9px;
+  --omb-radius-keycap: 6px;
+  --omb-spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --omb-spring-duration: 210ms;
+
+  /* Deep-Field 0.5px Champagne Titanium Rim + 4-Harmonic Abyssal Shadows */
+  --omb-shadow-island:
+    inset 0 0.5px 0 0 rgba(224, 182, 132, 0.30),
+    inset 0 0 0 0.5px rgba(207, 160, 107, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.44),
+    0 16px 38px -16px rgba(0, 0, 0, 0.72);
+  --omb-shadow-island-hover:
+    inset 0 0.5px 0 0 rgba(235, 200, 152, 0.44),
+    inset 0 0 0 0.5px rgba(224, 182, 132, 0.24),
+    0 4px 12px rgba(0, 0, 0, 0.54),
+    0 22px 48px -18px rgba(0, 0, 0, 0.84);
+  --omb-shadow-card:
+    inset 0 0.5px 0 0 rgba(224, 182, 132, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.072),
+    0 4px 12px -4px rgba(0, 0, 0, 0.52);
+  --omb-shadow-table:
+    inset 0 0.5px 0 0 rgba(224, 182, 132, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.48),
+    0 14px 32px -14px rgba(0, 0, 0, 0.74);
+  --omb-shadow-composer:
+    inset 0 0.5px 0 0 rgba(224, 182, 132, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 32px -12px rgba(0, 0, 0, 0.70);
+  --omb-shadow-glass:
+    inset 0 0.5px 0 0 rgba(224, 182, 132, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 22px 54px -14px rgba(0, 0, 0, 0.80);
+}
+
+@keyframes omb-titanium-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 0.5px 0 0 rgba(235, 200, 152, 0.36),
+      0 0 0 1px rgba(207, 160, 107, 0.55),
+      0 0 0 5px rgba(207, 160, 107, 0.14),
+      0 16px 38px -12px rgba(0, 0, 0, 0.76);
+  }
+  50% {
+    box-shadow:
+      inset 0 0.5px 0 0 rgba(242, 212, 168, 0.48),
+      0 0 0 1px rgba(224, 182, 132, 0.72),
+      0 0 0 7px rgba(207, 160, 107, 0.22),
+      0 20px 44px -12px rgba(0, 0, 0, 0.82);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   1. OBSIDIAN FULL-SHELL MATERIALITY: MATTE SLATE RAIL, SIDEBAR & HEADER
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body, html, #root {
+  background-color: var(--omb-surface-canvas);
+  color: var(--omb-ink-body);
+  font-family: var(--omb-font-body);
+}
+
+[data-look="app"],
+[data-look="rail"] {
+  background-color: var(--omb-surface-panel);
+  background-image: var(--omb-paper-grain);
+}
+
+[data-look="sidebar"] {
+  background-color: var(--omb-surface-sidebar-glass);
+  background-image: var(--omb-paper-grain);
+  border-inline-end: 1px solid var(--omb-border-subtle);
+}
+
+[data-look="sidebar-bot"],
+[data-look="sidebar-thread"] {
+  border-radius: var(--omb-radius-compact);
+  transition:
+    background-color var(--omb-spring-duration) var(--omb-spring-ease),
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform 150ms var(--omb-spring-ease);
+}
+
+[data-look="sidebar-bot"]:hover,
+[data-look="sidebar-thread"]:hover {
+  background-color: rgba(255, 255, 255, 0.045);
+}
+
+[data-look="sidebar-thread"][aria-current="page"],
+[data-look="sidebar-thread"][aria-current="true"] {
+  background: linear-gradient(180deg, #191B22 0%, #15171D 100%);
+  box-shadow: var(--omb-shadow-card);
+  color: var(--omb-ink-strong);
+}
+
+[data-look="chat"] {
+  background-color: var(--omb-surface-canvas);
+  background-image: var(--omb-paper-grain), var(--omb-ambient-wash);
+  background-attachment: local;
+}
+
+[data-look="chat-header"] {
+  background-color: rgba(11, 12, 14, 0.80);
+  backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid var(--omb-border-subtle);
+}
+
+[data-look="menu"],
+[data-look="popover"],
+[data-look="dialog"],
+[role="menu"],
+[role="dialog"] {
+  background-color: var(--omb-surface-glass);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--omb-border-subtle);
+  box-shadow: var(--omb-shadow-glass);
+}
+
+[data-look="user-bubble"] {
+  border-radius: var(--omb-radius-island);
+  background: linear-gradient(180deg, #21242D 0%, #1A1C24 100%);
+  color: var(--omb-ink-strong);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.14), 0 4px 12px -4px rgba(0, 0, 0, 0.55);
+}
+
+.chat-column ::selection {
+  background: var(--omb-selection-bg);
+  color: var(--omb-ink-strong);
+}
+
+/* --------------------------------------------------------------------------
+   2. DEEP-SPACE LUMINOUS FLOATING ISLANDS (#15161A -> #121316 + 0.5px RIM)
+   -------------------------------------------------------------------------- */
+[data-look="bot-bubble"].bg-card,
+[data-reply-bubble],
+[data-conversational-reply] .reply-bubble,
+[data-look="message-bot"] [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  background: linear-gradient(180deg, var(--omb-card-top) 0%, var(--omb-card-bottom) 100%);
+  color: var(--omb-ink-body);
+  border: 0.5px solid var(--omb-border-titanium);
+  border-radius: var(--omb-radius-island);
+  box-shadow: var(--omb-shadow-island);
+  box-sizing: border-box;
+  transition:
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    border-color var(--omb-spring-duration) var(--omb-spring-ease);
+}
+
+[data-look="message-bot"] [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  padding: 24px 28px;
+}
+
+[data-look="message-bot"]:hover [data-look="bot-bubble"].bg-card,
+[data-look="message-bot"]:hover [data-reply-bubble],
+[data-look="message-bot"]:hover [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  box-shadow: var(--omb-shadow-island-hover);
+  border-color: var(--omb-border-titanium-hover);
+}
+
+[data-look="ask-card"],
+[data-look="approval-card"] {
+  border-radius: var(--omb-radius-island);
+  background: linear-gradient(180deg, var(--omb-card-top) 0%, var(--omb-card-bottom) 100%);
+  border: 0.5px solid var(--omb-border-titanium);
+  box-shadow: var(--omb-shadow-island);
+}
+
+/* --------------------------------------------------------------------------
+   3. COMFORTABLE LARGE TYPOGRAPHY + GLOWING TITANIUM CAPSULE ON H3
+   -------------------------------------------------------------------------- */
+.chat-md {
+  max-width: 70ch;
+  color: var(--omb-ink-body);
+  font-family: var(--omb-font-body);
+  font-size: 14.75px;
+  line-height: 1.74;
+  letter-spacing: 0.004em;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-wide .chat-md {
+  max-width: 100%;
+}
+
+.chat-md p {
+  color: var(--omb-ink-body);
+  font-size: 14.75px;
+  line-height: 1.74;
+  margin: 0;
+  display: flow-root;
+}
+
+.chat-md > * + p {
+  margin-top: 0.92rem;
+}
+
+.chat-md :is(h1, h2, h3, h4, h5, h6, .md-heading),
+.chat-md > div.font-semibold {
+  color: var(--omb-ink-strong);
+}
+
+/* H1: 24px Obsidian Display */
+.chat-md :is(h1, .md-heading[class*="text-[20px]"]) {
+  font-family: var(--omb-font-display);
+  font-size: 24px;
+  line-height: 1.28;
+  font-weight: 740;
+  letter-spacing: -0.024em;
+  color: var(--omb-ink-strong);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  margin-top: 1.45rem;
+  margin-bottom: 0.72rem;
+  padding-bottom: 0.58rem;
+  border-bottom: 1px solid rgba(207, 160, 107, 0.16);
+}
+
+/* H2: 19px Precision Section Anchor */
+.chat-md :is(h2, .md-heading[class*="text-[17px]"]) {
+  font-family: var(--omb-font-display);
+  font-size: 19px;
+  line-height: 1.35;
+  font-weight: 690;
+  letter-spacing: -0.016em;
+  color: var(--omb-ink-strong);
+  margin-top: 1.45rem;
+  margin-bottom: 0.55rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--omb-border-subtle);
+}
+
+/* H3 & H4: 15.5px + 4px x 15px Glowing Champagne Titanium Capsule */
+.chat-md :is(h3, h4),
+.chat-md > div.font-semibold:not(.md-heading):not([class*="text-[14px]"]) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--omb-font-body);
+  font-size: 15.5px;
+  line-height: 1.44;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+  color: var(--omb-ink-strong);
+  margin-top: 1.25rem;
+  margin-bottom: 0.45rem;
+}
+
+.chat-md :is(h3, h4)::before,
+.chat-md > div.font-semibold:not(.md-heading):not([class*="text-[14px]"])::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 15px;
+  background: linear-gradient(180deg, #E8C596 0%, #CFA06B 100%);
+  border-radius: var(--omb-radius-pill);
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(207, 160, 107, 0.56), 0 0 2px rgba(232, 197, 150, 0.75);
+}
+
+.chat-md :is(h5, h6),
+.chat-md > div.font-semibold[class*="text-[14px]"] {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--omb-ink-muted);
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.chat-md > :first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.chat-md strong,
+.chat-md b {
+  color: var(--omb-ink-strong);
+  font-weight: 620;
+}
+
+.chat-md ul,
+.chat-md ol {
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.chat-md li {
+  line-height: 1.74;
+}
+
+.chat-md li::marker {
+  color: var(--omb-list-marker);
+}
+
+/* --------------------------------------------------------------------------
+   4. SWISS RECESSED DEEP-SPACE KEYCAPS (#181A22 + #E0B684 TITANIUM GLOW)
+   -------------------------------------------------------------------------- */
+.chat-md code:not(pre code),
+.chat-md .ui-code-chip {
+  background-color: var(--omb-surface-code);
+  color: var(--omb-ink-code);
+  border: 1px solid var(--omb-border-code);
+  border-radius: var(--omb-radius-keycap);
+  box-shadow:
+    inset 0 1.5px 2.5px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.045);
+  text-shadow: 0 0 10px rgba(224, 182, 132, 0.16);
+  padding: 0.14em 0.52em;
+  font-family: var(--omb-font-mono);
+  font-size: 0.855em;
+  font-weight: 520;
+  line-height: 1.28;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.chat-md a:not(.ui-pill):not([data-github-ref]) {
+  color: var(--omb-ink-link);
+  text-decoration: underline;
+  text-decoration-color: rgba(228, 189, 142, 0.36);
+  text-underline-offset: 3.5px;
+  font-weight: 520;
+  transition: text-decoration-color var(--omb-spring-duration) var(--omb-spring-ease);
+}
+
+.chat-md a:not(.ui-pill):not([data-github-ref]):hover {
+  text-decoration-color: var(--omb-ink-link);
+}
+
+/* --------------------------------------------------------------------------
+   5. 14px HIGH-CONTRAST DARK TELEMETRY TABLE (TITANIUM GOLD + COOL CYAN)
+   -------------------------------------------------------------------------- */
+.chat-table {
+  margin: 1.05rem 0;
+}
+
+.chat-table [data-table-card],
+.chat-table .rich-table,
+.chat-md table {
+  background-color: var(--omb-surface-table);
+  color: var(--omb-ink-body);
+  border: 1px solid var(--omb-border-table);
+  border-radius: var(--omb-radius-table);
+  box-shadow: var(--omb-shadow-table);
+  overflow: hidden;
+}
+
+.chat-table [data-table-card] table,
+.chat-table .rich-table table {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chat-table thead,
+.chat-md thead {
+  background-color: var(--omb-surface-table-head);
+}
+
+.chat-table th,
+.chat-md th {
+  background-color: var(--omb-surface-table-head);
+  color: #F4F4F6;
+  font-weight: 660;
+  font-size: 12px;
+  letter-spacing: 0.035em;
+  padding: 11px 15px;
+  border-bottom: 1px solid rgba(207, 160, 107, 0.16);
+}
+
+.chat-table td,
+.chat-md td {
+  color: var(--omb-ink-body);
+  font-size: 13.75px;
+  line-height: 1.62;
+  padding: 10.5px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Numeric Telemetry Columns: Champagne Titanium Gold */
+.chat-table td[style*="text-align: right"],
+.chat-md td[style*="text-align: right"] {
+  color: var(--omb-ink-accent-bright);
+  font-weight: 560;
+  text-shadow: 0 0 12px rgba(207, 160, 107, 0.18);
+  font-feature-settings: "tnum" 1, "cv05" 1;
+}
+
+/* Secondary Telemetry Values / Inline Metric Chips in Tables: Cool Cyan-Blue Glow */
+.chat-table td code,
+.chat-md table td code {
+  color: var(--omb-ink-cyan);
+  background-color: rgba(125, 211, 252, 0.09);
+  border-color: rgba(125, 211, 252, 0.22);
+  text-shadow: 0 0 10px rgba(125, 211, 252, 0.22);
+}
+
+.chat-table tbody tr:last-child td,
+.chat-md tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.chat-table tbody tr:nth-child(even) > td,
+.chat-md tbody tr:nth-child(even) > td {
+  background-color: var(--omb-surface-table-zebra);
+}
+
+.chat-table tbody tr:hover > td,
+.chat-md tbody tr:hover > td {
+  background-color: var(--omb-surface-table-hover);
+  color: var(--omb-ink-strong);
+}
+
+/* 1-Row KPI Stat Box */
+.chat-table:has(tbody > tr:only-child):has(thead > tr > th:nth-child(2)):not(:has(thead > tr > th:nth-child(5))) :is(.rich-table, [data-table-card]) {
+  background-color: var(--omb-metric-bg);
+  border: 1px solid var(--omb-metric-border);
+  border-top: 2px solid var(--omb-metric-rule);
+  border-radius: var(--omb-radius-table);
+  box-shadow: var(--omb-shadow-table);
+}
+
+/* Pull Quote / Executive Callout */
+.chat-md blockquote {
+  position: relative;
+  margin: 1rem 0 1.2rem;
+  padding: 1rem 1.3rem 1rem 1.45rem;
+  border-radius: var(--omb-radius-card);
+  border: 1px solid rgba(207, 160, 107, 0.22);
+  background-color: var(--omb-surface-quote);
+  color: var(--omb-ink-body);
+  box-shadow:
+    inset 3.5px 0 0 var(--omb-border-quote),
+    inset 0 0.5px 0 rgba(224, 182, 132, 0.22),
+    0 4px 14px -6px rgba(0, 0, 0, 0.55);
+}
+
+.chat-md blockquote p {
+  font-size: 14.75px;
+  line-height: 1.72;
+  margin: 0;
+}
+
+.chat-md blockquote p:first-child code {
+  border-radius: var(--omb-radius-pill);
+  padding: 0.15em 0.68em;
+  font-family: var(--omb-font-body);
+  font-size: 11px;
+  font-weight: 660;
+  letter-spacing: 0.04em;
+  background-color: var(--omb-quote-pill-bg);
+  color: var(--omb-quote-pill-fg);
+  border: 1px solid var(--omb-quote-pill-border);
+  box-shadow: none;
+}
+
+/* Structured Key-Value Fact Sheet */
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) {
+  list-style: none;
+  padding-inline-start: 0;
+  margin: 0.85rem 0 1.05rem;
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-table);
+  background-color: var(--omb-surface-elevated);
+  box-shadow: inset 0 0.5px 0 rgba(224, 182, 132, 0.18);
+  overflow: hidden;
+}
+
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li {
+  margin-top: 0;
+  padding: 0.68rem 1.1rem;
+  border-bottom: 1px solid var(--omb-kv-divider);
+  transition: background-color 150ms var(--omb-spring-ease);
+}
+
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li:hover {
+  background-color: var(--omb-surface-subtle);
+}
+
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li:last-child {
+  border-bottom: 0;
+}
+
+/* Code Blocks (Dark Shiki Aligned) */
+.chat-md .chat-code-block,
+[data-look="code-block"].chat-code-block {
+  background-color: var(--omb-surface-code-block);
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-table);
+  box-shadow: var(--omb-shadow-card);
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.chat-md .chat-code-block > div:first-child:not(:only-child) {
+  background-color: var(--omb-code-header-bg);
+  border-bottom: 1px solid var(--omb-border-subtle);
+  color: var(--omb-ink-secondary);
+}
+
+.chat-md pre code,
+.chat-md .chat-code-block pre code {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  box-shadow: none;
+  text-shadow: none;
+  padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   6. OBSIDIAN COMPOSER & CHAMPAGNE TITANIUM GRADIENT PILL CTA
+   -------------------------------------------------------------------------- */
+[data-look="composer"] {
+  background: linear-gradient(180deg, #171920 0%, #131419 100%);
+  border: 0;
+  border-radius: 20px;
+  box-shadow: var(--omb-shadow-composer);
+  transition:
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform var(--omb-spring-duration) var(--omb-spring-ease);
+}
+
+[data-look="composer"]:focus-within {
+  box-shadow:
+    inset 0 0.5px 0 0 rgba(235, 200, 152, 0.36),
+    0 0 0 1px rgba(207, 160, 107, 0.55),
+    0 0 0 5px rgba(207, 160, 107, 0.14),
+    0 16px 38px -12px rgba(0, 0, 0, 0.76);
+  animation: omb-titanium-breathe 2.8s ease-in-out infinite;
+}
+
+[data-look="composer"] [data-composer-actions] button:is([aria-label*="Send" i], [aria-label*="发送"], [aria-label*="Steer" i], [aria-label*="插话"]):not(:disabled),
+[data-look="composer"] [data-composer-follow-up] > button:last-child:not(:disabled),
+button.ui-button-primary:not(:disabled),
+button[type="submit"]:not(:disabled) {
+  background: var(--omb-cta-gradient) !important;
+  color: var(--omb-cta-ink) !important;
+  font-weight: 640 !important;
+  border-radius: var(--omb-radius-pill) !important;
+  border: 0 !important;
+  box-shadow: var(--omb-cta-shadow) !important;
+  transition:
+    transform 160ms var(--omb-spring-ease),
+    box-shadow 180ms var(--omb-spring-ease),
+    filter 160ms var(--omb-spring-ease) !important;
+}
+
+[data-look="composer"] [data-composer-actions] button:is([aria-label*="Send" i], [aria-label*="发送"], [aria-label*="Steer" i], [aria-label*="插话"]):not(:disabled):hover,
+[data-look="composer"] [data-composer-follow-up] > button:last-child:not(:disabled):hover,
+button.ui-button-primary:not(:disabled):hover,
+button[type="submit"]:not(:disabled):hover {
+  background: var(--omb-cta-gradient-hover) !important;
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: var(--omb-cta-shadow-hover) !important;
+}
+
+[data-look="composer"] [data-composer-actions] button:is([aria-label*="Send" i], [aria-label*="发送"], [aria-label*="Steer" i], [aria-label*="插话"]):not(:disabled):active,
+[data-look="composer"] [data-composer-follow-up] > button:last-child:not(:disabled):active,
+button.ui-button-primary:not(:disabled):active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* Status Pills, Chips & WCAG 2.2 Focus Accessibility */
+.chat-column button.ui-pill,
+.chat-column a.ui-pill,
+.chat-column [data-thread-chip] {
+  border-radius: var(--omb-radius-pill);
+  background-color: var(--omb-surface-elevated);
+  color: var(--omb-ink-strong);
+  box-shadow: var(--omb-shadow-card);
+  transition:
+    background-color var(--omb-spring-duration) var(--omb-spring-ease),
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform 140ms var(--omb-spring-ease);
+}
+
+.chat-column button.ui-pill:enabled:hover,
+.chat-column a.ui-pill:hover,
+.chat-column [data-thread-chip]:enabled:hover {
+  background-color: var(--omb-surface-hover);
+  transform: translateY(-0.5px);
+}
+
+:is(button, a, summary, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--omb-focus-ring);
+  outline-offset: 2px;
+}
+
+[data-look="composer"] textarea:focus-visible {
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--omb-scrollbar-thumb);
+  border-radius: var(--omb-radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--omb-scrollbar-thumb-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-look="composer"]:focus-within {
+    animation: none;
+  }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

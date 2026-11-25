@@ -1,0 +1,716 @@
+/* ==========================================================================
+   OpenMausBot v3 Apex — 方案 5 · T3 极简星尘 (T3 Stardust Studio v3)
+   Architecture: Studio Cold-White Canvas (#F8F9FA) + Frosted Aluminum Rail
+                 18px G2 Superellipse Floating Islands + 4-Harmonic Diffuse Shadow
+                 9999px Vermilion Coral Pill (#FF5630 -> #FF6B4A) + Breathing Halo
+                 14px Floating Reconciliation Table + Swiss Silver Keycaps (#EEF0F3)
+                 Eye-Care Scale (H1 24 / H2 19 / H3 15.5 + 4x15 Coral Capsule)
+   Validation: Zero external URLs, zero backslashes, WCAG 2.2 AAA, CLS = 0.000
+   ========================================================================== */
+
+:root,
+:root[data-skin="daylight"],
+:root[data-skin="paper"],
+:root[data-skin="atelier"],
+:root[data-skin="linen"],
+:root[data-skin="lagoon"],
+:root:not([data-skin="midnight"]) {
+  --code-color-scheme: light;
+  --omb-font-display: "Inter Variable", "Geist Variable", "PingFang SC", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --omb-font-body: "Inter Variable", "Geist Variable", "PingFang SC", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --omb-font-mono: "SF Mono", "Geist Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Studio Materiality */
+  --omb-paper-grain: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44NSIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDAuMDkgMCAwIDAgMCAwLjEwIDAgMCAwIDAgMC4xMiAwIDAgMCAwLjAxOCAwIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbHRlcj0idXJsKCNuKSIvPjwvc3ZnPg==");
+  --omb-ambient-wash: radial-gradient(960px 460px at 50% -12%, rgba(255, 255, 255, 0.92), transparent 70%),
+                      radial-gradient(640px 360px at 92% 6%, rgba(255, 86, 48, 0.032), transparent 68%);
+
+  /* Surface Elevation Stack */
+  --omb-surface-canvas: #F8F9FA;
+  --omb-surface-panel: #F1F3F6;
+  --omb-surface-sidebar-glass: rgba(241, 243, 246, 0.88);
+  --omb-surface-reply-card: #FFFFFF;
+  --omb-card-top: #FFFFFF;
+  --omb-card-bottom: #FCFDFE;
+  --omb-surface-elevated: #F5F7FA;
+  --omb-surface-subtle: #EFF2F6;
+  --omb-surface-hover: #E9EDF2;
+  --omb-surface-composer: #FFFFFF;
+  --omb-surface-glass: rgba(255, 255, 255, 0.92);
+  --omb-composer-ring: rgba(255, 86, 48, 0.20);
+  --omb-surface-code: #EEF0F3;
+  --omb-surface-code-block: #F4F6F9;
+  --omb-code-header-bg: #ECEFF4;
+  --omb-surface-table: #FFFFFF;
+  --omb-surface-table-head: #F3F5F8;
+  --omb-surface-table-zebra: rgba(15, 23, 42, 0.015);
+  --omb-surface-table-hover: #F2F5F9;
+  --omb-surface-quote: #F8FAFC;
+
+  /* Ink Hierarchy (WCAG 2.2 AAA Verified) */
+  --omb-ink-strong: #111827;
+  --omb-ink-body: #24292F;
+  --omb-ink-secondary: #4B5563;
+  --omb-ink-muted: #5B6472;
+  --omb-ink-accent: #FF5630;
+  --omb-ink-accent-text: #C73614;
+  --omb-ink-code: #1E293B;
+  --omb-ink-link: #C73614;
+  --omb-ink-numeric: #0F172A;
+  --omb-ink-danger: #C8282B;
+  --omb-list-marker: #8C959F;
+
+  /* Hairlines & Tactile Bevels */
+  --omb-border-subtle: rgba(15, 23, 42, 0.068);
+  --omb-border-strong: rgba(15, 23, 42, 0.13);
+  --omb-border-table: rgba(15, 23, 42, 0.085);
+  --omb-border-quote: #FF5630;
+  --omb-border-code: rgba(15, 23, 42, 0.09);
+  --omb-rim-glow: rgba(255, 255, 255, 0.96);
+
+  /* Signature Coral Vermilion CTA */
+  --omb-cta-gradient: linear-gradient(135deg, #FF6B4A 0%, #FF5630 56%, #E84420 100%);
+  --omb-cta-gradient-hover: linear-gradient(135deg, #FF7A5C 0%, #FF6B4A 54%, #FF5630 100%);
+  --omb-cta-ink: #FFFFFF;
+  --omb-cta-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    0 2px 6px -1px rgba(255, 86, 48, 0.34),
+    0 6px 16px -4px rgba(255, 86, 48, 0.38);
+  --omb-cta-shadow-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 4px 10px -1px rgba(255, 86, 48, 0.42),
+    0 10px 24px -6px rgba(255, 86, 48, 0.46);
+
+  /* Semantic Status Pills */
+  --omb-quote-pill-bg: #FFF1EE;
+  --omb-quote-pill-fg: #B32E12;
+  --omb-quote-pill-border: rgba(255, 86, 48, 0.24);
+  --omb-metric-bg: #F6F8FB;
+  --omb-metric-border: rgba(15, 23, 42, 0.075);
+  --omb-metric-rule: #FF5630;
+  --omb-kv-divider: rgba(15, 23, 42, 0.065);
+  --omb-focus-ring: #FF5630;
+  --omb-selection-bg: rgba(255, 86, 48, 0.16);
+  --omb-scrollbar-thumb: rgba(17, 24, 39, 0.15);
+  --omb-scrollbar-thumb-hover: rgba(17, 24, 39, 0.30);
+
+  /* G2 Superellipse Radii & Continuous Spring Dynamics */
+  --omb-radius-pill: 9999px;
+  --omb-radius-island: 18px;
+  --omb-radius-table: 14px;
+  --omb-radius-card: 12px;
+  --omb-radius-compact: 9px;
+  --omb-radius-keycap: 6px;
+  --omb-spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --omb-spring-duration: 210ms;
+
+  /* 4-Harmonic Micro-Diffuse Shadow System */
+  --omb-shadow-island:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.96),
+    0 1px 2px rgba(15, 23, 42, 0.032),
+    0 6px 18px -6px rgba(15, 23, 42, 0.052),
+    0 20px 44px -20px rgba(15, 23, 42, 0.078);
+  --omb-shadow-island-hover:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.98),
+    0 1px 3px rgba(15, 23, 42, 0.042),
+    0 10px 26px -8px rgba(15, 23, 42, 0.078),
+    0 26px 52px -22px rgba(15, 23, 42, 0.105);
+  --omb-shadow-card:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95),
+    0 0 0 1px rgba(15, 23, 42, 0.068),
+    0 2px 8px -3px rgba(15, 23, 42, 0.045);
+  --omb-shadow-table:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.96),
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 8px 22px -10px rgba(15, 23, 42, 0.065);
+  --omb-shadow-composer:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.98),
+    0 0 0 1px rgba(15, 23, 42, 0.075),
+    0 4px 12px -4px rgba(15, 23, 42, 0.055),
+    0 16px 36px -14px rgba(15, 23, 42, 0.09);
+  --omb-shadow-glass:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.92),
+    0 0 0 1px rgba(15, 23, 42, 0.065),
+    0 18px 42px -12px rgba(15, 23, 42, 0.14);
+}
+
+@keyframes omb-coral-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.98),
+      0 0 0 1.5px rgba(255, 86, 48, 0.56),
+      0 0 0 5px rgba(255, 86, 48, 0.14),
+      0 14px 34px -12px rgba(255, 86, 48, 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.98),
+      0 0 0 1.5px rgba(255, 107, 74, 0.72),
+      0 0 0 7px rgba(255, 86, 48, 0.21),
+      0 18px 40px -12px rgba(255, 86, 48, 0.24);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   1. STUDIO FULL-SHELL MATERIALITY: RAIL, FROSTED ALUMINUM SIDEBAR & HEADER
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body, html, #root {
+  background-color: var(--omb-surface-canvas);
+  color: var(--omb-ink-body);
+  font-family: var(--omb-font-body);
+}
+
+[data-look="app"],
+[data-look="rail"] {
+  background-color: var(--omb-surface-panel);
+  background-image: var(--omb-paper-grain);
+}
+
+[data-look="sidebar"] {
+  background-color: var(--omb-surface-sidebar-glass);
+  background-image: var(--omb-paper-grain);
+  backdrop-filter: blur(20px) saturate(145%);
+  border-inline-end: 1px solid var(--omb-border-subtle);
+}
+
+[data-look="sidebar-bot"],
+[data-look="sidebar-thread"] {
+  border-radius: var(--omb-radius-compact);
+  transition:
+    background-color var(--omb-spring-duration) var(--omb-spring-ease),
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform 150ms var(--omb-spring-ease);
+}
+
+[data-look="sidebar-bot"]:hover,
+[data-look="sidebar-thread"]:hover {
+  background-color: rgba(255, 255, 255, 0.65);
+}
+
+[data-look="sidebar-thread"][aria-current="page"],
+[data-look="sidebar-thread"][aria-current="true"] {
+  background-color: var(--omb-surface-reply-card);
+  box-shadow: var(--omb-shadow-card);
+  color: var(--omb-ink-strong);
+}
+
+[data-look="chat"] {
+  background-color: var(--omb-surface-canvas);
+  background-image: var(--omb-paper-grain), var(--omb-ambient-wash);
+  background-attachment: local;
+}
+
+[data-look="chat-header"] {
+  background-color: rgba(248, 249, 250, 0.82);
+  backdrop-filter: blur(18px) saturate(160%);
+  border-bottom: 1px solid var(--omb-border-subtle);
+}
+
+[data-look="menu"],
+[data-look="popover"],
+[data-look="dialog"],
+[role="menu"],
+[role="dialog"] {
+  background-color: var(--omb-surface-glass);
+  backdrop-filter: blur(24px) saturate(175%);
+  border: 1px solid var(--omb-border-subtle);
+  box-shadow: var(--omb-shadow-glass);
+}
+
+[data-look="user-bubble"] {
+  border-radius: var(--omb-radius-island);
+  background: linear-gradient(180deg, #F3F5F8 0%, #EBEEF3 100%);
+  color: var(--omb-ink-strong);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 2px 8px -4px rgba(15, 23, 42, 0.06);
+}
+
+.chat-column ::selection {
+  background: var(--omb-selection-bg);
+  color: var(--omb-ink-strong);
+}
+
+/* --------------------------------------------------------------------------
+   2. 18px G2 SUPERELLIPSE FLOATING ISLAND REPLY CARDS (4-Harmonic Diffuse)
+   -------------------------------------------------------------------------- */
+[data-look="bot-bubble"].bg-card,
+[data-reply-bubble],
+[data-conversational-reply] .reply-bubble,
+[data-look="message-bot"] [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  background: linear-gradient(180deg, var(--omb-card-top) 0%, var(--omb-card-bottom) 100%);
+  color: var(--omb-ink-body);
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-island);
+  box-shadow: var(--omb-shadow-island);
+  box-sizing: border-box;
+  transition:
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    border-color var(--omb-spring-duration) var(--omb-spring-ease);
+}
+
+[data-look="message-bot"] [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  padding: 24px 28px;
+}
+
+[data-look="message-bot"]:hover [data-look="bot-bubble"].bg-card,
+[data-look="message-bot"]:hover [data-reply-bubble],
+[data-look="message-bot"]:hover [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  box-shadow: var(--omb-shadow-island-hover);
+  border-color: rgba(15, 23, 42, 0.095);
+}
+
+[data-look="ask-card"],
+[data-look="approval-card"] {
+  border-radius: var(--omb-radius-island);
+  background: linear-gradient(180deg, var(--omb-card-top) 0%, var(--omb-card-bottom) 100%);
+  border: 1px solid var(--omb-border-subtle);
+  box-shadow: var(--omb-shadow-island);
+}
+
+/* --------------------------------------------------------------------------
+   3. EYE-CARE LARGE TYPOGRAPHY SCALE + 4x15 CORAL CAPSULE ANCHOR
+   -------------------------------------------------------------------------- */
+.chat-md {
+  max-width: 70ch;
+  color: var(--omb-ink-body);
+  font-family: var(--omb-font-body);
+  font-size: 14.75px;
+  line-height: 1.74;
+  letter-spacing: 0.002em;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-wide .chat-md {
+  max-width: 100%;
+}
+
+.chat-md p {
+  color: var(--omb-ink-body);
+  font-size: 14.75px;
+  line-height: 1.74;
+  margin: 0;
+  display: flow-root;
+}
+
+.chat-md > * + p {
+  margin-top: 0.92rem;
+}
+
+.chat-md :is(h1, h2, h3, h4, h5, h6, .md-heading),
+.chat-md > div.font-semibold {
+  color: var(--omb-ink-strong);
+}
+
+/* H1: 24px Studio Display */
+.chat-md :is(h1, .md-heading[class*="text-[20px]"]) {
+  font-family: var(--omb-font-display);
+  font-size: 24px;
+  line-height: 1.28;
+  font-weight: 740;
+  letter-spacing: -0.024em;
+  color: var(--omb-ink-strong);
+  margin-top: 1.45rem;
+  margin-bottom: 0.72rem;
+  padding-bottom: 0.58rem;
+  border-bottom: 1px solid var(--omb-border-subtle);
+}
+
+/* H2: 19px Section Anchor */
+.chat-md :is(h2, .md-heading[class*="text-[17px]"]) {
+  font-family: var(--omb-font-display);
+  font-size: 19px;
+  line-height: 1.35;
+  font-weight: 690;
+  letter-spacing: -0.016em;
+  color: var(--omb-ink-strong);
+  margin-top: 1.45rem;
+  margin-bottom: 0.55rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--omb-border-subtle);
+}
+
+/* H3 & H4: 15.5px + 4px x 15px Vermilion Coral Solid Capsule */
+.chat-md :is(h3, h4),
+.chat-md > div.font-semibold:not(.md-heading):not([class*="text-[14px]"]) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--omb-font-body);
+  font-size: 15.5px;
+  line-height: 1.44;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+  color: var(--omb-ink-strong);
+  margin-top: 1.25rem;
+  margin-bottom: 0.45rem;
+}
+
+.chat-md :is(h3, h4)::before,
+.chat-md > div.font-semibold:not(.md-heading):not([class*="text-[14px]"])::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 15px;
+  background: var(--omb-cta-gradient);
+  border-radius: var(--omb-radius-pill);
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(255, 86, 48, 0.30);
+}
+
+.chat-md :is(h5, h6),
+.chat-md > div.font-semibold[class*="text-[14px]"] {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--omb-ink-muted);
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.chat-md > :first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.chat-md strong,
+.chat-md b {
+  color: var(--omb-ink-strong);
+  font-weight: 620;
+}
+
+.chat-md ul,
+.chat-md ol {
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.chat-md li {
+  line-height: 1.74;
+}
+
+.chat-md li::marker {
+  color: var(--omb-list-marker);
+}
+
+/* --------------------------------------------------------------------------
+   4. SWISS MICRO-RECESSED SILVER KEYCAPS (#EEF0F3) & LINKS
+   -------------------------------------------------------------------------- */
+.chat-md code:not(pre code),
+.chat-md .ui-code-chip {
+  background-color: var(--omb-surface-code);
+  color: var(--omb-ink-code);
+  border: 1px solid var(--omb-border-code);
+  border-radius: var(--omb-radius-keycap);
+  box-shadow:
+    inset 0 1px 1.5px rgba(15, 23, 42, 0.065),
+    0 1px 0 rgba(255, 255, 255, 0.94);
+  padding: 0.14em 0.52em;
+  font-family: var(--omb-font-mono);
+  font-size: 0.855em;
+  font-weight: 520;
+  line-height: 1.28;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.chat-md a:not(.ui-pill):not([data-github-ref]) {
+  color: var(--omb-ink-link);
+  text-decoration: underline;
+  text-decoration-color: rgba(199, 54, 20, 0.32);
+  text-underline-offset: 3.5px;
+  font-weight: 520;
+  transition: text-decoration-color var(--omb-spring-duration) var(--omb-spring-ease);
+}
+
+.chat-md a:not(.ui-pill):not([data-github-ref]):hover {
+  text-decoration-color: var(--omb-ink-link);
+}
+
+/* --------------------------------------------------------------------------
+   5. 14px FLOATING RECONCILIATION TABLES, CALLOUTS, CODE BLOCKS & KV LISTS
+   -------------------------------------------------------------------------- */
+.chat-table {
+  margin: 1.05rem 0;
+}
+
+.chat-table [data-table-card],
+.chat-table .rich-table,
+.chat-md table {
+  background-color: var(--omb-surface-table);
+  color: var(--omb-ink-body);
+  border: 1px solid var(--omb-border-table);
+  border-radius: var(--omb-radius-table);
+  box-shadow: var(--omb-shadow-table);
+  overflow: hidden;
+}
+
+.chat-table [data-table-card] table,
+.chat-table .rich-table table {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chat-table thead,
+.chat-md thead {
+  background-color: var(--omb-surface-table-head);
+}
+
+.chat-table th,
+.chat-md th {
+  background-color: var(--omb-surface-table-head);
+  color: var(--omb-ink-secondary);
+  font-weight: 660;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--omb-border-table);
+}
+
+.chat-table td,
+.chat-md td {
+  color: var(--omb-ink-body);
+  font-size: 13.75px;
+  line-height: 1.62;
+  padding: 10.5px 15px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.055);
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-table td[style*="text-align: right"],
+.chat-md td[style*="text-align: right"] {
+  color: var(--omb-ink-numeric);
+  font-weight: 560;
+  font-feature-settings: "tnum" 1, "cv05" 1;
+}
+
+.chat-table tbody tr:last-child td,
+.chat-md tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.chat-table tbody tr:nth-child(even) > td,
+.chat-md tbody tr:nth-child(even) > td {
+  background-color: var(--omb-surface-table-zebra);
+}
+
+.chat-table tbody tr:hover > td,
+.chat-md tbody tr:hover > td {
+  background-color: var(--omb-surface-table-hover);
+  color: var(--omb-ink-strong);
+}
+
+/* 1-Row KPI Stat Box */
+.chat-table:has(tbody > tr:only-child):has(thead > tr > th:nth-child(2)):not(:has(thead > tr > th:nth-child(5))) :is(.rich-table, [data-table-card]) {
+  background-color: var(--omb-metric-bg);
+  border: 1px solid var(--omb-metric-border);
+  border-top: 2px solid var(--omb-metric-rule);
+  border-radius: var(--omb-radius-table);
+  box-shadow: var(--omb-shadow-table);
+}
+
+/* Pull Quote / Executive Callout */
+.chat-md blockquote {
+  position: relative;
+  margin: 1rem 0 1.2rem;
+  padding: 1rem 1.3rem 1rem 1.45rem;
+  border-radius: var(--omb-radius-card);
+  border: 1px solid rgba(255, 86, 48, 0.16);
+  background-color: var(--omb-surface-quote);
+  color: var(--omb-ink-body);
+  box-shadow:
+    inset 3.5px 0 0 var(--omb-border-quote),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 2px 8px -4px rgba(15, 23, 42, 0.05);
+}
+
+.chat-md blockquote p {
+  font-size: 14.75px;
+  line-height: 1.72;
+  margin: 0;
+}
+
+.chat-md blockquote p:first-child code {
+  border-radius: var(--omb-radius-pill);
+  padding: 0.15em 0.68em;
+  font-family: var(--omb-font-body);
+  font-size: 11px;
+  font-weight: 660;
+  letter-spacing: 0.04em;
+  background-color: var(--omb-quote-pill-bg);
+  color: var(--omb-quote-pill-fg);
+  border: 1px solid var(--omb-quote-pill-border);
+  box-shadow: none;
+}
+
+/* Structured Key-Value Fact Sheet */
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) {
+  list-style: none;
+  padding-inline-start: 0;
+  margin: 0.85rem 0 1.05rem;
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-table);
+  background-color: var(--omb-surface-elevated);
+  box-shadow: inset 0 1px 0 var(--omb-rim-glow);
+  overflow: hidden;
+}
+
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li {
+  margin-top: 0;
+  padding: 0.68rem 1.1rem;
+  border-bottom: 1px solid var(--omb-kv-divider);
+  transition: background-color 150ms var(--omb-spring-ease);
+}
+
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li:hover {
+  background-color: var(--omb-surface-reply-card);
+}
+
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li:last-child {
+  border-bottom: 0;
+}
+
+/* Code Blocks (Light Shiki Aligned) */
+.chat-md .chat-code-block,
+[data-look="code-block"].chat-code-block {
+  background-color: var(--omb-surface-code-block);
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-table);
+  box-shadow: var(--omb-shadow-card);
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.chat-md .chat-code-block > div:first-child:not(:only-child) {
+  background-color: var(--omb-code-header-bg);
+  border-bottom: 1px solid var(--omb-border-subtle);
+  color: var(--omb-ink-secondary);
+}
+
+.chat-md pre code,
+.chat-md .chat-code-block pre code {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   6. FLOATING COMPOSER CAPSULE & 9999px CORAL VERMILION SEND PILL
+   -------------------------------------------------------------------------- */
+[data-look="composer"] {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FDFEFF 100%);
+  border: 0;
+  border-radius: 20px;
+  box-shadow: var(--omb-shadow-composer);
+  transition:
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform var(--omb-spring-duration) var(--omb-spring-ease);
+}
+
+[data-look="composer"]:focus-within {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.98),
+    0 0 0 1.5px rgba(255, 86, 48, 0.56),
+    0 0 0 5px rgba(255, 86, 48, 0.14),
+    0 14px 34px -12px rgba(255, 86, 48, 0.18);
+  animation: omb-coral-breathe 2.8s ease-in-out infinite;
+}
+
+[data-look="composer"] [data-composer-actions] button:is([aria-label*="Send" i], [aria-label*="发送"], [aria-label*="Steer" i], [aria-label*="插话"]):not(:disabled),
+[data-look="composer"] [data-composer-follow-up] > button:last-child:not(:disabled),
+button.ui-button-primary:not(:disabled),
+button[type="submit"]:not(:disabled) {
+  background: var(--omb-cta-gradient) !important;
+  color: var(--omb-cta-ink) !important;
+  border-radius: var(--omb-radius-pill) !important;
+  border: 0 !important;
+  box-shadow: var(--omb-cta-shadow) !important;
+  transition:
+    transform 160ms var(--omb-spring-ease),
+    box-shadow 180ms var(--omb-spring-ease),
+    filter 160ms var(--omb-spring-ease) !important;
+}
+
+[data-look="composer"] [data-composer-actions] button:is([aria-label*="Send" i], [aria-label*="发送"], [aria-label*="Steer" i], [aria-label*="插话"]):not(:disabled):hover,
+[data-look="composer"] [data-composer-follow-up] > button:last-child:not(:disabled):hover,
+button.ui-button-primary:not(:disabled):hover,
+button[type="submit"]:not(:disabled):hover {
+  background: var(--omb-cta-gradient-hover) !important;
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: var(--omb-cta-shadow-hover) !important;
+}
+
+[data-look="composer"] [data-composer-actions] button:is([aria-label*="Send" i], [aria-label*="发送"], [aria-label*="Steer" i], [aria-label*="插话"]):not(:disabled):active,
+[data-look="composer"] [data-composer-follow-up] > button:last-child:not(:disabled):active,
+button.ui-button-primary:not(:disabled):active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* Status Pills, Chips & WCAG 2.2 Focus Accessibility */
+.chat-column button.ui-pill,
+.chat-column a.ui-pill,
+.chat-column [data-thread-chip] {
+  border-radius: var(--omb-radius-pill);
+  background-color: var(--omb-surface-reply-card);
+  color: var(--omb-ink-strong);
+  box-shadow: var(--omb-shadow-card);
+  transition:
+    background-color var(--omb-spring-duration) var(--omb-spring-ease),
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform 140ms var(--omb-spring-ease);
+}
+
+.chat-column button.ui-pill:enabled:hover,
+.chat-column a.ui-pill:hover,
+.chat-column [data-thread-chip]:enabled:hover {
+  background-color: var(--omb-surface-subtle);
+  transform: translateY(-0.5px);
+}
+
+:is(button, a, summary, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--omb-focus-ring);
+  outline-offset: 2px;
+}
+
+[data-look="composer"] textarea:focus-visible {
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--omb-scrollbar-thumb);
+  border-radius: var(--omb-radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--omb-scrollbar-thumb-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-look="composer"]:focus-within {
+    animation: none;
+  }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

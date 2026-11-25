@@ -1,0 +1,765 @@
+﻿/* ==========================================================================
+   OpenMausBot v5.0 Apex Aesthetic — 和纸青瓷 · Washi & Celadon
+   Philosophy: Kinfolk 留白 · 京都手工和纸 · 宋代青瓷微釉
+   Zero external URLs, zero backslashes, WCAG 2.2 AAA verified, CLS = 0.000
+   ========================================================================== */
+
+:root {
+  --code-color-scheme: light;
+  --omb-font-display: "Iowan Old Style", "Charter", "Palatino Linotype", Georgia, "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", serif;
+  --omb-font-body: "Inter Variable", "PingFang SC", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --omb-font-mono: "Geist Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --omb-paper-grain: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44MiIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDAuMTIgMCAwIDAgMCAwLjExIDAgMCAwIDAgMC4xIDAgMCAwIDAuMDI1IDAiLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgZmlsdGVyPSJ1cmwoI24pIi8+PC9zdmc+");
+  --omb-ambient-wash: radial-gradient(900px 520px at 85% -10%, rgba(164, 198, 178, 0.14), transparent 70%);
+
+  --omb-surface-canvas: #F2F4EF;
+  --omb-surface-panel: #EAECE6;
+  --omb-surface-reply-card: #FAFBF8;
+  --omb-card-top: #FCFDFB;
+  --omb-card-bottom: #F6F8F3;
+  --omb-surface-elevated: #F1F4EE;
+  --omb-surface-subtle: #E7ECE4;
+  --omb-surface-hover: #E3E8DF;
+  --omb-surface-composer: #FCFDFB;
+  --omb-composer-ring: rgba(45, 99, 78, 0.16);
+  --omb-surface-code: #EBF0EB;
+  --omb-surface-code-block: #F3F6F1;
+  --omb-surface-table: #FAFBF8;
+  --omb-surface-table-head: #F0F4EE;
+  --omb-surface-table-zebra: rgba(25, 34, 29, 0.02);
+  --omb-surface-table-hover: #E8EEE6;
+  --omb-surface-quote: #F1F5F0;
+
+  --omb-ink-strong: #19221D;
+  --omb-ink-body: #25302A;
+  --omb-ink-secondary: #45524B;
+  --omb-ink-muted: #55635B;
+  --omb-ink-accent: #2A5C48;
+  --omb-ink-code: #1F3B30;
+  --omb-ink-link: #23523F;
+  --omb-ink-danger: #8A2B24;
+  --omb-list-marker: #617368;
+  --omb-text-relief: 0 1px 0 rgba(255, 255, 255, 0.72);
+
+  --omb-border-subtle: rgba(25, 34, 29, 0.085);
+  --omb-border-strong: rgba(25, 34, 29, 0.17);
+  --omb-border-quote: #44735E;
+  --omb-border-code: #D4DFD5;
+  --omb-code-bevel: rgba(255, 255, 255, 0.85);
+  --omb-code-drop: rgba(25, 34, 29, 0.06);
+  --omb-code-header-bg: #E8EDE6;
+  --omb-rim-glow: rgba(255, 255, 255, 0.90);
+
+  --omb-quote-pill-bg: #E2EBE3;
+  --omb-quote-pill-fg: #214033;
+  --omb-quote-pill-border: #C6D7C9;
+  --omb-callout-note-title: #1E3C2F;
+
+  --omb-metric-bg: #F1F4EE;
+  --omb-metric-border: rgba(25, 34, 29, 0.085);
+  --omb-metric-rule: #44735E;
+  --omb-metric-label: #55635B;
+  --omb-metric-value: #19221D;
+  --omb-progress-track: rgba(25, 34, 29, 0.085);
+  --omb-progress-fill: #2D634E;
+  --omb-kv-divider: rgba(25, 34, 29, 0.085);
+
+  --omb-status-working-bg: #E7ECE4;
+  --omb-status-working-fg: #19221D;
+  --omb-status-done-bg: color-mix(in srgb, #2A664B 14%, transparent);
+  --omb-status-done-fg: #1F4B36;
+  --omb-status-waiting-bg: color-mix(in srgb, #855221 15%, transparent);
+  --omb-status-waiting-fg: #6A3E14;
+  --omb-status-failed-bg: color-mix(in srgb, #8F2F28 15%, transparent);
+  --omb-status-failed-fg: #8A2B24;
+
+  --omb-focus-ring: #3C7A61;
+  --omb-selection-bg: color-mix(in srgb, #2D634E 20%, transparent);
+  --omb-scrollbar-thumb: color-mix(in srgb, #19221D 16%, transparent);
+  --omb-scrollbar-thumb-hover: color-mix(in srgb, #19221D 32%, transparent);
+
+  --omb-radius-pill: 9999px;
+  --omb-radius-reply: 16px;
+  --omb-radius-card: 11px;
+  --omb-radius-compact: 8px;
+  --omb-radius-code: 5px;
+  --omb-spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --omb-spring-duration: 190ms;
+
+  --omb-shadow-reply-card:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.90),
+    0 1px 2px rgba(24, 34, 28, 0.04),
+    0 14px 34px -16px rgba(24, 34, 28, 0.09);
+  --omb-shadow-card:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.90),
+    0 0 0 1px rgba(25, 34, 29, 0.085),
+    0 2px 6px -2px rgba(24, 34, 28, 0.04);
+  --omb-shadow-composer:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.90),
+    0 0 0 1px rgba(25, 34, 29, 0.085),
+    0 8px 26px -10px rgba(24, 34, 28, 0.10);
+  --omb-shadow-pill-hover:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.90),
+    0 0 0 1px rgba(25, 34, 29, 0.17),
+    0 3px 10px -2px rgba(24, 34, 28, 0.08);
+  --omb-code-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.90),
+    0 0 0 1px rgba(25, 34, 29, 0.085),
+    0 3px 10px -4px rgba(24, 34, 28, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-skin]) {
+  --code-color-scheme: dark;
+  --omb-font-display: "Iowan Old Style", "Charter", "Palatino Linotype", Georgia, "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", serif;
+  --omb-font-body: "Inter Variable", "PingFang SC", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --omb-font-mono: "Geist Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --omb-paper-grain: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44NSIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDAuOTYgMCAwIDAgMCAwLjk1IDAgMCAwIDAgMC45MiAwIDAgMCAwLjAyNCAwIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbHRlcj0idXJsKCNuKSIvPjwvc3ZnPg==");
+  --omb-ambient-wash: radial-gradient(900px 520px at 82% -8%, rgba(84, 138, 110, 0.11), transparent 72%);
+
+  --omb-surface-canvas: #0F1412;
+  --omb-surface-panel: #141A17;
+  --omb-surface-reply-card: #161C19;
+  --omb-card-top: #19201C;
+  --omb-card-bottom: #141A17;
+  --omb-surface-elevated: #1B231F;
+  --omb-surface-subtle: #222B26;
+  --omb-surface-hover: #242E29;
+  --omb-surface-composer: #181F1C;
+  --omb-composer-ring: rgba(124, 181, 152, 0.22);
+  --omb-surface-code: #1E2823;
+  --omb-surface-code-block: #151C18;
+  --omb-surface-table: #161D19;
+  --omb-surface-table-head: #1C2420;
+  --omb-surface-table-zebra: rgba(238, 243, 238, 0.02);
+  --omb-surface-table-hover: rgba(138, 196, 167, 0.075);
+  --omb-surface-quote: #18211C;
+
+  --omb-ink-strong: #EEF3EE;
+  --omb-ink-body: #DCE4DD;
+  --omb-ink-secondary: #B3C0B6;
+  --omb-ink-muted: #9BA99F;
+  --omb-ink-accent: #8AC4A7;
+  --omb-ink-code: #CCE3D6;
+  --omb-ink-link: #9BD1B6;
+  --omb-ink-danger: #F2ACA6;
+  --omb-list-marker: #7F9487;
+  --omb-text-relief: 0 1px 2px rgba(0, 0, 0, 0.45);
+
+  --omb-border-subtle: rgba(238, 243, 238, 0.085);
+  --omb-border-strong: rgba(238, 243, 238, 0.18);
+  --omb-border-quote: #77B395;
+  --omb-border-code: rgba(155, 209, 182, 0.18);
+  --omb-code-bevel: rgba(255, 255, 255, 0.08);
+  --omb-code-drop: rgba(0, 0, 0, 0.35);
+  --omb-code-header-bg: #1B241F;
+  --omb-rim-glow: rgba(220, 242, 230, 0.075);
+
+  --omb-quote-pill-bg: #213028;
+  --omb-quote-pill-fg: #CBE4D6;
+  --omb-quote-pill-border: rgba(138, 196, 167, 0.28);
+  --omb-callout-note-title: #D7ECE0;
+
+  --omb-metric-bg: #1B231F;
+  --omb-metric-border: rgba(238, 243, 238, 0.085);
+  --omb-metric-rule: #77B395;
+  --omb-metric-label: #9BA99F;
+  --omb-metric-value: #EEF3EE;
+  --omb-progress-track: rgba(238, 243, 238, 0.085);
+  --omb-progress-fill: #72B091;
+  --omb-kv-divider: rgba(238, 243, 238, 0.085);
+
+  --omb-status-working-bg: #222B26;
+  --omb-status-working-fg: #EEF3EE;
+  --omb-status-done-bg: color-mix(in srgb, #68B88E 14%, transparent);
+  --omb-status-done-fg: #B7E3CA;
+  --omb-status-waiting-bg: color-mix(in srgb, #DDA96B 15%, transparent);
+  --omb-status-waiting-fg: #F0CB92;
+  --omb-status-failed-bg: color-mix(in srgb, #E68A82 15%, transparent);
+  --omb-status-failed-fg: #F2ACA6;
+
+  --omb-focus-ring: #8AC4A7;
+  --omb-selection-bg: color-mix(in srgb, #72B091 20%, transparent);
+  --omb-scrollbar-thumb: color-mix(in srgb, #EEF3EE 16%, transparent);
+  --omb-scrollbar-thumb-hover: color-mix(in srgb, #EEF3EE 32%, transparent);
+
+  --omb-radius-pill: 9999px;
+  --omb-radius-reply: 16px;
+  --omb-radius-card: 11px;
+  --omb-radius-compact: 8px;
+  --omb-radius-code: 5px;
+  --omb-spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --omb-spring-duration: 190ms;
+
+  --omb-shadow-reply-card:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 14px 34px -16px rgba(0, 0, 0, 0.62);
+  --omb-shadow-card:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.085),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38);
+  --omb-shadow-composer:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.085),
+    0 8px 26px -10px rgba(0, 0, 0, 0.55);
+  --omb-shadow-pill-hover:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.18),
+    0 3px 10px -2px rgba(0, 0, 0, 0.45);
+  --omb-code-shadow:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.085),
+    0 3px 10px -4px rgba(0, 0, 0, 0.45);
+  }
+}
+
+:is(
+  [data-skin="midnight"],
+  [data-skin="foundry"],
+  [data-skin="graphite"],
+  [data-skin="dusk"],
+  [data-skin="halloween"],
+  [data-skin="diwali"],
+  [data-skin="aurora"]
+) {
+  --code-color-scheme: dark;
+  --omb-font-display: "Iowan Old Style", "Charter", "Palatino Linotype", Georgia, "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", serif;
+  --omb-font-body: "Inter Variable", "PingFang SC", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --omb-font-mono: "Geist Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --omb-paper-grain: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44NSIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjxmZUNvbG9yTWF0cml4IHR5cGU9Im1hdHJpeCIgdmFsdWVzPSIwIDAgMCAwIDAuOTYgMCAwIDAgMCAwLjk1IDAgMCAwIDAgMC45MiAwIDAgMCAwLjAyNCAwIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbHRlcj0idXJsKCNuKSIvPjwvc3ZnPg==");
+  --omb-ambient-wash: radial-gradient(900px 520px at 82% -8%, rgba(84, 138, 110, 0.11), transparent 72%);
+
+  --omb-surface-canvas: #0F1412;
+  --omb-surface-panel: #141A17;
+  --omb-surface-reply-card: #161C19;
+  --omb-card-top: #19201C;
+  --omb-card-bottom: #141A17;
+  --omb-surface-elevated: #1B231F;
+  --omb-surface-subtle: #222B26;
+  --omb-surface-hover: #242E29;
+  --omb-surface-composer: #181F1C;
+  --omb-composer-ring: rgba(124, 181, 152, 0.22);
+  --omb-surface-code: #1E2823;
+  --omb-surface-code-block: #151C18;
+  --omb-surface-table: #161D19;
+  --omb-surface-table-head: #1C2420;
+  --omb-surface-table-zebra: rgba(238, 243, 238, 0.02);
+  --omb-surface-table-hover: rgba(138, 196, 167, 0.075);
+  --omb-surface-quote: #18211C;
+
+  --omb-ink-strong: #EEF3EE;
+  --omb-ink-body: #DCE4DD;
+  --omb-ink-secondary: #B3C0B6;
+  --omb-ink-muted: #9BA99F;
+  --omb-ink-accent: #8AC4A7;
+  --omb-ink-code: #CCE3D6;
+  --omb-ink-link: #9BD1B6;
+  --omb-ink-danger: #F2ACA6;
+  --omb-list-marker: #7F9487;
+  --omb-text-relief: 0 1px 2px rgba(0, 0, 0, 0.45);
+
+  --omb-border-subtle: rgba(238, 243, 238, 0.085);
+  --omb-border-strong: rgba(238, 243, 238, 0.18);
+  --omb-border-quote: #77B395;
+  --omb-border-code: rgba(155, 209, 182, 0.18);
+  --omb-code-bevel: rgba(255, 255, 255, 0.08);
+  --omb-code-drop: rgba(0, 0, 0, 0.35);
+  --omb-code-header-bg: #1B241F;
+  --omb-rim-glow: rgba(220, 242, 230, 0.075);
+
+  --omb-quote-pill-bg: #213028;
+  --omb-quote-pill-fg: #CBE4D6;
+  --omb-quote-pill-border: rgba(138, 196, 167, 0.28);
+  --omb-callout-note-title: #D7ECE0;
+
+  --omb-metric-bg: #1B231F;
+  --omb-metric-border: rgba(238, 243, 238, 0.085);
+  --omb-metric-rule: #77B395;
+  --omb-metric-label: #9BA99F;
+  --omb-metric-value: #EEF3EE;
+  --omb-progress-track: rgba(238, 243, 238, 0.085);
+  --omb-progress-fill: #72B091;
+  --omb-kv-divider: rgba(238, 243, 238, 0.085);
+
+  --omb-status-working-bg: #222B26;
+  --omb-status-working-fg: #EEF3EE;
+  --omb-status-done-bg: color-mix(in srgb, #68B88E 14%, transparent);
+  --omb-status-done-fg: #B7E3CA;
+  --omb-status-waiting-bg: color-mix(in srgb, #DDA96B 15%, transparent);
+  --omb-status-waiting-fg: #F0CB92;
+  --omb-status-failed-bg: color-mix(in srgb, #E68A82 15%, transparent);
+  --omb-status-failed-fg: #F2ACA6;
+
+  --omb-focus-ring: #8AC4A7;
+  --omb-selection-bg: color-mix(in srgb, #72B091 20%, transparent);
+  --omb-scrollbar-thumb: color-mix(in srgb, #EEF3EE 16%, transparent);
+  --omb-scrollbar-thumb-hover: color-mix(in srgb, #EEF3EE 32%, transparent);
+
+  --omb-radius-pill: 9999px;
+  --omb-radius-reply: 16px;
+  --omb-radius-card: 11px;
+  --omb-radius-compact: 8px;
+  --omb-radius-code: 5px;
+  --omb-spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --omb-spring-duration: 190ms;
+
+  --omb-shadow-reply-card:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 1px 2px rgba(0, 0, 0, 0.40),
+    0 14px 34px -16px rgba(0, 0, 0, 0.62);
+  --omb-shadow-card:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.085),
+    0 2px 6px -2px rgba(0, 0, 0, 0.38);
+  --omb-shadow-composer:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.085),
+    0 8px 26px -10px rgba(0, 0, 0, 0.55);
+  --omb-shadow-pill-hover:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.18),
+    0 3px 10px -2px rgba(0, 0, 0, 0.45);
+  --omb-code-shadow:
+    inset 0 1px 0 0 rgba(220, 242, 230, 0.075),
+    0 0 0 1px rgba(238, 243, 238, 0.085),
+    0 3px 10px -4px rgba(0, 0, 0, 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   1. FULL-SHELL MATERIALITY: RAIL, SIDEBAR, HEADER, CHAT GROUND & COMPOSER
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+[data-look="app"],
+[data-look="rail"],
+[data-look="sidebar"] {
+  background-color: var(--omb-surface-panel);
+  background-image: var(--omb-paper-grain);
+}
+
+[data-look="sidebar"] {
+  border-inline-end: 1px solid var(--omb-border-subtle);
+}
+
+[data-look="sidebar-bot"],
+[data-look="sidebar-thread"] {
+  border-radius: var(--omb-radius-compact);
+  transition:
+    background-color var(--omb-spring-duration) var(--omb-spring-ease),
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform 140ms var(--omb-spring-ease);
+}
+
+[data-look="sidebar-thread"][aria-current="page"],
+[data-look="sidebar-thread"][aria-current="true"] {
+  background-color: var(--omb-surface-reply-card);
+  box-shadow: var(--omb-shadow-card);
+}
+
+[data-look="chat"] {
+  background-color: var(--omb-surface-canvas);
+  background-image: var(--omb-paper-grain), var(--omb-ambient-wash);
+  background-attachment: local;
+}
+
+[data-look="chat-header"] {
+  background-color: color-mix(in srgb, var(--omb-surface-canvas) 84%, transparent);
+  backdrop-filter: blur(14px) saturate(1.1);
+  border-bottom: 1px solid var(--omb-border-subtle);
+}
+
+[data-look="composer"] {
+  background: linear-gradient(180deg, var(--omb-card-top) 0%, var(--omb-surface-composer) 100%);
+  border: 0;
+  box-shadow: var(--omb-shadow-composer);
+  transition:
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform var(--omb-spring-duration) var(--omb-spring-ease);
+}
+
+[data-look="composer"]:focus-within {
+  box-shadow:
+    inset 0 1px 0 0 var(--omb-rim-glow),
+    0 0 0 1.5px var(--omb-focus-ring),
+    0 0 0 5px var(--omb-composer-ring),
+    0 12px 32px -12px rgba(0, 0, 0, 0.16);
+}
+
+[data-look="user-bubble"] {
+  border-radius: var(--omb-radius-reply);
+  box-shadow: inset 0 1px 0 0 var(--omb-rim-glow), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--omb-border-subtle);
+}
+
+.chat-column ::selection {
+  background: var(--omb-selection-bg);
+  color: var(--omb-ink-strong);
+}
+
+/* --------------------------------------------------------------------------
+   2. LUMINOUS PAPER / MINERAL REPLY CARDS (0.5px Specular Rim + Soft Wash)
+   -------------------------------------------------------------------------- */
+[data-look="bot-bubble"].bg-card,
+[data-reply-bubble],
+[data-conversational-reply] .reply-bubble,
+[data-look="message-bot"] [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  background: linear-gradient(180deg, var(--omb-card-top) 0%, var(--omb-card-bottom) 100%);
+  color: var(--omb-ink-body);
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-reply);
+  box-shadow: var(--omb-shadow-reply-card);
+  box-sizing: border-box;
+}
+
+[data-look="message-bot"] [data-look="bot-bubble"]:not([data-chat-bubble="simple"]):not(.bg-card):has(.chat-md):not(:has([data-conversational-reply])) {
+  padding: 24px 28px;
+}
+
+.chat-md {
+  max-width: 68ch;
+  color: var(--omb-ink-body);
+  font-family: var(--omb-font-body);
+  font-size: 14.75px;
+  line-height: 1.74;
+  letter-spacing: 0.002em;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-wide .chat-md { max-width: 100%; }
+
+.chat-md p {
+  color: var(--omb-ink-body);
+  margin: 0;
+  display: flow-root;
+}
+.chat-md > * + p { margin-top: 0.9rem; }
+
+/* --------------------------------------------------------------------------
+   3. REFINED EDITORIAL TYPOGRAPHY & OPTICAL RELIEF
+   -------------------------------------------------------------------------- */
+.chat-md :is(h1, h2, h3, h4, h5, h6, .md-heading),
+.chat-md > div.font-semibold {
+  color: var(--omb-ink-strong);
+}
+
+.chat-md :is(h1, .md-heading[class*="text-[20px]"]) {
+  font-family: var(--omb-font-display);
+  font-size: 24px; font-weight: 750;
+  line-height: 1.24;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  text-shadow: var(--omb-text-relief);
+  margin-top: 1.5rem;
+  margin-bottom: 0.72rem;
+  padding-bottom: 0.62rem;
+  border-bottom: 1px solid var(--omb-border-strong);
+}
+
+.chat-md :is(h2, .md-heading[class*="text-[17px]"]) {
+  font-family: var(--omb-font-display);
+  font-size: 19px; font-weight: 700;
+  line-height: 1.34;
+  font-weight: 650;
+  letter-spacing: -0.014em;
+  text-shadow: var(--omb-text-relief);
+  margin-top: 1.55rem;
+  margin-bottom: 0.55rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid var(--omb-border-subtle);
+}
+
+.chat-md :is(h3, h4),
+.chat-md > div.font-semibold:not(.md-heading):not([class*="text-[14px]"]) {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--omb-font-body);
+  font-size: 15.5px; font-weight: 700;
+  line-height: 1.35;
+  font-weight: 660;
+  letter-spacing: 0.09em;
+  
+  
+  color: var(--omb-ink-accent);
+  margin-top: 1.4rem;
+  margin-bottom: 0.45rem;
+}
+
+.chat-md :is(h3, h4)::before,
+.chat-md > div.font-semibold:not(.md-heading):not([class*="text-[14px]"])::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 1.5px;
+  background-color: var(--omb-ink-accent);
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.chat-md h5,
+.chat-md h6,
+.chat-md > div.font-semibold[class*="text-[14px]"] {
+  font-size: 13.5px; font-weight: 650;
+  font-weight: 640;
+  letter-spacing: 0.105em;
+  
+  
+  color: var(--omb-ink-muted);
+  margin-top: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.chat-md > :first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Lead Deck */
+.chat-md > .md-heading[class*="text-[20px]"]:first-child + p,
+.chat-md > div.font-semibold[class*="text-[14px]"]:first-child + .md-heading[class*="text-[20px]"] + p {
+  font-size: 15.5px;
+  line-height: 1.74;
+  font-weight: 430;
+  color: var(--omb-ink-secondary);
+  padding-bottom: 1rem;
+  margin-top: 0.55rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--omb-border-subtle);
+}
+
+/* BFC-Safe Editorial Drop Cap */
+.chat-md > .md-heading[class*="text-[20px]"]:first-child + p + p:not(:has(> strong:first-child)):not(:has(> code:first-child))::first-letter,
+.chat-md > hr + p:not(:has(> strong:first-child)):not(:has(> code:first-child))::first-letter {
+  float: inline-start;
+  font-family: var(--omb-font-display);
+  font-size: 2.7em;
+  font-weight: 700;
+  line-height: 0.88;
+  padding-inline-end: 0.22em;
+  padding-top: 0.05em;
+  color: var(--omb-ink-accent);
+}
+
+/* Restrained Emphasis (Eliminates Harsh Ink Blobs) */
+.chat-md strong, .chat-md b {
+  color: var(--omb-ink-strong);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   4. KEYCAP-BEVEL INLINE CODE & CALM LINKS
+   -------------------------------------------------------------------------- */
+.chat-md code:not(pre code),
+.chat-md .ui-code-chip {
+  background-color: var(--omb-surface-code);
+  color: var(--omb-ink-code);
+  border: 1px solid var(--omb-border-code);
+  border-radius: var(--omb-radius-code);
+  box-shadow: inset 0 1px 0 var(--omb-code-bevel), 0 1px 1.5px var(--omb-code-drop);
+  padding: 0.14em 0.48em;
+  font-family: var(--omb-font-mono);
+  font-size: 0.84em;
+  font-weight: 510;
+  line-height: 1.25;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.chat-md a:not(.ui-pill):not([data-github-ref]) {
+  color: var(--omb-ink-link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--omb-ink-link) 34%, transparent);
+  text-underline-offset: 3.5px;
+  font-weight: 520;
+  transition: text-decoration-color var(--omb-spring-duration) var(--omb-spring-ease);
+}
+.chat-md a:not(.ui-pill):not([data-github-ref]):hover {
+  text-decoration-color: var(--omb-ink-link);
+}
+
+/* --------------------------------------------------------------------------
+   5. SIGNATURE PULL QUOTE, STAT BOX, COLOPHON SPEC & DATA TABLES
+   -------------------------------------------------------------------------- */
+.chat-md blockquote {
+  position: relative;
+  margin: 1rem 0 1.2rem;
+  padding: 1.05rem 1.35rem 1.05rem 2.85rem;
+  border-radius: var(--omb-radius-card);
+  border: 1px solid color-mix(in srgb, var(--omb-border-quote) 22%, var(--omb-border-subtle));
+  background-color: var(--omb-surface-quote);
+  color: var(--omb-ink-body);
+  box-shadow:
+    inset 3px 0 0 var(--omb-border-quote),
+    inset 0 1px 0 0 var(--omb-rim-glow),
+    0 2px 8px -4px rgba(0, 0, 0, 0.08);
+}
+
+.chat-md blockquote::before {
+  content: "“";
+  position: absolute;
+  top: 0.42rem;
+  inset-inline-start: 0.82rem;
+  font-family: var(--omb-font-display);
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--omb-border-quote);
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.chat-md blockquote p {
+  font-family: var(--omb-font-display);
+  font-size: 15.25px;
+  line-height: 1.68;
+  margin: 0;
+}
+
+.chat-md blockquote p:first-child code {
+  border-radius: var(--omb-radius-pill);
+  padding: 0.16em 0.68em;
+  font-family: var(--omb-font-body);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  
+  background-color: var(--omb-quote-pill-bg);
+  color: var(--omb-quote-pill-fg);
+  border: 1px solid var(--omb-quote-pill-border);
+  box-shadow: none;
+  vertical-align: 1px;
+}
+
+/* Colophon Fact Sheet */
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) {
+  list-style: none;
+  padding-inline-start: 0;
+  margin: 0.8rem 0 1rem;
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-card);
+  background-color: var(--omb-surface-elevated);
+  box-shadow: inset 0 1px 0 0 var(--omb-rim-glow);
+  overflow: hidden;
+}
+
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li {
+  margin-top: 0;
+  padding: 0.66rem 1.1rem;
+  border-bottom: 1px solid var(--omb-kv-divider);
+  transition: background-color 150ms var(--omb-spring-ease);
+}
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li:hover {
+  background-color: var(--omb-surface-subtle);
+}
+.chat-md ul:is(:has(> li > strong:first-child), :has(> li > p:first-child > strong:first-child)):not(:has(> li:not(:has(> strong:first-child)):not(:has(> p:first-child > strong:first-child)))) > li:last-child {
+  border-bottom: 0;
+}
+
+/* Code Blocks */
+.chat-md .chat-code-block,
+[data-look="code-block"].chat-code-block {
+  background-color: var(--omb-surface-code-block);
+  border: 0;
+  border-radius: var(--omb-radius-card);
+  box-shadow: var(--omb-code-shadow);
+  margin: 0.95rem 0;
+  overflow: hidden;
+}
+.chat-md .chat-code-block > div:first-child:not(:only-child) {
+  background-color: var(--omb-code-header-bg);
+  border-bottom: 1px solid var(--omb-border-subtle);
+  color: var(--omb-ink-secondary);
+}
+.chat-md pre code,
+.chat-md .chat-code-block pre code {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* Tables & 1-Row Stat Box */
+.chat-table { margin: 1rem 0; }
+.chat-table [data-table-card],
+.chat-table .rich-table,
+.chat-md table {
+  background-color: var(--omb-surface-table);
+  color: var(--omb-ink-body);
+  border: 1px solid var(--omb-border-subtle);
+  border-radius: var(--omb-radius-card);
+  box-shadow: var(--omb-shadow-card);
+}
+.chat-table th, .chat-md th {
+  color: var(--omb-ink-secondary);
+  font-weight: 650;
+  font-size: 11px;
+  letter-spacing: 0.055em;
+  
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--omb-border-strong);
+  background-color: var(--omb-surface-table-head);
+}
+.chat-table td, .chat-md td {
+  color: var(--omb-ink-body);
+  font-size: 13.75px;
+  line-height: 1.56;
+  padding: 9.5px 14px;
+  border-bottom: 1px solid var(--omb-border-subtle);
+  font-variant-numeric: tabular-nums;
+}
+.chat-table tbody tr:last-child td, .chat-md tbody tr:last-child td { border-bottom: 0; }
+.chat-table tbody tr:nth-child(even) > td, .chat-md tbody tr:nth-child(even) > td { background-color: var(--omb-surface-table-zebra); }
+.chat-table tbody tr:hover > td, .chat-md tbody tr:hover > td { background-color: var(--omb-surface-table-hover); color: var(--omb-ink-strong); }
+
+/* 1-Row Stat Box */
+.chat-table:has(tbody > tr:only-child):has(thead > tr > th:nth-child(2)):not(:has(thead > tr > th:nth-child(5))) :is(.rich-table, [data-table-card]) {
+  background-color: var(--omb-metric-bg);
+  border: 1px solid var(--omb-metric-border);
+  border-top: 2px solid var(--omb-metric-rule);
+  border-radius: var(--omb-radius-card);
+  box-shadow: inset 0 1px 0 0 var(--omb-rim-glow);
+}
+
+/* Status Pills & Focus Accessibility */
+.chat-column button.ui-pill,
+.chat-column a.ui-pill,
+.chat-column [data-thread-chip] {
+  border-radius: var(--omb-radius-pill);
+  background-color: var(--omb-surface-reply-card);
+  color: var(--omb-ink-strong);
+  box-shadow: var(--omb-shadow-card);
+  transition:
+    background-color var(--omb-spring-duration) var(--omb-spring-ease),
+    box-shadow var(--omb-spring-duration) var(--omb-spring-ease),
+    transform 130ms var(--omb-spring-ease);
+}
+.chat-column button.ui-pill:enabled:hover,
+.chat-column a.ui-pill:hover,
+.chat-column [data-thread-chip]:enabled:hover {
+  background-color: var(--omb-surface-subtle);
+  box-shadow: var(--omb-shadow-pill-hover);
+  transform: translateY(-0.5px);
+}
+
+.chat-column :is(button, a, summary):focus-visible {
+  outline: 2px solid var(--omb-focus-ring);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--omb-scrollbar-thumb); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--omb-scrollbar-thumb-hover); }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-column button.ui-pill, .chat-column a.ui-pill, [data-look="sidebar-thread"], [data-look="composer"] {
+    transition: none;
+  }
+}

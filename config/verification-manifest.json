@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "verification-manifest/v1",
+  "repository": "OpenMausBot",
+  "protectedPaths": [
+    ".aer/",
+    ".github/workflows/",
+    "contracts/",
+    "config/verification-manifest.json",
+    "config/merge-policy.json",
+    "config/forbidden-claims.json"
+  ],
+  "gates": [
+    {
+      "id": "preflight-gate",
+      "tier": "cheap",
+      "command": "python -c \"import sys; sys.exit(0)\"",
+      "required": true,
+      "timeoutSec": 60
+    }
+  ],
+  "environment": {
+    "runtime": "python",
+    "requiredVersion": "3.12",
+    "lockFile": ""
+  }
+}

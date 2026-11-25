@@ -1,0 +1,196 @@
+/* OpenMausBot Scheme 5: T3 Stardust Studio v2 (Apex Island & Metric Card) */
+:root, :root[data-skin="daylight"], :root[data-skin="paper"], :root:not([data-skin="midnight"]) {
+  --code-color-scheme: light;
+  --omb-surface-canvas: #F8F9FA;
+  --omb-surface-panel: #F1F3F5;
+  --omb-surface-reply-card: #FFFFFF;
+  --omb-card-top: #FFFFFF;
+  --omb-card-bottom: #FDFDFE;
+  --omb-surface-elevated: #FFFFFF;
+  --omb-surface-subtle: #F1F3F5;
+  --omb-surface-hover: #E9ECEF;
+  --omb-surface-composer: #FFFFFF;
+  --omb-composer-ring: rgba(255, 86, 48, 0.20);
+  --omb-surface-code: #EEF0F3;
+  --omb-surface-code-block: #18191E;
+  --omb-surface-table: #FFFFFF;
+  --omb-surface-table-head: #F4F5F7;
+  --omb-surface-table-zebra: rgba(0, 0, 0, 0.012);
+  --omb-surface-table-hover: #F1F3F5;
+  --omb-surface-quote: #FBFBFC;
+  --omb-ink-strong: #111827;
+  --omb-ink-body: #24292F;
+  --omb-ink-secondary: #57606A;
+  --omb-ink-muted: #6E7781;
+  --omb-ink-accent: #FF5630;
+  --omb-ink-code: #1E293B;
+  --omb-ink-link: #E0431D;
+  --omb-ink-danger: #D9383A;
+  --omb-list-marker: #8C959F;
+  --omb-border-subtle: rgba(0, 0, 0, 0.06);
+  --omb-border-table: rgba(0, 0, 0, 0.08);
+  --omb-shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --omb-shadow-card-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --omb-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  --omb-font-mono: "SF Mono", ui-monospace, "JetBrains Mono", monospace;
+}
+
+body, html, #root {
+  background-color: var(--omb-surface-canvas) !important;
+  color: var(--omb-ink-body) !important;
+  font-family: var(--omb-font-body) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 消息悬浮胶囊浮岛 (Island Cards) */
+.chat-column .chat-message-row, 
+.chat-column [data-role="assistant"], 
+.chat-column [data-role="model"],
+.chat-column .prose {
+  border-radius: 18px !important;
+}
+
+.chat-column [data-role="assistant"] .message-card,
+.chat-column [data-role="model"] .message-card,
+.chat-column .agent-turn-card,
+.chat-column .turn-container {
+  background: var(--omb-surface-reply-card) !important;
+  border-radius: 18px !important;
+  border: 1px solid var(--omb-border-subtle) !important;
+  box-shadow: var(--omb-shadow-card) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.chat-column [data-role="assistant"]:hover .message-card,
+.chat-column [data-role="model"]:hover .message-card {
+  box-shadow: var(--omb-shadow-card-hover) !important;
+}
+
+/* 标题规格与珊瑚橙胶囊锚点 */
+.prose h1, .chat-column h1 {
+  font-size: 24px !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--omb-ink-strong) !important;
+  margin-top: 1.2em !important;
+  margin-bottom: 0.6em !important;
+}
+
+.prose h2, .chat-column h2 {
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+  color: var(--omb-ink-strong) !important;
+  margin-top: 1.1em !important;
+  margin-bottom: 0.5em !important;
+}
+
+.prose h3, .chat-column h3, .prose h4, .chat-column h4 {
+  font-size: 15.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--omb-ink-strong) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-top: 1.0em !important;
+  margin-bottom: 0.4em !important;
+}
+
+.prose h3::before, .chat-column h3::before {
+  content: "" !important;
+  display: inline-block !important;
+  width: 4px !important;
+  height: 15px !important;
+  background: #FF5630 !important;
+  border-radius: 9999px !important;
+  flex-shrink: 0 !important;
+}
+
+.prose p, .chat-column p {
+  font-size: 14.75px !important;
+  line-height: 1.74 !important;
+  color: var(--omb-ink-body) !important;
+}
+
+/* 高阶工整对比表格 (Island Contrast Table) */
+.prose table, .chat-column table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--omb-border-table) !important;
+  background: var(--omb-surface-table) !important;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.03) !important;
+  overflow: hidden !important;
+  margin: 14px 0 !important;
+}
+
+.prose table th, .chat-column table th {
+  background: var(--omb-surface-table-head) !important;
+  color: var(--omb-ink-strong) !important;
+  font-weight: 650 !important;
+  font-size: 13.5px !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--omb-border-table) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.04) !important;
+  text-align: left !important;
+}
+
+.prose table td, .chat-column table td {
+  padding: 9px 14px !important;
+  font-size: 13.5px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.04) !important;
+  color: var(--omb-ink-body) !important;
+}
+
+.prose table tr:last-child td, .chat-column table tr:last-child td {
+  border-bottom: none !important;
+}
+
+.prose table td:last-child, .chat-column table th:last-child {
+  border-right: none !important;
+}
+
+.prose table tr:nth-child(even) td {
+  background: var(--omb-surface-table-zebra) !important;
+}
+
+.prose table tr:hover td {
+  background: var(--omb-surface-table-hover) !important;
+}
+
+/* 精工磁贴指标胶囊 (Metric Badges & Keycaps) */
+.prose code:not(pre code), .chat-column code:not(pre code) {
+  font-family: var(--omb-font-mono) !important;
+  font-size: 12.8px !important;
+  padding: 2.5px 7px !important;
+  border-radius: 6px !important;
+  background: #EEF0F3 !important;
+  color: #1E293B !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* 经典 T3 活力珊瑚朱砂圆角发送键与聚焦光晕 */
+button[type="submit"], button[aria-label*="Send"], .chat-composer button.primary {
+  background: #FF5630 !important;
+  color: #FFFFFF !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  box-shadow: 0 2px 10px -1px rgba(255, 86, 48, 0.38) !important;
+  transition: all 0.2s ease !important;
+}
+
+button[type="submit"]:hover, button[aria-label*="Send"]:hover, .chat-composer button.primary:hover {
+  background: #FF6B4A !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px -1px rgba(255, 86, 48, 0.45) !important;
+}
+
+.chat-composer, textarea:focus, input:focus {
+  border-radius: 16px !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2.5px rgba(255, 86, 48, 0.22) !important;
+}
