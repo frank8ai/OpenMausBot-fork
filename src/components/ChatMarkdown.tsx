@@ -2,7 +2,7 @@
 import { createContext, Fragment, memo, use, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import Markdown, { defaultUrlTransform, type Components, type ExtraProps, type Options as MarkdownOptions } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
+import { remarkStrictMath, remarkMathGuard, rehypeSafeKatex } from "@/lib/markdown-math-defense";
 import { fromMarkdown, type Options as MarkdownParseOptions } from "mdast-util-from-markdown";
 import { Check, Copy, Download, Eye, LoaderCircle, RotateCcw, WrapText, X } from "lucide-react";
 import { useCopyFeedback } from "@/lib/copy-text";
@@ -442,18 +442,18 @@ const NO_MENTION_PEERS: readonly MentionPeer[] = [];
 
 const MARKDOWN_IMAGE = "![";
 
-const CURRENCY_DOLLAR = /(?<![$\p{L}\p{N}])(?:R|US|AU|A|CA|C|NZ|HK|SG|S|MX|NT|BZ|Z)\$(?=[ \t\u00a0]?\d)/gu;
-
-/**
- * Pandoc's rule: an opening `$` is followed by non-space, a closing `$` is preceded by non-space and not followed by a
- * digit, and the pair stays inside one paragraph.
- */
 const PARAGRAPH_BREAK = /\n[ \t]*\n/;
 const MATH_BLOCK_BREAKER = /(?:^|\n)[ \t]*(?:#{1,6}\s|\|(?::?-+:?\|)+\s*(?:\n|$)|\|(?:[^|\r\n]+\|){2,}[ \t]*(?:\n|$)|[-*_]{3,}\s*(?:\n|$))/;
+const CURRENCY_DOLLAR = /(?<![$\p{L}\p{N}])(?:R|US|AU|A|CA|C|NZ|HK|SG|S|MX|NT|BZ|Z)\$(?=[ \t\u00a0]?\d)/gu;
 
-/**
- * Protects valid display math ($$...$$) blocks and escapes unclosed or structural-boundary-crossing $$ to \$\$.
- */
+function cleanInlineTeX(math: string): string {
+  return math
+    .replace(/\r?\n[ \t]*(?:>[ \t]*)+[ \t]*/g, "\n")
+    .replace(/%[^\r\n]*(\r?\n|$)/g, " ")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
+}
+
 function protectDisplayMath(text: string): { text: string; displayMath: string[] } {
   const display: string[] = [];
   let result = "";
@@ -462,9 +462,7 @@ function protectDisplayMath(text: string): { text: string; displayMath: string[]
   while (i < text.length) {
     if (text[i] === "\\") {
       let backslashes = 1;
-      while (i + backslashes < text.length && text[i + backslashes] === "\\") {
-        backslashes++;
-      }
+      while (i + backslashes < text.length && text[i + backslashes] === "\\") backslashes++;
       result += text.slice(i, i + backslashes);
       i += backslashes;
       continue;
@@ -501,8 +499,11 @@ function protectDisplayMath(text: string): { text: string; displayMath: string[]
         continue;
       }
 
-      const token = `\u0000OMB_MATH_${display.length}\u0000`;
-      const fullMath = text.slice(start, closeIndex + 2);
+      const token = `\\u0000OMB_MATH_${display.length}\\u0000`;
+      const trimmed = body.replace(/^\n+|\n+$/g, "");
+      // Preserve single line layout if body doesn't have internal newlines and text has leading indentation
+      const isIndented = start > 0 && /^[ \t]+$/.test(text.slice(Math.max(0, text.lastIndexOf("\n", start - 1) + 1), start));
+      const fullMath = isIndented && !trimmed.includes("\n") ? `$$${trimmed}$$` : `$$\n${trimmed}\n$$`;
       display.push(fullMath);
       result += token;
       i = closeIndex + 2;
@@ -516,10 +517,6 @@ function protectDisplayMath(text: string): { text: string; displayMath: string[]
   return { text: result, displayMath: display };
 }
 
-/**
- * Pandoc's rule: an opening `$` is followed by non-space, a closing `$` is preceded by non-space and not followed by a
- * digit, and the pair stays inside one line without spanning newlines.
- */
 function escapeLiteralDollars(text: string): string {
   const { text: masked, displayMath } = protectDisplayMath(text);
   const hidden = masked.replace(CURRENCY_DOLLAR, (sign) => `${sign.slice(0, -1)}\\$`);
@@ -550,7 +547,7 @@ function escapeLiteralDollars(text: string): string {
   let escaped = "";
   for (let i = 0; i < hidden.length; i++) escaped += literal.has(i) ? "\\$" : hidden[i];
   displayMath.forEach((math, index) => {
-    escaped = escaped.split(`\u0000OMB_MATH_${index}\u0000`).join(math);
+    escaped = escaped.split(`\\u0000OMB_MATH_${index}\\u0000`).join(math);
   });
   return escaped;
 }
@@ -583,9 +580,12 @@ export function normalizeMathDelimiters(text: string, imageOffsets?: Map<number,
     text = text.slice(0, start) + protect(text.slice(start, end), start) + text.slice(end);
   }
   let normalized = text
-    .replace(/\\\[([\s\S]*?)\\\]/g, (_match, math: string) => `$$\n${math}\n$$`);
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_match, math: string) => {
+      const trimmed = math.trim();
+      return `$$\n${trimmed}\n$$`;
+    });
   normalized = escapeLiteralDollars(normalized);
-  normalized = normalized.replace(/\\\(([\s\S]*?)\\\)/g, (_match, math: string) => `$${math.trim()}$`);
+  normalized = normalized.replace(/\\\(([\s\S]*?)\\\)/g, (_match, math: string) => `$${cleanInlineTeX(math)}$`);
   let shift = 0;
   // oxlint-disable-next-line no-control-regex -- restore opaque code and image sentinels
   normalized = normalized.replace(/\u0000OMB_CODE_(\d+)\u0000/g, (token, index: string, at: number) => {
@@ -841,12 +841,12 @@ const NO_THREAD_REFS: ThreadRefsValue = { threads: [] };
 
 // One plugin list for everything every message shares; a message adds mentions only when it has an "@" and thread
 // links only when it may name one, so most messages render the same way whatever the bot list holds.
-const BASE_REMARK_PLUGINS: NonNullable<MarkdownOptions["remarkPlugins"]> = [[remarkGfm, GFM_OPTIONS], remarkMath, remarkWindowsPathDestinations, remarkPlainPaths, unwrapLinkedImages, remarkSoftBreaks, remarkGithubRefs];
+const BASE_REMARK_PLUGINS: NonNullable<MarkdownOptions["remarkPlugins"]> = [[remarkGfm, GFM_OPTIONS], remarkStrictMath, remarkMathGuard, remarkWindowsPathDestinations, remarkPlainPaths, unwrapLinkedImages, remarkSoftBreaks, remarkGithubRefs];
 const NO_REHYPE_PLUGINS: NonNullable<MarkdownOptions["rehypePlugins"]> = [];
 let katexPlugins: { plugin: KatexPlugin; list: NonNullable<MarkdownOptions["rehypePlugins"]> } | null = null;
 const rehypePluginsFor = (math: KatexPlugin | null) => {
   if (!math) return NO_REHYPE_PLUGINS;
-  if (katexPlugins?.plugin !== math) katexPlugins = { plugin: math, list: [[math, { throwOnError: false, strict: false }]] };
+  if (katexPlugins?.plugin !== math) katexPlugins = { plugin: math, list: [[rehypeSafeKatex, { strict: false }]] };
   return katexPlugins.list;
 };
 
