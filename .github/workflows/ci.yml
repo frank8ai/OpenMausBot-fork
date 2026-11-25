@@ -55,13 +55,8 @@ jobs:
       && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.user.login == github.repository_owner)
       && 'preflight + Linux tests (Boat)' || 'preflight' }}
-    runs-on: >-
-      ${{ vars.BOAT_CI == 'on' && contains(fromJSON('["push", "pull_request", "merge_group"]'), github.event_name)
-      && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner
-      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-      && github.event.pull_request.user.login == github.repository_owner)
-      && 'boat-xlarge' || 'ubuntu-latest' }}
-    timeout-minutes: ${{ vars.BOAT_CI == 'on' && 45 || 15 }}
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 45
     permissions:
       contents: read
       # ci-scope reads whether the commit before a push got its own green run,
@@ -93,7 +88,7 @@ jobs:
         id: scope
         env:
           GH_TOKEN: ${{ github.token }}
-          OMB_CI_LINUX_IN_STATIC: ${{ runner.environment == 'self-hosted' }}
+          OMB_CI_LINUX_IN_STATIC: ${{ vars.BOAT_CI == 'on' && runner.environment == 'self-hosted' }}
         run: node scripts/ci-scope.mjs
       - run: pnpm install --frozen-lockfile
       - name: Verify CI selection and documentation references
@@ -160,7 +155,7 @@ jobs:
     # of them. A pull request that changes only docs, tests under scripts/ or
     # the control plane cannot change what they check.
     name: typecheck + build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -206,7 +201,7 @@ jobs:
     # boxed and the real-box *.linux tests run for the first time; on 24.04
     # the box does not start, so they run unboxed or skip, as they always
     # have here. Move to 26.04 once those suites pass with a real box.
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && fromJSON('["self-hosted", "Linux", "X64"]') || matrix.os }}
     # scripts/testing/duration-sequencer.ts splits each platform's files by
     # their recorded seconds on that platform, about 6 minutes a Linux shard
     # (four files at once); a Windows shard runs two files at once. The cap
@@ -264,7 +259,7 @@ jobs:
     # env, and the last step proves the offline gate holds by asserting the
     # skip line is what CI gets.
     name: behavior evals (offline tiers 1-3)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -313,7 +308,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(needs.static.outputs.packaged_server_os) }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && fromJSON('["self-hosted", "Linux", "X64"]') || matrix.os }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -391,7 +386,7 @@ jobs:
     # Still report failed/skipped dependencies, but don't keep a superseded
     # workflow alive just to schedule its summary jobs.
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 5
     steps:
       - name: Every required job passed
@@ -441,7 +436,7 @@ jobs:
     # open-source edition. Prove it on runtime changes: typecheck, the edition
     # tests, and a boot that reports "oss" even with a key set.
     name: open-source edition builds without enterprise/
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -471,7 +466,7 @@ jobs:
     needs: static
     if: contains(needs.static.outputs.jobs, '"control-plane"')
     name: control-plane check + workerd tests + dry run
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -493,7 +488,7 @@ jobs:
     # relay/ is its own pnpm root with its own lockfile, so this installs only the relay's dependencies. The nightly run
     # fuzzes the pre-auth path for ten minutes, a pull request for twenty seconds.
     name: relay typecheck + tests + fuzz + audit
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 20
     defaults:
       run:
@@ -527,7 +522,7 @@ jobs:
     needs: [control-plane]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: deploy composio broker (Cloudflare Worker)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 10
     steps:
       # A repo without the secret (a fork, or before the token is created)
@@ -577,7 +572,7 @@ jobs:
     # agent-browser release (digest verified) and its Chrome, drives the real
     # <App/> against the isolated fake-engine fixture, and keeps the screenshot.
     name: renderer smoke (control-omb ui, Ubuntu 24.04)
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -632,7 +627,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(needs.static.outputs.vitest_os) }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && fromJSON('["self-hosted", "Linux", "X64"]') || matrix.os }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -658,7 +653,7 @@ jobs:
     needs: static
     if: contains(needs.static.outputs.jobs, '"package-linux"')
     name: package + smoke (Ubuntu 24.04 x64)
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -740,7 +735,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(needs.static.outputs.vitest_os) }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && fromJSON('["self-hosted", "Linux", "X64"]') || matrix.os }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
