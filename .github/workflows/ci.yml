@@ -88,7 +88,7 @@ jobs:
         id: scope
         env:
           GH_TOKEN: ${{ github.token }}
-          OMB_CI_LINUX_IN_STATIC: ${{ runner.environment == 'self-hosted' }}
+          OMB_CI_LINUX_IN_STATIC: ${{ vars.BOAT_CI == 'on' && runner.environment == 'self-hosted' }}
         run: node scripts/ci-scope.mjs
       - run: pnpm install --frozen-lockfile
       - name: Verify CI selection and documentation references
