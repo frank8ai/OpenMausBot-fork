@@ -41,9 +41,9 @@ else:
     if "!span.includes(\"\\n\")" not in md_content and "!span.includes('\\n')" not in md_content:
         defects.append("Missing inline single-dollar multiline newline guard (!span.includes('\\n'))")
 
-    # Invariant 5: Rehype-katex fail-safe options
-    if "throwOnError: false, strict: false" not in md_content:
-        defects.append("Missing fail-safe rehype-katex configuration (throwOnError: false, strict: false)")
+    # Invariant 5: Rehype-katex fail-safe options or L4 rehypeSafeKatex sandbox
+    if "throwOnError: false, strict: false" not in md_content and "rehypeSafeKatex" not in md_content:
+        defects.append("Missing fail-safe rehype-katex configuration (throwOnError: false, strict: false or rehypeSafeKatex)")
 
 # 2. Test Suite Invariant Verification
 if not chat_test_path.is_file():
