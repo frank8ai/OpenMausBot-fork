@@ -48,41 +48,56 @@ export function lanesFor(plan, retryLog) {
 const minutes = (ms) => `${Math.floor(ms / 60_000)}m${String(Math.round((ms % 60_000) / 1000)).padStart(2, "0")}s`;
 
 /** Runs the lanes at once and prints each one's log whole when it ends. Resolves to the lanes that failed. */
-export async function runLanes(lanes, { dir, timeoutMs, heartbeatMs = 60_000, log = console.log, summary = () => {} }) {
+export async function runLanes(lanes, { dir, timeoutMs, heartbeatMs = 60_000, concurrency = Infinity, log = console.log, summary = () => {} }) {
   mkdirSync(dir, { recursive: true });
   const started = Date.now();
   const rows = [];
   const running = new Map();
-  const finished = lanes.map((lane, index) => new Promise((done) => {
-    const file = join(dir, `${index + 1}.log`);
-    const out = openSync(file, "w");
-    const child = spawn("bash", ["-eo", "pipefail", "-c", lane.commands.join("\n")], {
-      env: { ...process.env, ...lane.env }, stdio: ["ignore", out, out], detached: true,
+  let nextIndex = 0;
+
+  function runLane(lane, index) {
+    return new Promise((done) => {
+      const file = join(dir, `${index + 1}.log`);
+      const out = openSync(file, "w");
+      const child = spawn("bash", ["-eo", "pipefail", "-c", lane.commands.join("\n")], {
+        env: { ...process.env, ...lane.env }, stdio: ["ignore", out, out], detached: true,
+      });
+      running.set(lane.name, child);
+      // Each lane has its own process group, so a timeout or a cancelled job ends its servers and fake CLIs too.
+      const timer = setTimeout(() => {
+        log(`::error title=${lane.name}::still running after ${minutes(timeoutMs)}, so it was stopped`);
+        try { process.kill(-child.pid, "SIGKILL"); } catch { /* already gone */ }
+      }, timeoutMs);
+      child.on("close", (code, signal) => {
+        clearTimeout(timer);
+        running.delete(lane.name);
+        const took = minutes(Date.now() - started);
+        const verdict = code === 0 ? "passed" : `FAILED (${signal ?? `exit ${code}`})`;
+        log(`::group::${lane.name}: ${verdict} after ${took}`);
+        log(readFileSync(file, "utf8").trimEnd());
+        log("::endgroup::");
+        if (code !== 0) log(`::error title=${lane.name}::${verdict}; its log is in the group of that name`);
+        rows.push({ name: lane.name, verdict, took });
+        done(code === 0 ? null : lane.name);
+      });
     });
-    running.set(lane.name, child);
-    // Each lane has its own process group, so a timeout or a cancelled job ends its servers and fake CLIs too.
-    const timer = setTimeout(() => {
-      log(`::error title=${lane.name}::still running after ${minutes(timeoutMs)}, so it was stopped`);
-      try { process.kill(-child.pid, "SIGKILL"); } catch { /* already gone */ }
-    }, timeoutMs);
-    child.on("close", (code, signal) => {
-      clearTimeout(timer);
-      running.delete(lane.name);
-      const took = minutes(Date.now() - started);
-      const verdict = code === 0 ? "passed" : `FAILED (${signal ?? `exit ${code}`})`;
-      log(`::group::${lane.name}: ${verdict} after ${took}`);
-      log(readFileSync(file, "utf8").trimEnd());
-      log("::endgroup::");
-      if (code !== 0) log(`::error title=${lane.name}::${verdict}; its log is in the group of that name`);
-      rows.push({ name: lane.name, verdict, took });
-      done(code === 0 ? null : lane.name);
-    });
-  }));
+  }
+
+  const limit = Math.max(1, concurrency);
+  const results = new Array(lanes.length);
+  const workers = Array.from({ length: Math.min(limit, lanes.length) }, async () => {
+    while (nextIndex < lanes.length) {
+      const idx = nextIndex++;
+      results[idx] = await runLane(lanes[idx], idx);
+    }
+  });
+
   const heartbeat = setInterval(() => log(`${minutes(Date.now() - started)}: still running ${[...running.keys()].join(", ")}`), heartbeatMs);
   const stop = () => { for (const child of running.values()) try { process.kill(-child.pid, "SIGKILL"); } catch { /* already gone */ } };
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
-  const failed = (await Promise.all(finished)).filter(Boolean);
+  await Promise.all(workers);
+  const failed = results.filter(Boolean);
   clearInterval(heartbeat);
   process.off("SIGTERM", stop);
   process.off("SIGINT", stop);
@@ -96,6 +111,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const failed = await runLanes(lanesFor(plan, join(temp, "vitest-retries.jsonl")), {
     dir: join(temp, "linux-lanes"),
     timeoutMs: Number(process.env.OMB_CI_LANE_TIMEOUT_MINUTES ?? 30) * 60_000,
+    concurrency: Number(process.env.OMB_CI_LANE_CONCURRENCY ?? 2),
     summary: (markdown) => process.env.GITHUB_STEP_SUMMARY && appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown),
   });
   if (failed.length) {
