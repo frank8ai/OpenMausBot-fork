@@ -74,6 +74,28 @@ describe("detectUnverifiedDispatchClaim unit tests", () => {
       expect(verdict.matchedEvidence).toBeNull();
     }
   );
+
+  const MIXED_AND_CODEBLOCK_POSITIVE_SAMPLES = [
+    // 1. 代码块内含否定词，但正文有肯定派发声明：代码块必须被剥离，不得掩盖正文肯定声明
+    "代码示例如下：\n```ts\n// 未能派发\nconst status = 'failed';\n```\n已派发【全栈开发】执行分支创建与代码修复",
+    // 2. 单行内多语句：前句否定，后句肯定（句号分隔）
+    "未能派发【架构师】。已派发【全栈开发】执行代码修复。",
+    // 3. 单句内逗号分句：前分句动作否定，后分句肯定派发
+    "虽然未能派发【架构师】，但已派发【全栈开发】推进修复。",
+    // 4. 英文混合否定与肯定
+    "Could not dispatch to QA bot. Dispatched to developer bot.",
+    // 5. 多行混合：第一行肯定派发，第二行否定声明
+    "已派发【全栈开发】推进修复。\n未能派发【架构师】。",
+  ];
+
+  it.each(MIXED_AND_CODEBLOCK_POSITIVE_SAMPLES)(
+    "intercepts positive dispatch even with codeblocks or negative clauses: %s",
+    (text) => {
+      const verdict = detectUnverifiedDispatchClaim(text);
+      expect(verdict.claimed).toBe(true);
+      expect(verdict.matchedEvidence).toBeTruthy();
+    }
+  );
 });
 
 interface ChatRequest {
@@ -136,7 +158,7 @@ describe("OpenAIChatRuntime phantom dispatch guard integration", () => {
     for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
   });
 
-  async function fixture(script: Script) {
+  async function fixture(script: Script, options: { provideDispatchTool?: boolean } = {}) {
     const directory = mkdtempSync(join(tmpdir(), "omb-phantom-test-"));
     const requests: ChatRequest[] = [];
     const server = createServer(async (request, response) => {
@@ -172,9 +194,11 @@ describe("OpenAIChatRuntime phantom dispatch guard integration", () => {
     });
 
     const recorder = recordEvents(instance.adapter);
-    const integrations: SendTurnInput["integrations"] = {
-      custom: { agents: { command: process.execPath, args: [helper, directory, origin], env: {} } },
-    };
+    const integrations: SendTurnInput["integrations"] = options.provideDispatchTool === false
+      ? {}
+      : {
+          custom: { agents: { command: process.execPath, args: [helper, directory, origin], env: {} } },
+        };
 
     cleanups.push(async () => {
       await instance.dispose();
@@ -289,6 +313,52 @@ describe("OpenAIChatRuntime phantom dispatch guard integration", () => {
     const result = await f.completed();
     expect(result.ok).toBe(true);
     expect(f.requests.length).toBe(1); // No nudges sent, accepted immediately
+    expect(f.recorder.events).toContainEqual(expect.objectContaining({ type: "turn.completed" }));
+  });
+
+  it("blocks phantom dispatch when dispatch tool is not available / not provided", async () => {
+    // Dispatch tool is not provided in tools catalog
+    const f = await fixture((_body, response) => {
+      answer(response, "已派发【全栈开发】执行代码修复");
+    }, { provideDispatchTool: false });
+
+    await f.start();
+    const result = await f.completed();
+    expect(result.ok).toBe(false);
+    expect(f.requests.length).toBe(3); // Round 1 -> Nudge 1 -> Round 2 -> Nudge 2 -> Round 3 -> Fail-closed
+    expect(f.requests[1].messages.at(-1)?.content).toContain("检测到未经验证的派发声称");
+    expect(f.recorder.events).toContainEqual(
+      expect.objectContaining({
+        type: "runtime.error",
+        message: expect.stringContaining("Blocked phantom dispatch after 2 nudges"),
+      })
+    );
+  });
+
+  it("intercepts when single coordinate_bots call tries to endorse multiple dispatch claims", async () => {
+    const f = await fixture((_body, response, round) => {
+      if (round === 1) {
+        // Round 1: Model invokes tool once for 1 bot
+        sse(response, [
+          chunk({
+            tool_calls: [toolCall("agents_coordinate_bots", JSON.stringify({ bot_ids: ["bot-dev"], message: "do work" }))],
+          }, "tool_calls"),
+        ]);
+      } else if (round === 2) {
+        // Round 2: Model claims 2 distinct dispatches (exceeding capacity of 1)
+        answer(response, "已派发【全栈开发】执行代码修复。\n已派发【测试质保员】进行验收。");
+      } else {
+        // Round 3: After nudge, model truthfully retracts the unverified second dispatch
+        answer(response, "已派发【全栈开发】执行代码修复。未能派发【测试质保员】。");
+      }
+    });
+
+    await f.start();
+    const result = await f.completed();
+    expect(result.ok).toBe(true);
+    expect(f.requests.length).toBe(3);
+    // Verified that round 2's unverified multi-dispatch claim was nudged
+    expect(f.requests[2].messages.at(-1)?.content).toContain("检测到未经验证的派发声称");
     expect(f.recorder.events).toContainEqual(expect.objectContaining({ type: "turn.completed" }));
   });
 });

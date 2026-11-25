@@ -4,10 +4,14 @@ export interface DispatchClaimVerdict {
   readonly claimed: boolean;
   readonly matchedEvidence: string | null;
   readonly reason?: string;
+  readonly claims: readonly string[];
 }
 
+const DISPATCH_CONDITIONAL_OR_QUESTION_GUARD =
+  /(?:待(?:您|你)(?:确认|批准|授权)后?(?:派发|调度|执行)?|等待(?:您|你)(?:确认|批准|授权)|需要(?:您|你)先(?:确认|批准|授权)|是否需要我(?:派发|调度|呼叫)|(?:要不要|需不需要|需要我)(?:派发|调度|呼叫)|\bwait(?:ing)?\s+for\s+(?:your\s+)?(?:confirmation|approval)\b)/ui;
+
 const DISPATCH_NEGATIVE_GUARD =
-  /(?:未(?:能|实际|曾)?(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|未能即时触发|尚?未派发|无法(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|暂停(?:派发|调度)|暂不(?:派发|调度)|待(?:您|你)(?:确认|批准|授权)后?(?:派发|调度|执行)?|等待(?:您|你)(?:确认|批准|授权)|需要(?:您|你)先(?:确认|批准|授权)|是否需要我(?:派发|调度|呼叫)|(?:要不要|需不需要|需要我)(?:派发|调度|呼叫))/u;
+  /(?:未(?:能|实际|曾)?(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|未能即时触发|尚?未派发|无法(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|暂停(?:派发|调度)|暂不(?:派发|调度)|待(?:您|你)(?:确认|批准|授权)后?(?:派发|调度|执行)?|等待(?:您|你)(?:确认|批准|授权)|需要(?:您|你)先(?:确认|批准|授权)|是否需要我(?:派发|调度|呼叫)|(?:要不要|需不需要|需要我)(?:派发|调度|呼叫)|\b(?:not|could not|cannot|unable to|failed to|won't|will not|never)\s+(?:be\s+)?(?:dispatched|delegated|assigned)\b|\bwait(?:ing)?\s+for\s+(?:your\s+)?(?:confirmation|approval)\b)/ui;
 
 const DISPATCH_CLAIM_PATTERNS: readonly RegExp[] = [
   // 1) 反引号/方括号流水线进度条中的进行中派发态（不走 blankCode）
@@ -20,20 +24,68 @@ const DISPATCH_CLAIM_PATTERNS: readonly RegExp[] = [
 
 export function detectUnverifiedDispatchClaim(text: string): DispatchClaimVerdict {
   const raw = text.trim();
-  if (!raw || DISPATCH_NEGATIVE_GUARD.test(raw)) {
-    return { claimed: false, matchedEvidence: null, reason: undefined };
+  if (!raw) {
+    return { claimed: false, matchedEvidence: null, reason: undefined, claims: [] };
   }
-  // 剥离多行围栏代码块（```...```）防止示例代码误报，但保留行内反引号进度条（`[...]`）
+  // 1. 必须先剥离多行围栏代码块（```...```），防止示例代码/日志中的否定词或派发词干扰
   const withoutFences = raw.replace(/```[\s\S]*?```/g, "");
-  for (const pattern of DISPATCH_CLAIM_PATTERNS) {
-    const m = pattern.exec(withoutFences);
-    if (m) {
-      const matched = m[0].slice(0, 80);
-      return { claimed: true, matchedEvidence: matched, reason: matched };
+
+  const claims: string[] = [];
+
+  // 2. 逐行与逐句分析，否定守卫仅作用于包含否定词的同一行/同一语句，避免全局短路放行整篇文本
+  const lines = withoutFences.split(/\r?\n/);
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+
+    // A. 提取并剥离行内进度条徽章 (Pattern 0)，避免徽章内部文本被后续普通语句规则重复计数
+    let lineWithoutBadges = trimmedLine;
+    let badgeMatch: RegExpExecArray | null;
+    while ((badgeMatch = DISPATCH_CLAIM_PATTERNS[0].exec(lineWithoutBadges)) !== null) {
+      if (!DISPATCH_NEGATIVE_GUARD.test(trimmedLine)) {
+        claims.push(badgeMatch[0].slice(0, 80));
+      }
+      lineWithoutBadges = lineWithoutBadges.slice(0, badgeMatch.index) + lineWithoutBadges.slice(badgeMatch.index + badgeMatch[0].length);
+    }
+
+    // B. 将整行剩余文本切分为句子（。！？!?；;）
+    const sentences = lineWithoutBadges.split(/[。！？!?；;]+/).map((s) => s.trim()).filter(Boolean);
+    for (const sentence of sentences) {
+      if (DISPATCH_NEGATIVE_GUARD.test(sentence)) {
+        // 条件确认/询问类守卫（如“待您确认”、“是否需要我派发”）整句放弃
+        if (DISPATCH_CONDITIONAL_OR_QUESTION_GUARD.test(sentence)) {
+          continue;
+        }
+        // 针对动作否定（如“未能派发【架构师】，已派发【全栈开发】”），细化切分子分句
+        const clauses = sentence.split(/[，,]+/).map((c) => c.trim()).filter(Boolean);
+        for (const clause of clauses) {
+          if (DISPATCH_NEGATIVE_GUARD.test(clause)) continue;
+          for (let i = 1; i < DISPATCH_CLAIM_PATTERNS.length; i++) {
+            const m = DISPATCH_CLAIM_PATTERNS[i].exec(clause);
+            if (m) {
+              claims.push(m[0].slice(0, 80));
+            }
+          }
+        }
+        continue;
+      }
+
+      for (let i = 1; i < DISPATCH_CLAIM_PATTERNS.length; i++) {
+        const m = DISPATCH_CLAIM_PATTERNS[i].exec(sentence);
+        if (m) {
+          claims.push(m[0].slice(0, 80));
+        }
+      }
     }
   }
-  return { claimed: false, matchedEvidence: null, reason: undefined };
+
+  if (claims.length > 0) {
+    const first = claims[0];
+    return { claimed: true, matchedEvidence: first, reason: first, claims };
+  }
+  return { claimed: false, matchedEvidence: null, reason: undefined, claims: [] };
 }
+
 
 const CHINESE_WAIT = /(?:确认|確認|授权|授權|批准|同意|许可|許可)之?[后後]|(?:等(?:待)?|待)[你您]|(?:需要|请|請|须|須)[你您]先?(?:确认|確認|授权|授權|批准|同意)/u;
 
