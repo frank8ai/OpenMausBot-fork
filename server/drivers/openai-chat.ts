@@ -1,14 +1,6 @@
 import { RuntimeNoticeError, runtimeErrorText } from "./runtime-notice-error.ts";
 import { createHash } from "node:crypto";
-import type {
-  DriverCreateInput,
-  ModelCatalog,
-  ProviderInstance, ProviderSnapshot,
-  RuntimeEvent,
-  RuntimeEventListener,
-  SendTurnInput,
-  TextGenerationOptions,
-} from "../contracts.ts";
+import type { DriverCreateInput, ModelCatalog, ProviderInstance, ProviderSnapshot, RuntimeEvent, RuntimeEventListener, SendTurnInput, TextGenerationOptions } from "../contracts.ts";
 import { newEventId, newId } from "../contracts.ts";
 import { ASK_USER_TOOL, ASK_USER_TOOL_DEFINITION, askQuestionSummary, parseAskQuestions, questionChoices } from "../../shared/ask-question.ts";
 import { allowsTool, parseToolScope } from "../../shared/tool-scope.ts";
@@ -36,7 +28,8 @@ import { toolSchemaProfileFor } from "../tool-schema-profile.ts";
 import { classifyContinuable, writeTurnHandoff } from "../turn-continuation.ts";
 import { KEY_REJECTED_REASON, keyRejected, noteKeyAccepted, noteKeyRejected, rejectsKey } from "../key-rejections.ts";
 import { FETCH_LIMIT_MS, fetchPastLimit, prepareChatModel } from "./openai-chat-fetch.ts";
-import { announcesAction, detectUnverifiedDispatchClaim } from "./chat-announcement.ts";
+import { announcesAction } from "./chat-announcement.ts";
+import { MAX_DISPATCH_NUDGES, NUDGE_UNVERIFIED_DISPATCH, parseVerifiedReceipts, reconcileDispatchClaims, type VerifiedDispatchReceipt } from "./phantom-dispatch-gate.ts";
 export interface OpenAIChatMessage {
   role: "system" | "user" | "assistant" | "tool" | "developer";
   content: string | ChatContentPart[] | null;
@@ -46,11 +39,7 @@ export interface OpenAIChatMessage {
   reasoning?: string;
   reasoning_details?: Record<string, unknown>[];
 }
-interface Usage {
-  input: number;
-  output: number;
-  cachedInput?: number;
-}
+interface Usage { input: number; output: number; cachedInput?: number; }
 export interface Completion {
   text: string;
   reasoning: string;
@@ -141,17 +130,8 @@ const asError = (value: unknown): Error =>
 
 const MAX_TURN_TOOL_CALLS = 200;
 const MAX_ANNOUNCEMENT_NUDGES = 3;
-const MAX_DISPATCH_NUDGES = 2;
-const DISPATCH_TOOL_NAMES = new Set(["agents_coordinate_bots", "coordinate_bots"]);
-const NUDGE_UNVERIFIED_DISPATCH =
-  "[SYSTEM HARD GATE] 检测到未经验证的派发声称。请如实输出实际执行状态，撤回虚假或未经工具确认的派工辞令，切勿编造派发状态。";
 
-interface DeliveredUserMessage {
-  text: string;
-  sent: string;
-  volatile?: string;
-  after: string;
-}
+interface DeliveredUserMessage { text: string; sent: string; volatile?: string; after: string; }
 
 const MAX_REPLAY_EXTRA_BYTES = 24_000;
 const MAX_DELIVERED_THREADS = 256;
@@ -595,10 +575,8 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
       let correctiveRounds = 0;
       const denials: string[] = [], failedCalls: string[] = [];
       const seenCalls = new Set<string>();
-      const succeededTools = new Set<string>();
-      const successfulDispatches: Array<{ toolName: string; botIds: string[]; rawArguments: string }> = [];
-      let nudges = 0;
-      let dispatchNudges = 0;
+      const verifiedReceipts: VerifiedDispatchReceipt[] = [];
+      let nudges = 0, dispatchNudges = 0;
       let unread: string[] = [];
       const deliveredAsides: string[] = [];
       let callsAtNudge = -1;
@@ -772,33 +750,16 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
               stopReason = "tool_error";
               throw new ChatProtocolError(toolFailureMessage(failedCalls, denials.filter((name) => name !== ASK_USER_TOOL)));
             }
-            const guardEnabled = process.env.OMB_PHANTOM_DISPATCH_GUARD !== "0";
-
-            if (guardEnabled) {
-              const claim = detectUnverifiedDispatchClaim(completion.text);
-              if (claim.claimed) {
-                const totalDispatchUnits = successfulDispatches.reduce(
-                  (sum, d) => sum + Math.max(d.botIds.length, 1),
-                  0
-                );
-                const isUnverified =
-                  successfulDispatches.length === 0 ||
-                  claim.claims.length > totalDispatchUnits;
-
-                if (isUnverified) {
-                  if (dispatchNudges >= MAX_DISPATCH_NUDGES) {
-                    stopReason = "unverified_dispatch";
-                    throw new ChatProtocolError(
-                      `Blocked phantom dispatch after ${MAX_DISPATCH_NUDGES} nudges: reply claimed "${claim.matchedEvidence}" with ${successfulDispatches.length} successful coordinate_bots calls.`
-                    );
-                  }
-                  dispatchNudges += 1;
-                  messages.push(
-                    assistantReply(model, completion, completion.text),
-                    { role: "user", content: NUDGE_UNVERIFIED_DISPATCH }
-                  );
-                  continue;
+            if (process.env.OMB_PHANTOM_DISPATCH_GUARD !== "0") {
+              const recon = reconcileDispatchClaims(completion.text, verifiedReceipts);
+              if (recon.isUnverified) {
+                if (dispatchNudges >= MAX_DISPATCH_NUDGES) {
+                  stopReason = "unverified_dispatch";
+                  throw new ChatProtocolError(`Blocked phantom dispatch after ${MAX_DISPATCH_NUDGES} nudges: reply claimed "${recon.matchedEvidence}" with ${recon.verifiedTargetCount} verified receipts.`);
                 }
+                dispatchNudges += 1;
+                messages.push(assistantReply(model, completion, completion.text), { role: "user", content: NUDGE_UNVERIFIED_DISPATCH });
+                continue;
               }
             }
             if (options.nudgeAnnouncedAction && tools.definitions.length && announcesAction(completion.text)) {
@@ -910,28 +871,7 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
             const text = safeText(result.text);
             const output = preview({ ok: result.ok, result: text });
             emit({ ...base(turn.threadId, turnId), type: "item.completed", itemType: "tool", itemId: call.id, ok: result.ok, output });
-            if (!result.ok) {
-              toolFailed = true;
-              failedCalls.push(title);
-            } else {
-              succeededTools.add(call.function.name);
-              if (DISPATCH_TOOL_NAMES.has(call.function.name)) {
-                let botIds: string[] = [];
-                try {
-                  const parsed = typeof call.function.arguments === "string"
-                    ? JSON.parse(call.function.arguments)
-                    : call.function.arguments;
-                  if (Array.isArray(parsed?.bot_ids)) {
-                    botIds = parsed.bot_ids.map((id: unknown) => String(id).trim()).filter(Boolean);
-                  }
-                } catch {}
-                successfulDispatches.push({
-                  toolName: call.function.name,
-                  botIds,
-                  rawArguments: typeof call.function.arguments === "string" ? call.function.arguments : JSON.stringify(call.function.arguments),
-                });
-              }
-            }
+            if (!result.ok) { toolFailed = true; failedCalls.push(title); } else { verifiedReceipts.push(...parseVerifiedReceipts(call.function.name, title, result.text)); }
             messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ ok: result.ok, result: repeatNote ? `${text}\n\n${repeatNote}` : text }) });
             screenshotParts.push(...chatToolImages(call.id, result.images));
             abort.signal.throwIfAborted();
@@ -1053,3 +993,4 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
     },
   };
 }
+

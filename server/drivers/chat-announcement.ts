@@ -5,6 +5,7 @@ export interface DispatchClaimVerdict {
   readonly matchedEvidence: string | null;
   readonly reason?: string;
   readonly claims: readonly string[];
+  readonly targets: readonly string[];
 }
 
 const DISPATCH_CONDITIONAL_OR_QUESTION_GUARD =
@@ -15,7 +16,7 @@ const DISPATCH_NEGATIVE_GUARD =
 
 const DISPATCH_CLAIM_PATTERNS: readonly RegExp[] = [
   // 1) 反引号/方括号流水线进度条中的进行中派发态（不走 blankCode）
-  /\[[^\]\n]{0,48}(?:派发中|整改派发|介入中|复审中|复核中|质检中|修复[^\n\]]{0,16}中|双轨推进|已派发|已下发|已启动|已调度|无头执行|触发\s*Rework[^\n\]]{0,24}|派发[^\n\]]{0,24}|调度[^\n\]]{0,24})[^\]\n]{0,24}[⚙️⏳🚀]/u,
+  /\[[^\n\]]{0,48}(?:派发中|整改派发|介入中|复审中|复核中|质检中|修复[^\n\]]{0,16}中|双轨推进|已派发|已下发|已启动|已调度|无头执行|触发\s*Rework[^\n\]]{0,24}|派发[^\n\]]{0,24}|调度[^\n\]]{0,24})[^\n\]]{0,24}(?:⚙️|⚙|⏳|🚀)/u,
   // 2) 中文完成态 / 进行态 / 将来态主动派发声明（搭配专家角括号、线程号或工单词）
   /(?:已(?:正式|立即|同步|并发|补充|紧急|无缝|重新|全面)?|正在(?:为您)?|立即(?:切换|启动|触发)?)(?:派发|呼叫|下发|调度|安排|指派|唤醒|拉起|协调|打回|触发\s*Rework|切换为)[^\n。！？]{0,40}(?:【[^】\n]{2,16}】|线程|工单|Brief|AutoFabric|自动工厂|返修|整改|复审|验收|介入|底座|无头执行|#[^\s\n]{2,30})/u,
   // 3) 英文主动派发声明
@@ -25,7 +26,7 @@ const DISPATCH_CLAIM_PATTERNS: readonly RegExp[] = [
 export function detectUnverifiedDispatchClaim(text: string): DispatchClaimVerdict {
   const raw = text.trim();
   if (!raw) {
-    return { claimed: false, matchedEvidence: null, reason: undefined, claims: [] };
+    return { claimed: false, matchedEvidence: null, reason: undefined, claims: [], targets: [] };
   }
   // 1. 必须先剥离多行围栏代码块（```...```），防止示例代码/日志中的否定词或派发词干扰
   const withoutFences = raw.replace(/```[\s\S]*?```/g, "");
@@ -42,7 +43,7 @@ export function detectUnverifiedDispatchClaim(text: string): DispatchClaimVerdic
     let lineWithoutBadges = trimmedLine;
     let badgeMatch: RegExpExecArray | null;
     while ((badgeMatch = DISPATCH_CLAIM_PATTERNS[0].exec(lineWithoutBadges)) !== null) {
-      if (!DISPATCH_NEGATIVE_GUARD.test(trimmedLine)) {
+      if (!DISPATCH_NEGATIVE_GUARD.test(badgeMatch[0])) {
         claims.push(badgeMatch[0].slice(0, 80));
       }
       lineWithoutBadges = lineWithoutBadges.slice(0, badgeMatch.index) + lineWithoutBadges.slice(badgeMatch.index + badgeMatch[0].length);
@@ -64,6 +65,7 @@ export function detectUnverifiedDispatchClaim(text: string): DispatchClaimVerdic
             const m = DISPATCH_CLAIM_PATTERNS[i].exec(clause);
             if (m) {
               claims.push(m[0].slice(0, 80));
+              break;
             }
           }
         }
@@ -74,18 +76,29 @@ export function detectUnverifiedDispatchClaim(text: string): DispatchClaimVerdic
         const m = DISPATCH_CLAIM_PATTERNS[i].exec(sentence);
         if (m) {
           claims.push(m[0].slice(0, 80));
+          break;
         }
+      }
+    }
+  }
+
+  const targets: string[] = [];
+  for (const c of claims) {
+    const matches = c.matchAll(/【([^】\n]{2,16})】/gu);
+    for (const m of matches) {
+      const name = m[1].trim();
+      if (name && !targets.includes(name)) {
+        targets.push(name);
       }
     }
   }
 
   if (claims.length > 0) {
     const first = claims[0];
-    return { claimed: true, matchedEvidence: first, reason: first, claims };
+    return { claimed: true, matchedEvidence: first, reason: first, claims, targets };
   }
-  return { claimed: false, matchedEvidence: null, reason: undefined, claims: [] };
+  return { claimed: false, matchedEvidence: null, reason: undefined, claims: [], targets: [] };
 }
-
 
 const CHINESE_WAIT = /(?:确认|確認|授权|授權|批准|同意|许可|許可)之?[后後]|(?:等(?:待)?|待)[你您]|(?:需要|请|請|须|須)[你您]先?(?:确认|確認|授权|授權|批准|同意)/u;
 

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendFileSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { detectUnverifiedDispatchClaim } from "./chat-announcement.ts";
+import { parseVerifiedReceipts, reconcileDispatchClaims } from "./phantom-dispatch-gate.ts";
 import { OpenAICompatDriver } from "./openai-compat.ts";
 import { recordEvents } from "../testing/events.ts";
 import type { SendTurnInput } from "../contracts.ts";
@@ -98,6 +99,66 @@ describe("detectUnverifiedDispatchClaim unit tests", () => {
   );
 });
 
+
+describe("reconcileDispatchClaims and parseVerifiedReceipts unit tests", () => {
+  it("ignores instructionOnly: true in tool receipts", () => {
+    const receipts = parseVerifiedReceipts(
+      "agents_coordinate_bots",
+      "agents_coordinate_bots",
+      JSON.stringify({ instructionOnly: true, receipts: [{ botId: "bot-dev", outcome: "queued" }] })
+    );
+    expect(receipts).toHaveLength(0);
+  });
+
+  it("filters out outcome: 'failed' receipts", () => {
+    const receipts = parseVerifiedReceipts(
+      "agents_coordinate_bots",
+      "agents_coordinate_bots",
+      JSON.stringify({
+        receipts: [
+          { botId: "bot-dev", botName: "全栈开发", outcome: "queued" },
+          { botId: "bot-qa", botName: "测试质保员", outcome: "failed" },
+        ],
+      })
+    );
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0].botId).toBe("bot-dev");
+  });
+
+  it("does not false-positive on same target in badge and prose summary", () => {
+    const receipts = [
+      { botId: "bot-dev", botName: "全栈开发", outcome: "queued", toolName: "agents_coordinate_bots" },
+    ];
+    const text = "[已派发【全栈开发】推进 ⏳]\n已派发【全栈开发】推进代码修复。";
+    const res = reconcileDispatchClaims(text, receipts);
+    expect(res.isUnverified).toBe(false);
+    expect(res.claimedTargetCount).toBe(1);
+    expect(res.verifiedTargetCount).toBe(1);
+  });
+
+  it("intercepts single call claiming multiple distinct targets", () => {
+    const receipts = [
+      { botId: "bot-dev", botName: "全栈开发", outcome: "queued", toolName: "agents_coordinate_bots" },
+    ];
+    const text = "已派发【全栈开发】与【测试质保员】推进修复。";
+    const res = reconcileDispatchClaims(text, receipts);
+    expect(res.isUnverified).toBe(true);
+    expect(res.claimedTargetCount).toBe(2);
+    expect(res.verifiedTargetCount).toBe(1);
+  });
+
+  it("handles same-line negative clause followed by valid badge", () => {
+    const receipts = [
+      { botId: "bot-dev", botName: "全栈开发", outcome: "queued", toolName: "agents_coordinate_bots" },
+    ];
+    const text = "未能派发【架构师】。[已派发【全栈开发】推进 ⏳]";
+    const res = reconcileDispatchClaims(text, receipts);
+    expect(res.isUnverified).toBe(false);
+    expect(res.claimedTargetCount).toBe(1);
+    expect(res.verifiedTargetCount).toBe(1);
+  });
+});
+
 interface ChatRequest {
   messages: Array<{
     role: string;
@@ -128,8 +189,22 @@ const MCP_AGENTS_SCRIPT = [
   '      reply(request.id, { isError: true, content: [{ type: "text", text: "Coordination failed deliberately." }] });',
   '      return;',
   '    }',
+  '    if (args && args.message === "PARTIAL_FAIL") {',
+  '      const receipts = [',
+  '        { botId: "bot-dev", botName: "全栈开发", outcome: "queued", requestId: "req_1" },',
+  '        { botId: "bot-qa", botName: "测试质保员", outcome: "failed", requestId: "req_2" },',
+  '      ];',
+  '      reply(request.id, { content: [{ type: "text", text: JSON.stringify({ receipts }) }] });',
+  '      return;',
+  '    }',
+  '    if (args && args.message === "INSTRUCTION_ONLY") {',
+  '      reply(request.id, { content: [{ type: "text", text: JSON.stringify({ instructionOnly: true, receipts: [] }) }] });',
+  '      return;',
+  '    }',
   '    appendFileSync(join(directory, "dispatches.ndjson"), JSON.stringify({ name, ...args }) + "\\n");',
-  '    reply(request.id, { content: [{ type: "text", text: "Assignment created: req_12345" }] });',
+  '    const botIds = Array.isArray(args?.bot_ids) ? args.bot_ids : ["bot-dev"];',
+  '    const receipts = botIds.map((id) => ({ botId: id, botName: id === "bot-dev" ? "全栈开发" : id, outcome: "queued", requestId: "req_12345" }));',
+  '    reply(request.id, { content: [{ type: "text", text: JSON.stringify({ receipts }) }] });',
   '  } else if (request.id !== undefined && request.method === "ping") reply(request.id, {});',
   '});',
 ].join("\n");
@@ -224,6 +299,7 @@ describe("OpenAIChatRuntime phantom dispatch guard integration", () => {
           }
         }, 10_000);
         const error = recorder.events.find((e) => e.type === "runtime.error");
+        
         return { ok: !error, error };
       },
     };
@@ -265,7 +341,7 @@ describe("OpenAIChatRuntime phantom dispatch guard integration", () => {
         ]);
       } else {
         // Round 3: Final confirmation after real dispatch
-        answer(response, "真实调度完成：[已派发【全栈开发】与【运维工程师】双轨推进 ⏳]");
+        answer(response, "真实调度完成：[已派发【全栈开发】推进修复 ⏳]");
       }
     });
 
@@ -361,4 +437,97 @@ describe("OpenAIChatRuntime phantom dispatch guard integration", () => {
     expect(f.requests[2].messages.at(-1)?.content).toContain("检测到未经验证的派发声称");
     expect(f.recorder.events).toContainEqual(expect.objectContaining({ type: "turn.completed" }));
   });
+
+  it("blocks phantom dispatch when coordinate_bots returns partial failure (1 success, 1 failed) and model claims both", async () => {
+    const f = await fixture((_body, response, round) => {
+      if (round === 1) {
+        sse(response, [
+          chunk({
+            tool_calls: [toolCall("agents_coordinate_bots", JSON.stringify({ bot_ids: ["bot-dev", "bot-qa"], message: "PARTIAL_FAIL" }))],
+          }, "tool_calls"),
+        ]);
+      } else {
+        answer(response, "已派发【全栈开发】与【测试质保员】协同推进。");
+      }
+    });
+
+    await f.start();
+    const result = await f.completed();
+    expect(result.ok).toBe(false);
+    expect(f.requests.length).toBe(4);
+    expect(f.requests[2].messages.at(-1)?.content).toContain("检测到未经验证的派发声称");
+    expect(f.recorder.events).toContainEqual(
+      expect.objectContaining({
+        type: "runtime.error",
+        message: expect.stringContaining("Blocked phantom dispatch after 2 nudges"),
+      })
+    );
+  });
+
+  it("blocks phantom dispatch when coordinate_bots returns instructionOnly: true", async () => {
+    const f = await fixture((_body, response, round) => {
+      if (round === 1) {
+        sse(response, [
+          chunk({
+            tool_calls: [toolCall("agents_coordinate_bots", JSON.stringify({ bot_ids: ["bot-dev"], message: "INSTRUCTION_ONLY" }))],
+          }, "tool_calls"),
+        ]);
+      } else {
+        answer(response, "[已派发【全栈开发】推进 ⏳]");
+      }
+    });
+
+    await f.start();
+    const result = await f.completed();
+    expect(result.ok).toBe(false);
+    expect(f.requests.length).toBe(4);
+    expect(f.requests[2].messages.at(-1)?.content).toContain("检测到未经验证的派发声称");
+    expect(f.recorder.events).toContainEqual(
+      expect.objectContaining({
+        type: "runtime.error",
+        message: expect.stringContaining("Blocked phantom dispatch after 2 nudges"),
+      })
+    );
+  });
+
+  it("allows inline badge when preceded by negative clause on the same line", async () => {
+    const f = await fixture((_body, response, round) => {
+      if (round === 1) {
+        sse(response, [
+          chunk({
+            tool_calls: [toolCall("agents_coordinate_bots", JSON.stringify({ bot_ids: ["bot-dev"], message: "do work" }))],
+          }, "tool_calls"),
+        ]);
+      } else {
+        answer(response, "未能派发【架构师】。[已派发【全栈开发】推进 ⏳]");
+      }
+    });
+
+    await f.start();
+    const result = await f.completed();
+    expect(result.ok).toBe(true);
+    expect(f.requests.length).toBe(2);
+    expect(f.recorder.events).toContainEqual(expect.objectContaining({ type: "turn.completed" }));
+  });
+
+  it("allows single-target dispatch with badge and prose summary without false positive, while blocking multi-target claim", async () => {
+    const f = await fixture((_body, response, round) => {
+      if (round === 1) {
+        sse(response, [
+          chunk({
+            tool_calls: [toolCall("agents_coordinate_bots", JSON.stringify({ bot_ids: ["bot-dev"], message: "do work" }))],
+          }, "tool_calls"),
+        ]);
+      } else {
+        answer(response, "[已派发【全栈开发】推进 ⏳]\n已派发【全栈开发】执行代码修复与门禁验证。");
+      }
+    });
+
+    await f.start();
+    const result = await f.completed();
+    expect(result.ok).toBe(true);
+    expect(f.requests.length).toBe(2);
+    expect(f.recorder.events).toContainEqual(expect.objectContaining({ type: "turn.completed" }));
+  });
+
 });
