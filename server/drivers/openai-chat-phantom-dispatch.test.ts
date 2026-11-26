@@ -55,6 +55,7 @@ describe("detectUnverifiedDispatchClaim unit tests", () => {
   );
 
   const NEGATIVE_SAMPLES = [
+    "[已派发失败 ⚠️] 调度未能执行成功。",
     "未能派发该工单，因为缺少必要的 bot_ids 参数。",
     "无法派发任务到外部系统，请配置 API 凭证。",
     "待您确认后派发【全栈开发】执行修复。",
@@ -123,6 +124,46 @@ describe("reconcileDispatchClaims and parseVerifiedReceipts unit tests", () => {
     );
     expect(receipts).toHaveLength(1);
     expect(receipts[0].botId).toBe("bot-dev");
+  });
+
+  it("filters out any outcome not strictly 'queued' or 'injected'", () => {
+    const receipts = parseVerifiedReceipts(
+      "agents_coordinate_bots",
+      "agents_coordinate_bots",
+      JSON.stringify({
+        receipts: [
+          { botId: "bot-dev", botName: "全栈开发", outcome: "queued" },
+          { botId: "bot-arch", botName: "架构师", outcome: "injected" },
+          { botId: "bot-qa", botName: "测试质保员", outcome: "failed" },
+          { botId: "bot-ops", botName: "运维工程师", outcome: "rejected" },
+          { botId: "bot-sec", botName: "安全审计官", outcome: "error" },
+          { botId: "bot-unknown", botName: "未知", outcome: "unknown" },
+        ],
+      })
+    );
+    expect(receipts).toHaveLength(2);
+    expect(receipts.map((r) => r.botId)).toEqual(["bot-dev", "bot-arch"]);
+    expect(receipts[0].outcome).toBe("queued");
+    expect(receipts[1].outcome).toBe("injected");
+  });
+
+  it("intercepts affirmative dispatch claims when receipts are empty (zero receipts)", () => {
+    const res = reconcileDispatchClaims("已派发【全栈开发】执行代码修复", []);
+    expect(res.isUnverified).toBe(true);
+    expect(res.verifiedTargetCount).toBe(0);
+    expect(res.claimedTargetCount).toBe(1);
+    expect(res.reason).toContain("0 verified receipts");
+  });
+
+  it("does not increment claimedTargetCount with unnamed summary or badge sentences when named targets exist", () => {
+    const receipts = [
+      { botId: "bot-dev", botName: "全栈开发", outcome: "queued", toolName: "agents_coordinate_bots" },
+    ];
+    const text = "[已派发 🚀] 任务调度启动！\n已派发【全栈开发】推进修复。";
+    const res = reconcileDispatchClaims(text, receipts);
+    expect(res.isUnverified).toBe(false);
+    expect(res.claimedTargetCount).toBe(1);
+    expect(res.verifiedTargetCount).toBe(1);
   });
 
   it("does not false-positive on same target in badge and prose summary", () => {

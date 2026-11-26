@@ -45,14 +45,14 @@ export function parseVerifiedReceipts(
     for (const r of root.receipts) {
       if (!r || typeof r !== "object") continue;
       if (r.instructionOnly === true) continue;
-      if (r.outcome === "failed") continue;
+      if (r.outcome !== "queued" && r.outcome !== "injected") continue;
       const botId = typeof r.botId === "string" ? r.botId.trim() : "";
       if (!botId) continue;
       const botName = typeof r.botName === "string" ? r.botName.trim() : undefined;
       verified.push({
         botId,
         botName,
-        outcome: typeof r.outcome === "string" ? r.outcome : "queued",
+        outcome: r.outcome,
         requestId: typeof r.requestId === "string" ? r.requestId : undefined,
         toolName,
       });
@@ -110,13 +110,15 @@ export function reconcileDispatchClaims(
   }
 
   let unnamedClaims = 0;
-  for (const c of claim.claims) {
-    if (!/【[^】\n]{2,16}】/u.test(c)) {
-      unnamedClaims += 1;
+  if (claimedNamedTargets.size === 0) {
+    for (const c of claim.claims) {
+      if (!/【[^】\n]{2,16}】/u.test(c)) {
+        unnamedClaims += 1;
+      }
     }
   }
 
-  const claimedTargetCount = Math.max(claimedNamedTargets.size + unnamedClaims, 1);
+  const claimedTargetCount = Math.max(claimedNamedTargets.size > 0 ? claimedNamedTargets.size : unnamedClaims, 1);
 
   let isUnverified = claimedTargetCount > verifiedTargetCount;
 

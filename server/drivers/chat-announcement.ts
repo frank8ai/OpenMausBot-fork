@@ -12,7 +12,7 @@ const DISPATCH_CONDITIONAL_OR_QUESTION_GUARD =
   /(?:待(?:您|你)(?:确认|批准|授权)后?(?:派发|调度|执行)?|等待(?:您|你)(?:确认|批准|授权)|需要(?:您|你)先(?:确认|批准|授权)|是否需要我(?:派发|调度|呼叫)|(?:要不要|需不需要|需要我)(?:派发|调度|呼叫)|\bwait(?:ing)?\s+for\s+(?:your\s+)?(?:confirmation|approval)\b)/ui;
 
 const DISPATCH_NEGATIVE_GUARD =
-  /(?:未(?:能|实际|曾)?(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|未能即时触发|尚?未派发|无法(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|暂停(?:派发|调度)|暂不(?:派发|调度)|待(?:您|你)(?:确认|批准|授权)后?(?:派发|调度|执行)?|等待(?:您|你)(?:确认|批准|授权)|需要(?:您|你)先(?:确认|批准|授权)|是否需要我(?:派发|调度|呼叫)|(?:要不要|需不需要|需要我)(?:派发|调度|呼叫)|\b(?:not|could not|cannot|unable to|failed to|won't|will not|never)\s+(?:be\s+)?(?:dispatched|delegated|assigned)\b|\bwait(?:ing)?\s+for\s+(?:your\s+)?(?:confirmation|approval)\b)/ui;
+  /(?:未(?:能|实际|曾)?(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|(?:已)?(?:派发|呼叫|下发|调度|拉起|唤醒|触发)失败|未能即时触发|尚?未派发|无法(?:派发|呼叫|下发|调度|拉起|唤醒|触发)|暂停(?:派发|调度)|暂不(?:派发|调度)|待(?:您|你)(?:确认|批准|授权)后?(?:派发|调度|执行)?|等待(?:您|你)(?:确认|批准|授权)|需要(?:您|你)先(?:确认|批准|授权)|是否需要我(?:派发|调度|呼叫)|(?:要不要|需不需要|需要我)(?:派发|调度|呼叫)|\b(?:not|could not|cannot|unable to|failed to|won't|will not|never)\s+(?:be\s+)?(?:dispatched|delegated|assigned)\b|\bwait(?:ing)?\s+for\s+(?:your\s+)?(?:confirmation|approval)\b)/ui;
 
 const DISPATCH_CLAIM_PATTERNS: readonly RegExp[] = [
   // 1) 反引号/方括号流水线进度条中的进行中派发态（不走 blankCode）
