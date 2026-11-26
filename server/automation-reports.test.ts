@@ -79,7 +79,7 @@ describe("what the chat's own session reads", () => {
 });
 
 /** A real Store; the routine runs live in a stand-in for the RoutineManager, which keeps their report states. */
-function fixture(options: { threadLanguage?: (threadId: string) => string | undefined } = {}) {
+function fixture(options: { threadLanguage?: (threadId: string) => string | undefined; notes?: Map<string, string> } = {}) {
   const store = new Store(selection);
   const bot = store.createBot({ name: "Pepper" });
   const main = bot.threadId;
@@ -107,6 +107,7 @@ function fixture(options: { threadLanguage?: (threadId: string) => string | unde
     wrote: (_bot: BotRecord, threadId) => wrote.push(threadId),
     notify: (kind, _bot, threadId, detail) => notified.push({ kind, threadId, detail }),
     ...(options.threadLanguage ? { threadLanguage: options.threadLanguage } : {}),
+    ...(options.notes ? { notes: { has: (runId: string) => options.notes!.has(runId), take: (runId: string) => { const note = options.notes!.get(runId) ?? null; options.notes!.delete(runId); return note; } } } : {}),
   });
   const reports = create();
   let serial = 0;
@@ -153,6 +154,19 @@ describe("automation reports", () => {
     expect(f.wrote).toEqual([f.main]);
     expect(f.notified).toEqual([{ kind: "done", threadId: f.main, detail: "Inbox brief: Acme replied about the order." }]);
     expect(f.store.messagesFor(f.main).some((message) => message.kind === "routine.run")).toBe(false);
+  });
+
+  it("ends the person's own unread mark on the chat with a report, and keeps it through a run with nothing new", () => {
+    const f = fixture();
+    const held = () => f.store.taskByThread(f.bot.id, f.main)?.heldUnread;
+    f.store.patchTask(f.bot.id, f.main, { unread: true, heldUnread: f.store.activePath(f.main).at(-1)!.id });
+    const quiet = f.finished("NOTHING NEW");
+    f.reports.runSettled(quiet, `turn-${quiet.id}`);
+    expect(held(), "nothing was written").toBeDefined();
+    const run = f.finished("Acme replied about the order.");
+    f.reports.runSettled(run, `turn-${run.id}`);
+    expect(f.store.taskByThread(f.bot.id, f.main)).toMatchObject({ unread: true });
+    expect(held(), "a report the person has not read yet is news").toBeUndefined();
   });
 
   it("writes nothing, marks nothing and notifies nobody for a run with nothing new", () => {
@@ -260,6 +274,28 @@ describe("automation reports", () => {
     f.reports.runSettled(quietly, `turn-${quietly.id}`);
     expect(f.lines()).toHaveLength(1);
     expect(f.notified.map((entry) => entry.threadId)).toEqual([f.main, nowhere.threadId]);
+  });
+
+  it("puts the app's own line under a completed run's reply, apart from the bot's words, and says it even when the reply is quiet", () => {
+    const notes = new Map<string, string>();
+    const f = fixture({ notes });
+    const SAID = "\"Inbox brief\" can't use your PC because it isn't confirmed as yours: it was last changed or made outside your own chats. Open it and save it to make it yours again.";
+    const replied = f.finished("No execution environment was mounted, so I couldn't check.");
+    notes.set(replied.id, SAID);
+    f.reports.runSettled(replied, `turn-${replied.id}`);
+    const quiet = f.finished("NOTHING NEW");
+    notes.set(quiet.id, SAID);
+    f.reports.runSettled(quiet, `turn-${quiet.id}`);
+    expect(f.lines().map((line) => [line.text, line.automation?.failed])).toEqual([
+      [`No execution environment was mounted, so I couldn't check.\n\n${SAID}`, undefined],
+      [SAID, undefined],
+    ]);
+    expect(f.notified.map((entry) => entry.detail)).toEqual([`Inbox brief: No execution environment was mounted, so I couldn't check.\n\n${SAID}`, `Inbox brief: ${SAID}`]);
+    const nowhere = f.finished("Done.", "Orphan", { resultsThreadId: undefined });
+    notes.set(nowhere.id, SAID);
+    f.reports.runSettled(nowhere, `turn-${nowhere.id}`);
+    expect(f.notified.at(-1)).toEqual({ kind: "done", threadId: nowhere.threadId, detail: `Done.\n\n${SAID}` });
+    expect(notes.size).toBe(0);
   });
 
   it("says a run whose reply came back but a step failed was partly done, not that it didn't finish", () => {
