@@ -1,4 +1,4 @@
-import { memo, useId, useState, type ReactNode } from "react";
+﻿import { memo, useId, useState, type ReactNode } from "react";
 import { ChevronRight, FileText, Shield, Terminal } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -54,10 +54,6 @@ export const FoldedVerboseMessage = memo(function FoldedVerboseMessage({
   );
 });
 
-/**
- * Zero-Token foreground stream declutterer for ChatView.
- * No-ops completely when Solo Hub Mode is off.
- */
 export function SoloMessageEnvelope({
   text,
   isUser = false,

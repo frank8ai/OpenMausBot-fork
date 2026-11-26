@@ -1,4 +1,4 @@
-// @vitest-environment happy-dom
+﻿// @vitest-environment happy-dom
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -171,11 +171,59 @@ describe("Solo Hub v5.0 UI components", () => {
     });
     expect(onDecide).toHaveBeenCalledTimes(2);
     expect(host.querySelector(`[data-testid="solo-decision-optimistic"]`)).not.toBeNull();
+    await act(async () => { root.unmount(); });
+  });
+
+  it("renders SingleDecisionCard with staged skill preview when reviewing learned skills", async () => {
+    const root = createRoot(host);
+    const skillPending: Pending = {
+      requestId: "req-skill-1",
+      tool: "Skill",
+      detail: "Enable skill",
+      message: {
+        id: "msg-skill-1",
+        role: "bot",
+        kind: "options",
+        at: Date.now(),
+        card: {
+          title: "Enable skill: weather-checker",
+          subtitle: "Check real-time weather",
+          options: ["Allow", "Deny"],
+          requestId: "req-skill-1",
+          tool: "Skill",
+          skillRequest: {
+            version: 1,
+            requestId: "req-skill-1",
+            botId: "bot-1",
+            threadId: "thread-1",
+            stagedId: "staged-1",
+            action: "enable",
+            name: "weather-checker",
+            gist: "Check weather",
+            preview: "# Weather Checker\nFetches current forecast.",
+            sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            warnings: [],
+            createdAt: Date.now(),
+          },
+        },
+      },
+    };
 
     await act(async () => {
-      host.querySelector<HTMLButtonElement>(`[data-testid="solo-decision-undo"]`)!.click();
+      root.render(createElement(StoreProvider, null,
+        createElement(SingleDecisionCard, {
+          pending: skillPending,
+          threadId: "thread-1",
+          count: 1,
+          onCancelTurn: vi.fn(),
+        }),
+      ));
     });
-    expect(onCancelTurn).toHaveBeenCalledOnce();
+
+    const detailsBtn = host.querySelector<HTMLButtonElement>(`[aria-controls]`)!;
+    expect(detailsBtn).not.toBeNull();
+    await act(async () => { detailsBtn.click(); });
+    expect(host.querySelector(`[data-testid="solo-skill-preview"]`)).not.toBeNull();
     await act(async () => { root.unmount(); });
   });
 });

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+﻿import { memo, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronRight, CircleDot, Layers, Loader2, ShieldAlert, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -90,7 +90,6 @@ export const SoloProjectMatrixView = memo(function SoloProjectMatrixView({
   onSelectProject,
 }: SoloProjectMatrixViewProps) {
   const [unlinkedHint, setUnlinkedHint] = useState<string | null>(null);
-  const pendingTotal = snapshots.reduce((sum, item) => sum + item.pendingDecisions, 0);
   const activeCount = snapshots.filter((item) => item.status === "working" || item.status === "waiting").length;
 
   if (compact) {
@@ -108,11 +107,6 @@ export const SoloProjectMatrixView = memo(function SoloProjectMatrixView({
           )}
         >
           <Layers size={16} aria-hidden="true" />
-          {pendingTotal > 0 && (
-            <span className="absolute -end-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[11px] font-semibold leading-4 tabular-nums text-app">
-              {pendingTotal}
-            </span>
-          )}
         </button>
       </div>
     );
@@ -141,11 +135,6 @@ export const SoloProjectMatrixView = memo(function SoloProjectMatrixView({
         >
           <Layers size={13} className="shrink-0" aria-hidden="true" />
           <span className="truncate">{t("soloHub.title")}</span>
-          {pendingTotal > 0 && (
-            <span className="rounded-full bg-warning/20 px-1.5 text-[11px] font-semibold tabular-nums text-warning">
-              {pendingTotal}
-            </span>
-          )}
         </button>
         {enabled ? (
           <button

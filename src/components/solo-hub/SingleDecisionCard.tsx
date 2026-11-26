@@ -1,9 +1,11 @@
-import { memo, useId, useState } from "react";
-import { AlertTriangle, Check, ChevronDown, CreditCard, GitMerge, Loader2, RotateCcw, ShieldCheck, Trash2, Undo2, X } from "lucide-react";
+﻿import { memo, useId, useState } from "react";
+import { AlertTriangle, Check, ChevronDown, CreditCard, GitMerge, Loader2, RotateCcw, ShieldCheck, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { t, tFromServer } from "@/lib/i18n";
-import { useStore, type Bot } from "@/state/store";
+import { type Bot } from "@/state/store";
+import { useStoreDispatch } from "@/state/store-select";
 import { isSkillApproval, type Pending } from "@/components/PendingApproval";
+import { SkillRequestPreview } from "@/components/SkillRequestPreview";
 import { reviewedSkillSha256 } from "../../../shared/skill-request";
 import { classifyDecisionRisk, type DecisionRiskInfo } from "@/lib/solo-decision-flow";
 
@@ -38,7 +40,6 @@ export interface SingleDecisionCardProps {
   index?: number;
   bot?: Bot;
   onCancelTurn: () => void;
-  /** Optional test/override handler for decision dispatch. */
   onDecide?: (action: SoloDecisionAction, pending: Pending) => void;
 }
 
@@ -48,10 +49,9 @@ export const SingleDecisionCard = memo(function SingleDecisionCard({
   count,
   index = 0,
   bot,
-  onCancelTurn,
   onDecide,
 }: SingleDecisionCardProps) {
-  const { dispatch } = useStore();
+  const dispatch = useStoreDispatch();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [submittedAction, setSubmittedAction] = useState<SoloDecisionAction | null>(null);
   const [errorAction, setErrorAction] = useState<{ action: SoloDecisionAction; message: string } | null>(null);
@@ -59,10 +59,12 @@ export const SingleDecisionCard = memo(function SingleDecisionCard({
 
   const risk = classifyDecisionRisk(pending);
   const isSkill = isSkillApproval(pending);
-  const reviewedSha256 = pending.message.card?.skillRequest ? reviewedSkillSha256(pending.message.card.skillRequest) : undefined;
+  const skill = pending.message.card?.skillRequest;
+  const reviewedSha256 = skill ? reviewedSkillSha256(skill) : undefined;
   const approveDisabled = submittedAction !== null || (isSkill && !reviewedSha256);
   const heldNote = tFromServer(pending.heldCode, pending.held);
   const rawDetail = (pending.commandAllowlist?.command ?? pending.detail ?? pending.message.card?.subtitle ?? "").trim();
+  const hasDetails = Boolean(rawDetail || skill);
   const safeFocusReject = risk.severity === "critical" || !risk.reversible;
 
   const execute = (action: SoloDecisionAction) => {
@@ -82,6 +84,10 @@ export const SingleDecisionCard = memo(function SingleDecisionCard({
         behavior,
         message,
         reviewedSha256: behavior === "allow" ? reviewedSha256 : undefined,
+        onError: (errMsg) => {
+          setSubmittedAction(null);
+          setErrorAction({ action, message: errMsg || t("soloHub.decision.failedFallback") });
+        },
       });
     } catch (error) {
       setSubmittedAction(null);
@@ -118,7 +124,7 @@ export const SingleDecisionCard = memo(function SingleDecisionCard({
               {t("approval.position", { index: index + 1, count })}
             </span>
           )}
-          {rawDetail && (
+          {hasDetails && (
             <button
               type="button"
               aria-expanded={detailsOpen}
@@ -168,22 +174,11 @@ export const SingleDecisionCard = memo(function SingleDecisionCard({
       )}
 
       {submittedAction ? (
-        <div role="status" data-testid="solo-decision-optimistic" className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-[12px] text-ink">
-          <span className="flex min-w-0 items-center gap-2">
-            <Loader2 size={13} className="shrink-0 animate-spin text-accent motion-reduce:animate-none" aria-hidden="true" />
-            <span className="truncate font-medium">
-              {submittedAction === "approve" ? t("soloHub.decision.applyingApprove") : submittedAction === "rework" ? t("soloHub.decision.applyingRework") : t("soloHub.decision.applyingReject")}
-            </span>
+        <div role="status" data-testid="solo-decision-optimistic" className="mt-3 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-[12px] text-ink">
+          <Loader2 size={13} className="shrink-0 animate-spin text-accent motion-reduce:animate-none" aria-hidden="true" />
+          <span className="truncate font-medium">
+            {submittedAction === "approve" ? t("soloHub.decision.applyingApprove") : submittedAction === "rework" ? t("soloHub.decision.applyingRework") : t("soloHub.decision.applyingReject")}
           </span>
-          <button
-            type="button"
-            data-testid="solo-decision-undo"
-            onClick={() => { setSubmittedAction(null); onCancelTurn(); }}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-hairline/50 bg-card px-2.5 py-1 text-[12px] font-medium text-ink-secondary transition-colors duration-150 hover:bg-raised hover:text-ink motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            <Undo2 size={12} aria-hidden="true" />
-            <span>{t("soloHub.decision.undo")}</span>
-          </button>
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
@@ -222,15 +217,18 @@ export const SingleDecisionCard = memo(function SingleDecisionCard({
         </div>
       )}
 
-      {rawDetail && (
-        <div id={detailsId} hidden={!detailsOpen} className="mt-2.5">
-          <pre
-            tabIndex={0}
-            aria-label={t("approval.aria.reviewDetails")}
-            className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12px] leading-[18px] text-ink-secondary"
-          >
-            {rawDetail}
-          </pre>
+      {hasDetails && (
+        <div id={detailsId} hidden={!detailsOpen} className="mt-2.5 flex flex-col gap-2">
+          {rawDetail && (
+            <pre
+              tabIndex={0}
+              aria-label={t("approval.aria.reviewDetails")}
+              className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-hairline/40 bg-inset px-3 py-2 font-mono text-[12px] leading-[18px] text-ink-secondary"
+            >
+              {rawDetail}
+            </pre>
+          )}
+          {skill && <div data-testid="solo-skill-preview"><SkillRequestPreview request={skill} /></div>}
         </div>
       )}
     </div>
