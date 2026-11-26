@@ -4,6 +4,9 @@ import { Check, ChevronRight } from "lucide-react";
 import { t } from "@/lib/i18n";
 import type { Message } from "@/state/store";
 import { sameItems } from "@/state/store-select";
+import { useSoloHubMode } from "@/lib/solo-hub";
+import { extractPipelinePhases } from "@/lib/solo-decision-flow";
+import { PipelineStatusCapsule } from "./solo-hub/PipelineStatusCapsule";
 
 type Props = {
   label: string;
@@ -17,9 +20,21 @@ const sameProps = (a: Props, b: Props) =>
 
 export const TurnNarrationRun = memo(function TurnNarrationRun({ label, title, forceOpen = false, children, steps, step }: Props) {
   const [open, setOpen] = useState(forceOpen);
+  const soloHub = useSoloHubMode();
   useEffect(() => {
     if (forceOpen) setOpen(true);
   }, [forceOpen]);
+
+  if (soloHub && steps && step) {
+    const phases = extractPipelinePhases(steps);
+    if (phases.length > 0) {
+      return (
+        <PipelineStatusCapsule phases={phases} metaLabel={label} forceOpen={forceOpen}>
+          {steps.map(step)}
+        </PipelineStatusCapsule>
+      );
+    }
+  }
 
   return (
     <div className="flex flex-col gap-2">

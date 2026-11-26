@@ -3983,3 +3983,31 @@ button:disabled.bg-danger {
 :root[data-reduced-motion="true"] .thread-tab,
 :root[data-reduced-motion="true"] .thread-tab::before,
 :root[data-reduced-motion="true"] .thread-tab-indicator { animation: none !important; transition: none !important; }
+
+/* Solo Hub v5.0 tactile surfaces (Washi Celadon & Linear Alabaster craft). Scoped strictly under data-solo-hub. */
+:root[data-solo-hub="true"] .solo-v5-matrix,
+:root[data-solo-hub="true"] .solo-v5-decision-card {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-ink) 6%, transparent), 0 8px 24px -14px color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+:root[data-solo-hub="true"] .solo-v5-capsule,
+:root[data-solo-hub="true"] .solo-v5-fold-pill {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-ink) 5%, transparent), 0 2px 8px -4px color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+:root[data-solo-hub="true"][data-solo-surface="washi-celadon"] .solo-v5-matrix,
+:root[data-solo-hub="true"][data-solo-surface="washi-celadon"] .solo-v5-decision-card,
+:root[data-solo-hub="true"][data-solo-surface="washi-celadon"] .solo-v5-capsule {
+  border-color: color-mix(in srgb, var(--color-accent) 24%, var(--color-hairline));
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 5%, transparent), transparent 65%);
+}
+:root[data-solo-hub="true"][data-solo-surface="linear-alabaster"] .solo-v5-matrix,
+:root[data-solo-hub="true"][data-solo-surface="linear-alabaster"] .solo-v5-decision-card,
+:root[data-solo-hub="true"][data-solo-surface="linear-alabaster"] .solo-v5-capsule {
+  border-color: color-mix(in srgb, var(--color-ink) 14%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-ink) 9%, transparent), 0 10px 26px -16px color-mix(in srgb, var(--color-ink) 22%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .solo-v5-matrix, .solo-v5-capsule, .solo-v5-fold-pill, .solo-v5-decision-card, .solo-v5-project-row {
+    transition: none !important;
+    animation: none !important;
+  }
+}
