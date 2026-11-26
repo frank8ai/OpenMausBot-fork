@@ -1,6 +1,7 @@
 import { readBotActivity } from "../activity.ts";
 import { activityCsv, activityEntries, flushAdminActivity, parseActivityWhat, readAdminActivityRange } from "../admin-activity.ts";
 import { loadBrand } from "../brand.ts";
+import { defaultStatusFilePath, inspectAllProjects, readSoloStatusSnapshot, saveSoloStatusSnapshot } from "../solo-watcher.ts";
 import { browserEngineStatus, ensureChrome, installAgentBrowserBinary, resolveAgentBrowserBinary } from "../browser-engine.ts";
 import { DATA_DIR, EVENTS_DIR, NATIVE_DIR, instanceConfigs, type AppConfig } from "../config.ts";
 import { boundRetentionDays, decisionsCsv, readDecisionRange, readDecisions, type DecisionRow } from "../decision-log.ts";
@@ -114,6 +115,16 @@ export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
     }
     if (method === "GET" && path === "/api/brand") {
       return json(res, 200, loadBrand());
+    }
+
+    if (method === "GET" && path === "/api/solo-status") {
+      const targetFile = defaultStatusFilePath(DATA_DIR);
+      let snapshot = readSoloStatusSnapshot(targetFile);
+      if (!snapshot) {
+        snapshot = inspectAllProjects({ dataDir: DATA_DIR });
+        saveSoloStatusSnapshot(snapshot, targetFile);
+      }
+      return json(res, 200, snapshot);
     }
 
     m = path.match(/^\/api\/threads\/([\w-]+)\/events$/);
@@ -251,3 +262,4 @@ export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
     return PASS;
   };
 }
+
