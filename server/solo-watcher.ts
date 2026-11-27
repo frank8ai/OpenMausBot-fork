@@ -1,14 +1,14 @@
 /**
  * Cross-project local watcher daemon for solo company hub.
- * Inspects 5 core local repositories (Git status, tracking branch diffs, CI status),
- * detects alerts (CI failures, branch divergence, dirty worktrees),
- * and persists structured status snapshots atomically to ~/.openmausbot/solo-projects-status.json.
  */
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { promisify } from "node:util";
 import { writeFileAtomic } from "./atomic.ts";
+
+const execFileAsync = promisify(execFile);
 
 export type SoloProjectId =
   | "openmausbot"
@@ -129,11 +129,23 @@ export interface SoloProjectsSnapshot {
   };
 }
 
+export type CommandRunnerSync = (
+  command: string,
+  args: readonly string[],
+  cwd?: string,
+) => { status: number | null; stdout: string; stderr: string };
+
+export type CommandRunnerAsync = (
+  command: string,
+  args: readonly string[],
+  cwd?: string,
+) => Promise<{ status: number | null; stdout: string; stderr: string }>;
+
 export interface SoloWatcherOptions {
   readonly dataDir?: string;
   readonly customPaths?: Partial<Record<SoloProjectId, string>>;
   readonly queryCi?: boolean;
-  readonly runCommand?: (command: string, args: readonly string[], cwd?: string) => { status: number | null; stdout: string; stderr: string };
+  readonly runCommand?: CommandRunnerSync;
 }
 
 function defaultRunCommand(command: string, args: readonly string[], cwd?: string) {
@@ -149,6 +161,29 @@ function defaultRunCommand(command: string, args: readonly string[], cwd?: strin
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
+}
+
+export async function defaultRunCommandAsync(
+  command: string,
+  args: readonly string[],
+  cwd?: string,
+): Promise<{ status: number | null; stdout: string; stderr: string }> {
+  try {
+    const { stdout, stderr } = await execFileAsync(command, args as string[], {
+      cwd,
+      encoding: "utf8",
+      timeout: 10_000,
+      windowsHide: true,
+    });
+    return { status: 0, stdout: stdout ?? "", stderr: stderr ?? "" };
+  } catch (err: unknown) {
+    const error = err as { code?: number | string; stdout?: string; stderr?: string };
+    return {
+      status: typeof error.code === "number" ? error.code : 1,
+      stdout: error.stdout ?? "",
+      stderr: error.stderr ?? "",
+    };
+  }
 }
 
 export function resolveRepoPath(def: SoloRepoConfig, customPaths?: Partial<Record<SoloProjectId, string>>): string | undefined {
@@ -198,7 +233,7 @@ export function parseGitAheadBehind(output: string): { ahead: number; behind: nu
 
 export function inspectRepoGit(
   repoPath: string,
-  runCmd: (command: string, args: readonly string[], cwd?: string) => { status: number | null; stdout: string; stderr: string },
+  runCmd: CommandRunnerSync,
 ): SoloGitMetrics {
   const isGit = runCmd("git", ["-C", repoPath, "rev-parse", "--is-inside-work-tree"]);
   if (isGit.status !== 0 || isGit.stdout.trim() !== "true") {
@@ -246,11 +281,109 @@ export function inspectRepoGit(
   };
 }
 
+export async function inspectRepoGitAsync(
+  repoPath: string,
+  runCmdAsync: CommandRunnerAsync = defaultRunCommandAsync,
+): Promise<SoloGitMetrics> {
+  const isGit = await runCmdAsync("git", ["-C", repoPath, "rev-parse", "--is-inside-work-tree"]);
+  if (isGit.status !== 0 || isGit.stdout.trim() !== "true") {
+    return {
+      isRepo: false,
+      ahead: 0,
+      behind: 0,
+      dirtyCount: 0,
+      hasUntracked: false,
+      hasStaged: false,
+      hasUnstaged: false,
+    };
+  }
+
+  const [branchRes, trackingRes, statusRes] = await Promise.all([
+    runCmdAsync("git", ["-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD"]),
+    runCmdAsync("git", ["-C", repoPath, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]),
+    runCmdAsync("git", ["-C", repoPath, "status", "--porcelain"]),
+  ]);
+
+  const branch = branchRes.status === 0 ? branchRes.stdout.trim() : undefined;
+  const trackingBranch = trackingRes.status === 0 && trackingRes.stdout.trim() ? trackingRes.stdout.trim() : undefined;
+
+  let ahead = 0;
+  let behind = 0;
+  if (trackingBranch) {
+    const revListRes = await runCmdAsync("git", ["-C", repoPath, "rev-list", "--left-right", "--count", `HEAD...${trackingBranch}`]);
+    if (revListRes.status === 0) {
+      const counts = parseGitAheadBehind(revListRes.stdout);
+      ahead = counts.ahead;
+      behind = counts.behind;
+    }
+  }
+
+  const { dirtyCount, hasUntracked, hasStaged, hasUnstaged } =
+    statusRes.status === 0
+      ? parseGitPorcelain(statusRes.stdout)
+      : { dirtyCount: 0, hasUntracked: false, hasStaged: false, hasUnstaged: false };
+
+  return {
+    isRepo: true,
+    branch,
+    trackingBranch,
+    ahead,
+    behind,
+    dirtyCount,
+    hasUntracked,
+    hasStaged,
+    hasUnstaged,
+  };
+}
+
 export function inspectRepoCi(
   repoPath: string,
-  runCmd: (command: string, args: readonly string[], cwd?: string) => { status: number | null; stdout: string; stderr: string },
+  runCmd: CommandRunnerSync,
 ): SoloCiStatus {
   const ghRun = runCmd("gh", ["run", "list", "--limit", "1", "--json", "databaseId,status,conclusion,workflowName,headSha,headBranch,updatedAt"], repoPath);
+  if (ghRun.status !== 0) {
+    return { available: false };
+  }
+
+  try {
+    const parsed = JSON.parse(ghRun.stdout);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const latest = parsed[0];
+      const rawConclusion = latest.conclusion?.toLowerCase();
+      let conclusion: CiConclusion = "unknown";
+      if (rawConclusion === "success") conclusion = "success";
+      else if (rawConclusion === "failure") conclusion = "failure";
+      else if (rawConclusion === "cancelled") conclusion = "cancelled";
+      else if (rawConclusion === "skipped") conclusion = "skipped";
+      else if (latest.status?.toLowerCase() === "in_progress" || latest.status?.toLowerCase() === "queued") {
+        conclusion = "in_progress";
+      }
+
+      return {
+        available: true,
+        runId: latest.databaseId,
+        workflowName: latest.workflowName,
+        status: latest.status,
+        conclusion,
+        headSha: latest.headSha,
+        headBranch: latest.headBranch,
+        updatedAt: latest.updatedAt,
+      };
+    }
+  } catch {}
+
+  return { available: false };
+}
+
+export async function inspectRepoCiAsync(
+  repoPath: string,
+  runCmdAsync: CommandRunnerAsync = defaultRunCommandAsync,
+): Promise<SoloCiStatus> {
+  const ghRun = await runCmdAsync(
+    "gh",
+    ["run", "list", "--limit", "1", "--json", "databaseId,status,conclusion,workflowName,headSha,headBranch,updatedAt"],
+    repoPath,
+  );
   if (ghRun.status !== 0) {
     return { available: false };
   }
@@ -413,6 +546,86 @@ export function inspectAllProjects(options: SoloWatcherOptions = {}): SoloProjec
   };
 }
 
+export async function inspectAllProjectsAsync(
+  options: SoloWatcherOptions & { runCommandAsync?: CommandRunnerAsync } = {},
+): Promise<SoloProjectsSnapshot> {
+  const runCmdAsync = options.runCommandAsync ?? defaultRunCommandAsync;
+  const now = Date.now();
+  const queryCi = options.queryCi ?? true;
+
+  const projectResults = await Promise.all(
+    SOLO_PROJECT_DEFINITIONS.map(async (def) => {
+      const repoPath = resolveRepoPath(def, options.customPaths);
+      const exists = Boolean(repoPath && existsSync(repoPath));
+      let git: SoloGitMetrics | undefined;
+      let ci: SoloCiStatus | undefined;
+
+      if (exists && repoPath) {
+        git = await inspectRepoGitAsync(repoPath, runCmdAsync);
+        if (queryCi) {
+          ci = await inspectRepoCiAsync(repoPath, runCmdAsync);
+        }
+      }
+
+      const isRepo = Boolean(git?.isRepo);
+      const status = deriveProjectStatus(exists, isRepo, git, ci);
+      const alerts = generateAlerts(def, exists, repoPath, git, ci);
+
+      return {
+        def,
+        repoPath,
+        exists,
+        isRepo,
+        status,
+        git,
+        ci,
+        alerts,
+      };
+    }),
+  );
+
+  let healthyCount = 0;
+  let totalAlerts = 0;
+  let failedCount = 0;
+  let workingCount = 0;
+
+  const projects: SoloProjectMetrics[] = projectResults.map((r) => {
+    if (r.status === "failed") failedCount += 1;
+    else if (r.status === "working") workingCount += 1;
+
+    totalAlerts += r.alerts.length;
+    if (r.alerts.every((a) => a.level === "info")) {
+      healthyCount += 1;
+    }
+
+    return {
+      id: r.def.id,
+      name: r.def.name,
+      path: r.repoPath,
+      exists: r.exists,
+      isRepo: r.isRepo,
+      status: r.status,
+      git: r.git,
+      ci: r.ci,
+      alerts: r.alerts,
+      lastCheckedAt: now,
+    };
+  });
+
+  return {
+    version: 1,
+    timestamp: now,
+    projects,
+    summary: {
+      total: projects.length,
+      healthy: healthyCount,
+      alertsCount: totalAlerts,
+      failedCount,
+      workingCount,
+    },
+  };
+}
+
 export function defaultStatusFilePath(dataDir?: string): string {
   const dir = dataDir ?? process.env.OMB_DATA_DIR ?? join(homedir(), ".openmausbot");
   return join(dir, "solo-projects-status.json");
@@ -440,7 +653,6 @@ export function withLock<T>(lockPath: string, fn: () => T, maxWaitMs = 3000): T 
       acquired = true;
       break;
     } catch {
-      // Busy wait short sleep for lock
       const waitUntil = Date.now() + 50;
       while (Date.now() < waitUntil) {}
     }
@@ -484,17 +696,25 @@ export function readSoloStatusSnapshot(filePath?: string): SoloProjectsSnapshot 
   }
 }
 
+export interface SoloWatcherDaemonOptions extends SoloWatcherOptions {
+  readonly pollIntervalMs?: number;
+  readonly targetFile?: string;
+  readonly unref?: boolean;
+}
+
 export class SoloWatcherDaemon {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
-  private readonly options: SoloWatcherOptions;
+  private readonly options: SoloWatcherDaemonOptions;
   private readonly targetFile: string;
   private readonly pollIntervalMs: number;
+  private readonly unref: boolean;
 
-  constructor(options: SoloWatcherOptions & { pollIntervalMs?: number; targetFile?: string } = {}) {
+  constructor(options: SoloWatcherDaemonOptions = {}) {
     this.options = options;
     this.targetFile = options.targetFile ?? defaultStatusFilePath(options.dataDir);
     this.pollIntervalMs = options.pollIntervalMs ?? 30_000;
+    this.unref = options.unref ?? true;
   }
 
   public tickOnce(): SoloProjectsSnapshot {
@@ -503,18 +723,38 @@ export class SoloWatcherDaemon {
     return snapshot;
   }
 
+  public async tickOnceAsync(): Promise<SoloProjectsSnapshot> {
+    const snapshot = await inspectAllProjectsAsync(this.options);
+    saveSoloStatusSnapshot(snapshot, this.targetFile);
+    return snapshot;
+  }
+
   public start(): void {
     if (this.running) return;
     this.running = true;
-    this.tickOnce();
+    if (this.options.runCommand) {
+      this.tickOnce();
+    } else {
+      void this.tickOnceAsync().catch((err) => {
+        console.error("[SoloWatcherDaemon] tick failed:", err);
+      });
+    }
     this.timer = setInterval(() => {
       try {
-        this.tickOnce();
+        if (this.options.runCommand) {
+          this.tickOnce();
+        } else {
+          void this.tickOnceAsync().catch((err) => {
+            console.error("[SoloWatcherDaemon] tick failed:", err);
+          });
+        }
       } catch (err) {
         console.error("[SoloWatcherDaemon] tick failed:", err);
       }
     }, this.pollIntervalMs);
-    this.timer.unref?.();
+    if (this.unref) {
+      this.timer.unref?.();
+    }
   }
 
   public stop(): void {

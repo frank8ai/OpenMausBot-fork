@@ -2,7 +2,7 @@
  * CLI runner for openmausbot solo-status command.
  */
 import { defaultDataDir } from "./data-dir.ts";
-import { defaultStatusFilePath, inspectAllProjects, saveSoloStatusSnapshot, SoloWatcherDaemon, type SoloProjectsSnapshot } from "./solo-watcher.ts";
+import { defaultStatusFilePath, inspectAllProjectsAsync, saveSoloStatusSnapshot, SoloWatcherDaemon, type SoloProjectsSnapshot } from "./solo-watcher.ts";
 
 export interface SoloStatusCliArgs {
   readonly dataDir: string;
@@ -56,7 +56,6 @@ export function parseSoloStatusArgs(argv: readonly string[], env: NodeJS.Process
     }
   }
 
-  // Default mode is single-pass run unless daemon specified
   if (!daemon) once = true;
 
   return {
@@ -112,7 +111,7 @@ export async function runSoloStatusCli(
   const targetFile = defaultStatusFilePath(args.dataDir);
 
   if (args.once) {
-    const snapshot = inspectAllProjects({ dataDir: args.dataDir });
+    const snapshot = await inspectAllProjectsAsync({ dataDir: args.dataDir });
     saveSoloStatusSnapshot(snapshot, targetFile);
 
     if (args.json) {
@@ -131,6 +130,7 @@ export async function runSoloStatusCli(
       dataDir: args.dataDir,
       targetFile,
       pollIntervalMs: args.pollIntervalSeconds * 1000,
+      unref: false,
     });
     watcher.start();
 
@@ -147,4 +147,3 @@ export async function runSoloStatusCli(
 
   return 0;
 }
-

@@ -7,8 +7,11 @@ import {
   deriveProjectStatus,
   generateAlerts,
   inspectAllProjects,
+  inspectAllProjectsAsync,
   inspectRepoCi,
+  inspectRepoCiAsync,
   inspectRepoGit,
+  inspectRepoGitAsync,
   parseGitAheadBehind,
   parseGitPorcelain,
   readSoloStatusSnapshot,
@@ -275,6 +278,78 @@ describe("solo-watcher daemon unit & integration tests", () => {
       expect(daemon.isRunning()).toBe(false);
     });
   });
+
+  describe("inspectRepoGitAsync & inspectRepoCiAsync & inspectAllProjectsAsync", () => {
+    it("asynchronously inspects git status and branch metrics", async () => {
+      const runCmdAsync = async (_cmd: string, args: readonly string[]) => {
+        if (args.includes("--is-inside-work-tree")) return { status: 0, stdout: "true\n", stderr: "" };
+        if (args.includes("HEAD") && args.includes("--abbrev-ref")) return { status: 0, stdout: "feat/watcher-async\n", stderr: "" };
+        if (args.includes("@{u}")) return { status: 0, stdout: "origin/feat/watcher-async\n", stderr: "" };
+        if (args.includes("rev-list")) return { status: 0, stdout: "1\t0\n", stderr: "" };
+        if (args.includes("status")) return { status: 0, stdout: "?? new.ts\n", stderr: "" };
+        return { status: 1, stdout: "", stderr: "" };
+      };
+
+      const metrics = await inspectRepoGitAsync(testDir, runCmdAsync);
+      expect(metrics.isRepo).toBe(true);
+      expect(metrics.branch).toBe("feat/watcher-async");
+      expect(metrics.ahead).toBe(1);
+      expect(metrics.dirtyCount).toBe(1);
+      expect(metrics.hasUntracked).toBe(true);
+    });
+
+    it("asynchronously inspects CI status with gh run list", async () => {
+      const mockOutput = JSON.stringify([
+        {
+          databaseId: 67890,
+          workflowName: "CI / Production Gate",
+          status: "completed",
+          conclusion: "success",
+          headSha: "123456abcdef",
+          headBranch: "main",
+          updatedAt: "2026-11-26T12:00:00Z",
+        },
+      ]);
+      const runCmdAsync = async () => ({ status: 0, stdout: mockOutput, stderr: "" });
+      const ci = await inspectRepoCiAsync(testDir, runCmdAsync);
+      expect(ci.available).toBe(true);
+      expect(ci.runId).toBe(67890);
+      expect(ci.conclusion).toBe("success");
+    });
+
+    it("asynchronously inspects all projects concurrently", async () => {
+      const customPaths = { openmausbot: testDir };
+      const runCmdAsync = async (_cmd: string, args: readonly string[]) => {
+        if (args.includes("--is-inside-work-tree")) return { status: 0, stdout: "true\n", stderr: "" };
+        if (args.includes("HEAD") && args.includes("--abbrev-ref")) return { status: 0, stdout: "main\n", stderr: "" };
+        if (args.includes("status")) return { status: 0, stdout: "", stderr: "" };
+        return { status: 1, stdout: "", stderr: "" };
+      };
+
+      const snapshot = await inspectAllProjectsAsync({
+        customPaths,
+        queryCi: false,
+        runCommandAsync: runCmdAsync,
+      });
+
+      expect(snapshot.version).toBe(1);
+      expect(snapshot.projects).toHaveLength(5);
+    });
+
+    it("SoloWatcherDaemon supports unref option for standalone daemon mode", () => {
+      const statusFile = join(testDir, "status-standalone.json");
+      const daemon = new SoloWatcherDaemon({
+        targetFile: statusFile,
+        queryCi: false,
+        pollIntervalMs: 100,
+        unref: false,
+        runCommand: () => ({ status: 1, stdout: "", stderr: "" }),
+      });
+
+      daemon.start();
+      expect(daemon.isRunning()).toBe(true);
+      daemon.stop();
+      expect(daemon.isRunning()).toBe(false);
+    });
+  });
 });
-
-
