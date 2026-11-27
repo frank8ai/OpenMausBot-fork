@@ -296,6 +296,107 @@ describe("math rendering", () => {
     expect(html).not.toContain('class="katex"');
   });
 
+  it("does not swallow headings or bold text when display math $$ is unclosed", () => {
+    const text = [
+      "$$",
+      "#### 核心系统状态概览",
+      "**加粗指标**: 正常运行",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(ChatMarkdown, { text }));
+    expect(html).toContain("核心系统状态概览");
+    expect(html).toContain("<strong>加粗指标</strong>");
+    expect(html).not.toContain("katex-error");
+    expect(html).not.toContain("katex-display");
+  });
+
+  it("does not corrupt tables or lists when $$ is unclosed before a table", () => {
+    const text = [
+      "$$",
+      "| 服务名称 | 节点状态 | 延迟 (ms) |",
+      "| :--- | :--- | :--- |",
+      "| auth-cluster | ACTIVE | 12 |",
+      "| gateway-v2 | ACTIVE | 8 |",
+      "",
+      "- 列表说明项 A",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(ChatMarkdown, { text }));
+    expect(html).toContain("<table");
+    expect(html).toContain("服务名称");
+    expect(html).toContain("auth-cluster");
+    expect(html).toContain("gateway-v2");
+    expect(html).toContain("列表说明项 A");
+    expect(html).not.toContain("katex-error");
+    expect(html).not.toContain("katex-display");
+  });
+
+  it("safely isolates unclosed $$ before heading and still renders subsequent valid math", () => {
+    const text = [
+      "$$",
+      "#### 核心系统状态概览",
+      "**加粗指标**: 正常运行",
+      "",
+      "$$",
+      "E = mc^2",
+      "$$",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(ChatMarkdown, { text }));
+    expect(html).toContain("核心系统状态概览");
+    expect(html).toContain("<strong>加粗指标</strong>");
+    expect(html).toContain('class="katex"');
+    expect(html).not.toContain("katex-error");
+  });
+
+  it("does not match single $ greedily across multiple lines", () => {
+    const text = [
+      "这是一个普通的段落，包含一个符号 $ 没有闭合。",
+      "这里是下一行文本，包含另外一个 $ 符号。",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(ChatMarkdown, { text }));
+    expect(html).not.toContain('class="katex"');
+    expect(html).not.toContain("katex-error");
+    expect(html).toContain("包含一个符号 $ 没有闭合。");
+    expect(html).toContain("这里是下一行文本，包含另外一个 $ 符号。");
+  });
+
+  it("does not break list indentation or leak red errors when $$ is used inside a list item", async () => {
+    await ensureChatKatex();
+    const text = [
+      "- **加权净收益方程**：",
+      "  $$\\text{NetQuotaROI} = W_p \\cdot \\Big[\\Delta C_{\\text{dirty}}\\Big]$$",
+      "  - **同级模型临界点**（Flash 派发 Flash，缓存系数 $\\alpha = 0.10$）：剩余 5 轮时临界点为 **$13,500\\text{ tokens}$**",
+      "",
+      "#### 硬性三分流仲裁标准：",
+      "1. **强制内联直办 (`INLINE_EXECUTION`)**：",
+      "   - 命中条件：脏数据 $\\le 1,500\\text{ t}$（单条 CLI 或 $\\le 120$ 行切片即可闭环）。",
+      "   - **裁决**：**严禁拉起子代理**，立省 6,000 Tokens 固定税。",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(ChatMarkdown, { text }));
+    expect(html).not.toContain("katex-error");
+    expect(html).toContain("<strong>加权净收益方程</strong>");
+    expect(html).toContain("<strong>同级模型临界点</strong>");
+    expect(html).toContain("强制内联直办");
+    expect(html).toContain("<strong>严禁拉起子代理</strong>");
+  });
+
+  it("renders valid complex LaTeX formulas with absolute values and matrices", () => {
+    const text = [
+      "$$",
+      "|a| + |b| = c",
+      "$$",
+      "",
+      "$$",
+      "\\begin{aligned}",
+      "f(x) &= (x + a)(x + b) \\\\",
+      "     &= x^2 + (a + b)x + ab",
+      "\\end{aligned}",
+      "$$",
+    ].join("\n");
+    const html = renderToStaticMarkup(createElement(ChatMarkdown, { text }));
+    expect(html.match(/class="katex"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html).toContain("katex-display");
+    expect(html).not.toContain("katex-error");
+  });
+
   it.each([
     "R$ 120.\n\n![receipt](/workspace/receipt.png)",
     "Pay $5.\n\n![receipt][image]\n\n[image]: /workspace/receipt.png",

@@ -2,7 +2,7 @@
 import { createContext, Fragment, memo, use, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import Markdown, { defaultUrlTransform, type Components, type ExtraProps, type Options as MarkdownOptions } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
+import { remarkStrictMath, remarkMathGuard, rehypeSafeKatex } from "@/lib/markdown-math-defense";
 import { fromMarkdown, type Options as MarkdownParseOptions } from "mdast-util-from-markdown";
 import { Check, Copy, Download, Eye, LoaderCircle, RotateCcw, WrapText, X } from "lucide-react";
 import { useCopyFeedback } from "@/lib/copy-text";
@@ -442,17 +442,84 @@ const NO_MENTION_PEERS: readonly MentionPeer[] = [];
 
 const MARKDOWN_IMAGE = "![";
 
+const PARAGRAPH_BREAK = /\n[ \t]*\n/;
+const MATH_BLOCK_BREAKER = /(?:^|\n)[ \t]*(?:#{1,6}\s|\|(?::?-+:?\|)+\s*(?:\n|$)|\|(?:[^|\r\n]+\|){2,}[ \t]*(?:\n|$)|[-*_]{3,}\s*(?:\n|$))/;
 const CURRENCY_DOLLAR = /(?<![$\p{L}\p{N}])(?:R|US|AU|A|CA|C|NZ|HK|SG|S|MX|NT|BZ|Z)\$(?=[ \t\u00a0]?\d)/gu;
 
-/**
- * Pandoc's rule: an opening `$` is followed by non-space, a closing `$` is preceded by non-space and not followed by a
- * digit, and the pair stays inside one paragraph.
- */
-function escapeLiteralDollars(text: string): string {
+function cleanInlineTeX(math: string): string {
+  return math
+    .replace(/\r?\n[ \t]*(?:>[ \t]*)+[ \t]*/g, "\n")
+    .replace(/%[^\r\n]*(\r?\n|$)/g, " ")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
+}
+
+function protectDisplayMath(text: string): { text: string; displayMath: string[] } {
   const display: string[] = [];
-  const hidden = text
-    .replace(/\$\$[\s\S]*?\$\$/g, (math) => `\u0000OMB_MATH_${display.push(math) - 1}\u0000`)
-    .replace(CURRENCY_DOLLAR, (sign) => `${sign.slice(0, -1)}\\$`);
+  let result = "";
+  let i = 0;
+
+  while (i < text.length) {
+    if (text[i] === "\\") {
+      let backslashes = 1;
+      while (i + backslashes < text.length && text[i + backslashes] === "\\") backslashes++;
+      result += text.slice(i, i + backslashes);
+      i += backslashes;
+      continue;
+    }
+
+    if (text[i] === "$" && text[i + 1] === "$") {
+      const start = i;
+      let closeIndex = -1;
+      let j = start + 2;
+      while (j < text.length) {
+        if (text[j] === "\\") {
+          let b = 1;
+          while (j + b < text.length && text[j + b] === "\\") b++;
+          j += b;
+          continue;
+        }
+        if (text[j] === "$" && text[j + 1] === "$") {
+          closeIndex = j;
+          break;
+        }
+        j++;
+      }
+
+      if (closeIndex === -1) {
+        result += "\\$\\$";
+        i += 2;
+        continue;
+      }
+
+      const body = text.slice(start + 2, closeIndex);
+      if (PARAGRAPH_BREAK.test(body) || MATH_BLOCK_BREAKER.test(body)) {
+        result += "\\$\\$";
+        i += 2;
+        continue;
+      }
+
+      const token = `\\u0000OMB_MATH_${display.length}\\u0000`;
+      const trimmed = body.replace(/^\n+|\n+$/g, "");
+      // Preserve single line layout if body doesn't have internal newlines and text has leading indentation
+      const isIndented = start > 0 && /^[ \t]+$/.test(text.slice(Math.max(0, text.lastIndexOf("\n", start - 1) + 1), start));
+      const fullMath = isIndented && !trimmed.includes("\n") ? `$$${trimmed}$$` : `$$\n${trimmed}\n$$`;
+      display.push(fullMath);
+      result += token;
+      i = closeIndex + 2;
+      continue;
+    }
+
+    result += text[i];
+    i++;
+  }
+
+  return { text: result, displayMath: display };
+}
+
+function escapeLiteralDollars(text: string): string {
+  const { text: masked, displayMath } = protectDisplayMath(text);
+  const hidden = masked.replace(CURRENCY_DOLLAR, (sign) => `${sign.slice(0, -1)}\\$`);
   const literal = new Set<number>();
   const singles: number[] = [];
   for (let i = 0; i < hidden.length; i++) {
@@ -462,19 +529,25 @@ function escapeLiteralDollars(text: string): string {
   let open: number | null = null;
   for (const at of singles) {
     if (open !== null) {
-      const closes = !/\s/.test(hidden[at - 1]) && !/\d/.test(hidden[at + 1] ?? "")
-        && !/\n[ \t]*\n/.test(hidden.slice(open, at));
-      if (closes) { open = null; continue; }
+      const span = hidden.slice(open, at);
+      const closes = !span.includes("\n")
+        && !/\s/.test(hidden[at - 1] ?? "")
+        && !/\d/.test(hidden[at + 1] ?? "");
+      if (closes) {
+        open = null;
+        continue;
+      }
       literal.add(open);
     }
     open = /\S/.test(hidden[at + 1] ?? "") ? at : null;
     if (open === null) literal.add(at);
   }
   if (open !== null) literal.add(open);
+
   let escaped = "";
   for (let i = 0; i < hidden.length; i++) escaped += literal.has(i) ? "\\$" : hidden[i];
-  display.forEach((math, index) => {
-    escaped = escaped.split(`\u0000OMB_MATH_${index}\u0000`).join(math);
+  displayMath.forEach((math, index) => {
+    escaped = escaped.split(`\\u0000OMB_MATH_${index}\\u0000`).join(math);
   });
   return escaped;
 }
@@ -507,11 +580,12 @@ export function normalizeMathDelimiters(text: string, imageOffsets?: Map<number,
     text = text.slice(0, start) + protect(text.slice(start, end), start) + text.slice(end);
   }
   let normalized = text
-    .replace(/\\\[([\s\S]*?)\\\]/g, (_match, math: string) => `$$\n${math}\n$$`)
-    .replace(/\\\(([\s\S]*?)\\\)/g, (_match, math: string) => `$${math.trim()}$`)
-    // remark-math treats flow math as a block only when the fences occupy their own lines.
-    .replace(/\$\$[ \t]*([^\n][\s\S]*?)[ \t]*\$\$/g, (_match, math: string) => `$$\n${math}\n$$`);
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_match, math: string) => {
+      const trimmed = math.trim();
+      return `$$\n${trimmed}\n$$`;
+    });
   normalized = escapeLiteralDollars(normalized);
+  normalized = normalized.replace(/\\\(([\s\S]*?)\\\)/g, (_match, math: string) => `$${cleanInlineTeX(math)}$`);
   let shift = 0;
   // oxlint-disable-next-line no-control-regex -- restore opaque code and image sentinels
   normalized = normalized.replace(/\u0000OMB_CODE_(\d+)\u0000/g, (token, index: string, at: number) => {
@@ -767,12 +841,12 @@ const NO_THREAD_REFS: ThreadRefsValue = { threads: [] };
 
 // One plugin list for everything every message shares; a message adds mentions only when it has an "@" and thread
 // links only when it may name one, so most messages render the same way whatever the bot list holds.
-const BASE_REMARK_PLUGINS: NonNullable<MarkdownOptions["remarkPlugins"]> = [[remarkGfm, GFM_OPTIONS], remarkMath, remarkWindowsPathDestinations, remarkPlainPaths, unwrapLinkedImages, remarkSoftBreaks, remarkGithubRefs];
+const BASE_REMARK_PLUGINS: NonNullable<MarkdownOptions["remarkPlugins"]> = [[remarkGfm, GFM_OPTIONS], remarkStrictMath, remarkMathGuard, remarkWindowsPathDestinations, remarkPlainPaths, unwrapLinkedImages, remarkSoftBreaks, remarkGithubRefs];
 const NO_REHYPE_PLUGINS: NonNullable<MarkdownOptions["rehypePlugins"]> = [];
 let katexPlugins: { plugin: KatexPlugin; list: NonNullable<MarkdownOptions["rehypePlugins"]> } | null = null;
 const rehypePluginsFor = (math: KatexPlugin | null) => {
   if (!math) return NO_REHYPE_PLUGINS;
-  if (katexPlugins?.plugin !== math) katexPlugins = { plugin: math, list: [math] };
+  if (katexPlugins?.plugin !== math) katexPlugins = { plugin: math, list: [[rehypeSafeKatex, { strict: false }]] };
   return katexPlugins.list;
 };
 
