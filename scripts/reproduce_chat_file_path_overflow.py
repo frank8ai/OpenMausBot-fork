@@ -58,8 +58,8 @@ else:
         defects.append("ChatMarkdown.test.ts missing long file path bubble overflow test case")
 
 if defects:
-    print(f"[DEFECT_OBSERVED] Chat bubble/chip overflow defects detected ({len(defects)}): {'; '.join(defects)}")
+    print(f"DEFECT_OBSERVED: Chat bubble/chip overflow defects detected ({len(defects)}): {'; '.join(defects)}", file=sys.stderr, flush=True)
     sys.exit(101)
 
-print("[DEFECT_ABSENT] Chat bubble and attachment chip overflow protection verified.")
+print("DEFECT_ABSENT: Chat bubble and attachment chip overflow protection verified.", flush=True)
 sys.exit(0)

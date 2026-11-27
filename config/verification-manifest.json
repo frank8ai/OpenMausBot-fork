@@ -13,7 +13,7 @@
     {
       "id": "preflight-gate",
       "tier": "cheap",
-      "command": "python -c \"import sys; sys.exit(0)\"",
+      "command": "python3 -V",
       "required": true,
       "timeoutSec": 60
     }
