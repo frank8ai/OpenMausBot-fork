@@ -1,7 +1,8 @@
-// POST /api/threads/:id/undo, body { requestId }: authorized exactly like answering that card in that thread.
+﻿// POST /api/threads/:id/undo, body { requestId }: authorized exactly like answering that card in that thread.
 import type { ServerResponse } from "node:http";
 import type { RequestAuth } from "../request-auth.ts";
 import { PASS, type RouteHandler } from "./table.ts";
+import { getGlobalFrictionSniffer } from "../micro-loop/service/friction-sniffer.service.ts";
 
 export interface UndoRouteDeps {
   refusal(auth: RequestAuth, threadId: string, requestId: string): string | null;
@@ -19,5 +20,14 @@ export function createUndoRoutes(deps: UndoRouteDeps): RouteHandler {
     const refusal = deps.refusal(auth, threadId, requestId);
     if (refusal) return json(res, 403, { error: refusal });
     await deps.undo(auth, res, threadId, requestId);
+    try {
+      void getGlobalFrictionSniffer().sniffUndo({
+        botId: "default-bot",
+        threadId,
+        requestId,
+      });
+    } catch {
+      // Non-blocking micro-loop sniffer bypass
+    }
   };
 }

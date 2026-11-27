@@ -1,3 +1,4 @@
+import { getGlobalFrictionSniffer } from "../micro-loop/service/friction-sniffer.service.ts";
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
@@ -361,6 +362,23 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
         press?.settle("queueId" in receipt ? receipt.queueId : undefined);
         appContext?.deliver();
         if (relayed && target && onBehalfOf) relayedReaction(threadId, target.id, onBehalfOf, relayed);
+        if (!guarded && !press && !appSent && typed) {
+          try {
+            const sniffer = getGlobalFrictionSniffer();
+            if (sniffer.isExplicitCorrection(typed)) {
+              const prevMsg = target?.role === "bot" ? target.text : undefined;
+              void sniffer.sniffExplicitCorrection({
+                botId: bot.id,
+                threadId,
+                userText: typed,
+                prevAssistantMsgText: prevMsg,
+                producerModel: bot.modelSelection?.model,
+              });
+            }
+          } catch {
+            // Non-blocking micro-loop sniffer bypass
+          }
+        }
         return json(res, 202, receipt);
       } catch (error) {
         slot?.release();
@@ -577,6 +595,18 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
       const dataContext = parseDataContext(body.dataContext) ?? (text === source.text ? source.dataContext : undefined);
       const message = await startTurn(bot.id, text, { threadId: bot.threadId, editedMessageId: messageId, replyTo, sendId, trigger: usageTriggerFor(auth), dataContext,
         ...(CLOUD_HOME ? { sender: messageSender(auth) } : {}) });
+      try {
+        const sniffer = getGlobalFrictionSniffer();
+        void sniffer.sniffEditRetry({
+          botId: bot.id,
+          threadId: bot.threadId,
+          editedText: text,
+          abandonedAssistantMsgText: source.text,
+          producerModel: bot.modelSelection?.model,
+        });
+      } catch {
+        // Non-blocking micro-loop sniffer bypass
+      }
       return json(res, 202, { ok: true, message });
     }
 

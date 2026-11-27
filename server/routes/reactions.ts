@@ -1,8 +1,9 @@
-import { normalizeReaction, REACTIONS, type Reaction, type ReactionDelivery } from "../../shared/reactions.ts";
+﻿import { normalizeReaction, REACTIONS, type Reaction, type ReactionDelivery } from "../../shared/reactions.ts";
 import type { Reactor } from "../reactions.ts";
 import type { RequestAuth } from "../request-auth.ts";
 import type { Message } from "../store.ts";
 import { PASS, type RouteHandler } from "./table.ts";
+import { getGlobalFrictionSniffer } from "../micro-loop/service/friction-sniffer.service.ts";
 
 export interface ReactionRouteDeps {
   react(input: {
@@ -24,7 +25,19 @@ export function createReactionRoutes(deps: ReactionRouteDeps): RouteHandler {
     const notYours = deps.cloudGuestSendRefusal(auth, m[1]);
     if (notYours) return json(res, 403, { error: notYours });
     try {
-      return json(res, 200, await deps.react({ auth, threadId: m[1], messageId: m[2], emoji, reactor: deps.reactorFor(auth), on: body.on }));
+      const result = await deps.react({ auth, threadId: m[1], messageId: m[2], emoji, reactor: deps.reactorFor(auth), on: body.on });
+      if (emoji === "👎" && body.on !== false) {
+        try {
+          void getGlobalFrictionSniffer().sniffThumbsDown({
+            botId: "default-bot",
+            threadId: m[1],
+            targetAssistantMsgText: result.message?.text || "",
+          });
+        } catch {
+          // Non-blocking micro-loop sniffer bypass
+        }
+      }
+      return json(res, 200, result);
     } catch (error) {
       const { status, code } = error as { status?: unknown; code?: unknown };
       if (typeof status !== "number") throw error;
