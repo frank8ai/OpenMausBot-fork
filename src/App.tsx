@@ -100,6 +100,7 @@ import { useChiefStepOpen } from "@/lib/default-bot";
 import { useSessionEnded } from "@/lib/session-ended";
 import { PairPage } from "./pair/PairPage";
 import { WebPanelPage } from "@/components/WebPanelPage";
+import { SoloHubDocumentSync } from "@/components/solo-hub/SoloProjectMatrix";
 import { AppPreviewPanel } from "@/components/published-apps/AppPreviewPanel";
 import { FilePreviewPanel } from "@/components/FilePreviewPanel";
 import { refreshPublishedApps } from "@/lib/own-published-apps";
@@ -605,5 +606,5 @@ function Application() {
 export default function App() {
   const ended = useSessionEnded();
   if (ended) return <PairPage initialCode={null} reason={t("pair.sessionEnded")} />;
-  return <WorkspaceBackupRecovery><Application /></WorkspaceBackupRecovery>;
+  return <WorkspaceBackupRecovery><SoloHubDocumentSync /><Application /></WorkspaceBackupRecovery>;
 }

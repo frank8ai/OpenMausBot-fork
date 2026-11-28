@@ -79,6 +79,7 @@ import { SidebarSectionHeader } from "./SidebarSectionHeader";
 import { NeedsYouButton, OwnerPickerHost } from "./TeamOwner"; import { SidebarPeople } from "./SidebarPeople"; import { SidebarInboxRow } from "./SidebarInboxRow"; import { TeamSideSwitch, useTeamSideLists } from "./TeamSideSwitch"; import { SidebarActiveThreads } from "./SidebarActiveThreads"; import { setAttentionPinned, useAttentionPinned } from "./inbox/attention-pinned"; import { useInboxSupport } from "@/state/inbox";
 import { TeamMenuItems } from "./SidebarTeamMenu";
 import { MENU_ITEM, MENU_ITEM_SEPARATOR, MENU_SHEET } from "./menu-recipe";
+import { SoloProjectMatrix } from "./solo-hub/SoloProjectMatrix";
 import { ELEVATED_CONTROL } from "./elevated";
 export { TeamMenuItems };
 import { SidebarResizeHandle, useSidebarWidth } from "./SidebarResizeHandle";
@@ -1345,7 +1346,7 @@ export const Sidebar = memo(function Sidebar({ open, onClose, collapseToIcons = 
           {matchingBots.length === 0 && visibleGroups.length === 0 && !placed.length && q && q.length < MIN_QUERY && (
             <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">{t("sidebar.noMatch", { query })}</div>
           )}
-          {!q && <NeedsYouButton compact={rail} />}{!q && <SidebarPeople compact={rail} onOpened={phone ? onClose : undefined} />}
+          {!q && <NeedsYouButton compact={rail} />}{!q && <SidebarPeople compact={rail} onOpened={phone ? onClose : undefined} />}{!q && <SoloProjectMatrix compact={rail} onPicked={phone ? onClose : undefined} />}
           {unsectionedChief && (phone ? (
             <PhoneHero bot={unsectionedChief} selected={botRow(unsectionedChief).selected} onOpen={() => openBotRow(dispatch, unsectionedChief, showThreads, botRow(unsectionedChief).selected)} onMenu={setMenu} />
           ) : (

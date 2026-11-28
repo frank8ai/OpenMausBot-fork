@@ -24,7 +24,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false
 
       - name: Align Base Contract Source
         run: |
@@ -37,20 +36,25 @@ jobs:
           BASE_REF="${{ github.event.pull_request.base.sha }}"
           [ -z "$BASE_REF" ] && BASE_REF="HEAD~1"
 
-          TARGET_SCRIPT="scripts/reproduce_chat_file_path_overflow.py"
-          TARGET_TEST="tests/test_chat_file_path_overflow.py"
+          TARGET_SCRIPT=$(grep -oE 'scripts/[a-zA-Z0-9_-]+\.py' .aer/acceptance/default.yml | head -n 1)
+          [ -z "$TARGET_SCRIPT" ] && TARGET_SCRIPT="scripts/reproduce_solo_hub.py"
+          TARGET_TEST="tests/test_solo_hub.py"
 
           CONTRACT_BLOB=$(git hash-object -w .aer/acceptance/default.yml)
           SCRIPT_BLOB=$(git hash-object -w "$TARGET_SCRIPT")
-          MANIFEST_BLOB=$(git hash-object -w config/verification-manifest.json)
-          TEST_BLOB=$(git hash-object -w "$TARGET_TEST")
+          MANIFEST_BLOB=$(git hash-object -w config/verification-manifest.json 2>/dev/null || true)
+          TEST_BLOB=$(git hash-object -w "$TARGET_TEST" 2>/dev/null || true)
 
           TMP_INDEX=$(mktemp)
           GIT_INDEX_FILE="$TMP_INDEX" git read-tree "$BASE_REF"
           GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$CONTRACT_BLOB",".aer/acceptance/default.yml"
           GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100755,"$SCRIPT_BLOB","$TARGET_SCRIPT"
-          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$MANIFEST_BLOB","config/verification-manifest.json"
-          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$TEST_BLOB","$TARGET_TEST"
+          if [ -n "$MANIFEST_BLOB" ]; then
+            GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$MANIFEST_BLOB","config/verification-manifest.json"
+          fi
+          if [ -n "$TEST_BLOB" ]; then
+            GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$TEST_BLOB","$TARGET_TEST"
+          fi
 
           ALIGNED_TREE=$(GIT_INDEX_FILE="$TMP_INDEX" git write-tree)
           rm -f "$TMP_INDEX"
@@ -74,9 +78,9 @@ jobs:
           docker container prune -f 2>/dev/null || true
           docker volume prune -f 2>/dev/null || true
 
-          mkdir -p "$PWD/.aer_tmp"
-          chmod 1777 "$PWD/.aer_tmp"
-          echo "TMPDIR=$PWD/.aer_tmp" >> "$GITHUB_ENV"
+          mkdir -p /tmp/aer_tmp
+          chmod 1777 /tmp/aer_tmp
+          echo "TMPDIR=/tmp/aer_tmp" >> "$GITHUB_ENV"
 
           # Setup Docker interceptor wrapper for containerized runner (DooD volume mounting)
           WRAPPER_DIR="/home/runner/_work/_temp/docker-bin"
