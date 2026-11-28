@@ -416,6 +416,7 @@ export function selectAndInjectMicroLoopSkills(
     active_skills = [],
     canary_skills = [],
     max_k = 3,
+    max_tokens = 1200,
     canary_router,
   } = options;
 
@@ -439,8 +440,26 @@ export function selectAndInjectMicroLoopSkills(
     }
   }
 
-  // Enforce Top-K <= 3
-  const selected = eligible.slice(0, max_k);
+  // Enforce max_k <= 3 and max_tokens <= 1200 budget
+  const effectiveMaxK = Math.min(typeof max_k === "number" && max_k > 0 ? max_k : 3, 3);
+  const effectiveMaxTokens = Math.min(
+    typeof max_tokens === "number" && max_tokens > 0 ? max_tokens : 1200,
+    1200,
+  );
+
+  const selected: Array<{ slug: string; card: string }> = [];
+  let accumulatedTokens = 0;
+
+  for (const candidate of eligible) {
+    if (selected.length >= effectiveMaxK) break;
+    const estTokens = Math.ceil(candidate.card.length / 4);
+    if (accumulatedTokens + estTokens > effectiveMaxTokens) {
+      break;
+    }
+    selected.push(candidate);
+    accumulatedTokens += estTokens;
+  }
+
   const dynamicCards = selected.map((s) => s.card);
 
   const injection = injectTailSlotContext({

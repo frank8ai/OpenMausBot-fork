@@ -443,6 +443,37 @@ describe("Fast Brain Router", () => {
       expect(res.injected_slugs).toEqual(["skill-1", "skill-2", "skill-3"]);
       expect(res.injected_slugs).not.toContain("canary-5");
     });
+    it("selectAndInjectMicroLoopSkills automatically truncates skills exceeding max_tokens budget (<= 1200)", () => {
+      // 1 char ≈ 0.25 token. 2400 chars ≈ 600 tokens.
+      const skill1 = {
+        slug: "skill-large-1",
+        domain: "Infra" as const,
+        rendered_tail_card: "A".repeat(2400),
+      };
+      const skill2 = {
+        slug: "skill-large-2",
+        domain: "Infra" as const,
+        rendered_tail_card: "B".repeat(2400),
+      };
+      const skill3 = {
+        slug: "skill-large-3",
+        domain: "Infra" as const,
+        rendered_tail_card: "C".repeat(400),
+      };
+
+      const res = selectAndInjectMicroLoopSkills({
+        static_prefix: staticBase,
+        thread_id: "thread-budget-check",
+        active_skills: [skill1, skill2, skill3],
+        max_k: 3,
+        max_tokens: 1200,
+      });
+
+      expect(res.prefix_intact).toBe(true);
+      expect(res.injected_skills_count).toBe(2);
+      expect(res.injected_slugs).toEqual(["skill-large-1", "skill-large-2"]);
+      expect(res.injected_slugs).not.toContain("skill-large-3");
+    });
   });
 });
 

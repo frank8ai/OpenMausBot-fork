@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as os from "node:os";
 import { createHash } from "node:crypto";
@@ -105,6 +105,29 @@ describe("Friction Ledger Repo", () => {
     expect(listed.map((e) => e.event_id)).toContain(ev1.event_id);
     expect(listed.map((e) => e.event_id)).toContain(ev3.event_id);
     expect(listed.map((e) => e.event_id)).not.toContain(ev2.event_id);
+  });
+
+  it("listEventsByFingerprint filters out lines with tampered or invalid HMAC on disk", async () => {
+    const fp = "cccccccccccccccccccccccccccccccc";
+    const validEv = signFrictionEvent(createSampleEvent("event-valid", fp), secret);
+    await ledger.appendEvent(validEv);
+
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(now.getUTCDate()).padStart(2, "0");
+    const dailyPath = join(config.frictionEventsDir, `${yyyy}-${mm}-${dd}.jsonl`);
+
+    const tamperedPayload = createSampleEvent("event-tampered", fp);
+    const tamperedLine = JSON.stringify({
+      ...tamperedPayload,
+      hmac_sha256: "0".repeat(64),
+    }) + "\n";
+    writeFileSync(dailyPath, readFileSync(dailyPath, "utf8") + tamperedLine, "utf8");
+
+    const listed = await ledger.listEventsByFingerprint(fp, 7);
+    expect(listed.length).toBe(1);
+    expect(listed[0]?.event_id).toBe(validEv.event_id);
   });
 
   it("saves compiled drafts to designated directory atomically", async () => {

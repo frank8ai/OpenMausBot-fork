@@ -71,6 +71,37 @@ describe("Phase C Contracts & Ports Layer", () => {
     expect(verifyFrictionEventHmac(tampered, secret)).toBe(false);
   });
 
+  it("verifyFrictionEventHmac returns false and never throws RangeError for non-hex 64-char strings", () => {
+    const payload: FrictionEventPayload = {
+      schema_version: "3.0",
+      event_id: "a".repeat(64),
+      fingerprint_id: "b".repeat(32),
+      context_hash: "c".repeat(64),
+      correction_prompt: "do not delete dist before build",
+      failed_output: "build error: dist directory missing",
+      timestamp: new Date().toISOString(),
+      repo_slug: "openmausbot/core",
+      signal_kind: "explicit_correction",
+      bot_id: "bot-dev-01",
+      thread_id: "thread-101",
+      domain: "Infra",
+      producer_model: "gemini-3.8-flash",
+      context_tags: ["build", "dist"],
+    };
+
+    const nonHexHmac = "z".repeat(64);
+    expect(() => {
+      const res = verifyFrictionEventHmac(
+        { ...payload, hmac_sha256: nonHexHmac } as any,
+        secret,
+      );
+      expect(res).toBe(false);
+    }).not.toThrow();
+
+    expect(verifyFrictionEventHmac({ ...payload, hmac_sha256: "short" } as any, secret)).toBe(false);
+    expect(verifyFrictionEventHmac({ ...payload, hmac_sha256: "" } as any, secret)).toBe(false);
+  });
+
   it("CompiledRuleDraftSchema enforces exclusion_boundaries >= 1 and contrastive probes", () => {
     const validDraft: CompiledRuleDraft = {
       schema_version: "3.0",

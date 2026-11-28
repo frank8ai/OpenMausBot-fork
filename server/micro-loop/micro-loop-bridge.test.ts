@@ -201,6 +201,43 @@ describe("Micro-Loop Bridge Service", () => {
       expect(mockHarness.oracleJudge).not.toHaveBeenCalled();
     });
 
+    it("locally intercepts same-family reviewerModel with EXIT 30 without invoking external CLI", async () => {
+      const res = await service.runEvolutionPipeline({
+        event: sampleEvent,
+        draft: sampleDraft,
+        storeDir: os.tmpdir(),
+        vaultDir: os.tmpdir(),
+        reviewerModel: "claude-opus-4", // same family as claude-3-7-sonnet
+      });
+
+      expect(res.ok).toBe(false);
+      expect(res.stage).toBe("blindReview");
+      expect(res.exitCode).toBe(HARNESS_EXIT_CODES.BLOCKED_SAME_FAMILY);
+      expect(res.verdict).toBe("BLOCKED_SAME_FAMILY");
+      expect(mockHarness.blindReview).not.toHaveBeenCalled();
+    });
+
+    it("triggers fast-trip rollback when blindReview returns EXIT 99 (FREEZE_CHEAT_DETECTED)", async () => {
+      mockHarness.blindReview = vi.fn().mockResolvedValue({
+        exitCode: HARNESS_EXIT_CODES.FREEZE_CHEAT_DETECTED,
+        stdoutJson: null,
+        stderrSnippet: "Tampered receipt detected in blind review",
+        durationMs: 80,
+      });
+
+      const res = await service.runEvolutionPipeline({
+        event: sampleEvent,
+        draft: sampleDraft,
+        storeDir: os.tmpdir(),
+        vaultDir: os.tmpdir(),
+      });
+
+      expect(res.ok).toBe(false);
+      expect(res.stage).toBe("blindReview");
+      expect(res.exitCode).toBe(HARNESS_EXIT_CODES.FREEZE_CHEAT_DETECTED);
+      expect(mockHotReload.rollbackToPreviousManifest).toHaveBeenCalledTimes(1);
+    });
+
     it("intercepts same-family blind review attempt with EXIT 30", async () => {
       mockHarness.blindReview = vi.fn().mockResolvedValue({
         exitCode: HARNESS_EXIT_CODES.BLOCKED_SAME_FAMILY,

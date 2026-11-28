@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as os from "node:os";
 import {
@@ -73,6 +73,63 @@ describe("LKG Hot Reload Runtime", () => {
 
     const tampered = { ...manifest, snapshot_id: "snap-tampered" };
     expect(verifyManifestHmac(tampered, secret)).toBe(false);
+  });
+
+  it("verifyManifestHmac returns false and never throws RangeError for non-hex 64-char strings", () => {
+    const payload: Omit<LkgActiveManifest, "manifest_hmac_sha256"> = {
+      schema_version: "3.0",
+      manifest_version: 1,
+      snapshot_id: "snap-01",
+      updated_at_iso: new Date().toISOString(),
+      active_skills: [],
+      canary_skills: [],
+    };
+    const nonHexHmac = "z".repeat(64);
+    expect(() => {
+      const res = verifyManifestHmac(
+        { ...payload, manifest_hmac_sha256: nonHexHmac },
+        secret,
+      );
+      expect(res).toBe(false);
+    }).not.toThrow();
+
+    expect(verifyManifestHmac({ ...payload, manifest_hmac_sha256: "short" }, secret)).toBe(false);
+  });
+
+  it("rollbackToPreviousManifest consecutive calls do not backup poisoned/tampered manifest into .prev", async () => {
+    await runtime.atomicSwapManifest({
+      schema_version: "3.0",
+      manifest_version: 1,
+      snapshot_id: "snap-stable-1",
+      updated_at_iso: new Date().toISOString(),
+      active_skills: [],
+      canary_skills: [],
+    });
+
+    await runtime.atomicSwapManifest({
+      schema_version: "3.0",
+      manifest_version: 2,
+      snapshot_id: "snap-canary-2",
+      updated_at_iso: new Date().toISOString(),
+      active_skills: [],
+      canary_skills: [],
+    });
+
+    writeFileSync(config.lkgManifestPath, JSON.stringify({
+      schema_version: "3.0",
+      manifest_version: 999,
+      snapshot_id: "snap-poisoned",
+      updated_at_iso: new Date().toISOString(),
+      active_skills: [],
+      canary_skills: [],
+      manifest_hmac_sha256: "badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadb",
+    }), "utf8");
+
+    const rb1 = await runtime.rollbackToPreviousManifest("Canary poisoned");
+    expect(rb1.restoredSnapshotId).toBe("snap-stable-1");
+
+    const prevRaw = readFileSync(config.lkgPrevManifestPath, "utf8");
+    expect(prevRaw).not.toContain("snap-poisoned");
   });
 
   it("performs atomic swap of manifest and verifies on-disk update", async () => {
