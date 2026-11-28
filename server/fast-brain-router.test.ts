@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   evaluateSubagentDispatchROI,
   resolveQuotaAwareRouting,
   injectTailSlotContext,
   validateTailSlotIntegrity,
   calculatePrefixCacheHitPotential,
+  selectAndInjectMicroLoopSkills,
   SUBAGENT_COLD_START_TOKENS,
   POOL_A_DEFAULT_MODEL,
   POOL_B_DEFAULT_MODEL,
@@ -390,5 +391,58 @@ describe("Fast Brain Router", () => {
       expect(validateTailSlotIntegrity(corruptedPrompt, staticBase)).toBe(false);
       expect(validateTailSlotIntegrity("", staticBase)).toBe(false);
     });
+
+    it("selectAndInjectMicroLoopSkills injects active and canary skills into tail slot with prefix intact", () => {
+      const activeSkills = [
+        { slug: "git-rebase-guard", domain: "Infra" as const, rendered_tail_card: "### Skill: git-rebase-guard\nDo not force push to main" },
+        { slug: "public-api-guard", domain: "Shared" as const, rendered_tail_card: "### Skill: public-api-guard\nNever break exported functions" },
+      ];
+      const canarySkills = [
+        { slug: "canary-lint-guard", domain: "App" as const, rendered_tail_card: "### Skill: canary-lint-guard\nRun biome check", traffic_percent: 10 },
+      ];
+
+      const res = selectAndInjectMicroLoopSkills({
+        static_prefix: staticBase,
+        thread_id: "thread-123",
+        active_skills: activeSkills,
+        canary_skills: canarySkills,
+        canary_router: () => true,
+      });
+
+      expect(res.prefix_intact).toBe(true);
+      expect(res.injected_skills_count).toBe(3);
+      expect(res.injected_slugs).toEqual(["git-rebase-guard", "public-api-guard", "canary-lint-guard"]);
+      expect(res.full_prompt.startsWith(staticBase)).toBe(true);
+      expect(res.full_prompt).toContain("<!-- DYNAMIC_TAIL_SLOT_BEGIN -->");
+      expect(res.full_prompt).toContain("git-rebase-guard");
+      expect(res.full_prompt).toContain("canary-lint-guard");
+    });
+
+    it("selectAndInjectMicroLoopSkills strictly enforces Top-K <= 3 and respects canary router exclusion", () => {
+      const activeSkills = [
+        { slug: "skill-1", domain: "Infra" as const, rendered_tail_card: "Card 1" },
+        { slug: "skill-2", domain: "Infra" as const, rendered_tail_card: "Card 2" },
+        { slug: "skill-3", domain: "Infra" as const, rendered_tail_card: "Card 3" },
+        { slug: "skill-4", domain: "Infra" as const, rendered_tail_card: "Card 4" },
+      ];
+      const canarySkills = [
+        { slug: "canary-5", domain: "Infra" as const, rendered_tail_card: "Card 5", traffic_percent: 10 },
+      ];
+
+      const res = selectAndInjectMicroLoopSkills({
+        static_prefix: staticBase,
+        thread_id: "thread-456",
+        active_skills: activeSkills,
+        canary_skills: canarySkills,
+        max_k: 3,
+        canary_router: () => false, // excluded by canary
+      });
+
+      expect(res.prefix_intact).toBe(true);
+      expect(res.injected_skills_count).toBe(3);
+      expect(res.injected_slugs).toEqual(["skill-1", "skill-2", "skill-3"]);
+      expect(res.injected_slugs).not.toContain("canary-5");
+    });
   });
 });
+

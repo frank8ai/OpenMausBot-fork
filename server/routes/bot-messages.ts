@@ -1,3 +1,4 @@
+import { getGlobalFrictionSniffer } from "../micro-loop/service/friction-sniffer.service.ts";
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
@@ -388,6 +389,33 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
         press?.settle("queueId" in receipt ? receipt.queueId : undefined);
         appContext?.deliver();
         if (relayed && target && onBehalfOf) relayedReaction(threadId, target.id, onBehalfOf, relayed);
+        if (!guarded && !press && !appSent && typed) {
+          try {
+            const sniffer = getGlobalFrictionSniffer();
+            if (sniffer.isExplicitCorrection(typed)) {
+              let prevMsg = target?.role === "bot" ? target.text : undefined;
+              if (!prevMsg) {
+                const threadMsgs = store.messagesFor(threadId);
+                for (let i = threadMsgs.length - 1; i >= 0; i--) {
+                  const m = threadMsgs[i];
+                  if (m?.role === "bot" && typeof m.text === "string") {
+                    prevMsg = m.text;
+                    break;
+                  }
+                }
+              }
+              void sniffer.sniffExplicitCorrection({
+                botId: bot.id,
+                threadId,
+                userText: typed,
+                prevAssistantMsgText: prevMsg,
+                producerModel: bot.modelSelection?.model,
+              });
+            }
+          } catch {
+            // Non-blocking micro-loop sniffer bypass
+          }
+        }
         return json(res, 202, receipt);
       } catch (error) {
         slot?.release();
@@ -604,6 +632,29 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
       const dataContext = parseDataContext(body.dataContext) ?? (text === source.text ? source.dataContext : undefined);
       const message = await startTurn(bot.id, text, { threadId: bot.threadId, editedMessageId: messageId, replyTo, sendId, trigger: usageTriggerFor(auth), dataContext,
         ...(CLOUD_HOME ? { sender: messageSender(auth) } : {}) });
+      try {
+        const sniffer = getGlobalFrictionSniffer();
+        const sourceIndex = threadMessages.findIndex((msg) => msg.id === messageId);
+        let abandonedAssistantMsgText: string | undefined;
+        if (sourceIndex >= 0) {
+          for (let i = sourceIndex + 1; i < threadMessages.length; i++) {
+            const candidate = threadMessages[i];
+            if (candidate?.role === "bot" && typeof candidate.text === "string") {
+              abandonedAssistantMsgText = candidate.text;
+              break;
+            }
+          }
+        }
+        void sniffer.sniffEditRetry({
+          botId: bot.id,
+          threadId: bot.threadId,
+          editedText: text,
+          abandonedAssistantMsgText,
+          producerModel: bot.modelSelection?.model,
+        });
+      } catch {
+        // Non-blocking micro-loop sniffer bypass
+      }
       return json(res, 202, { ok: true, message });
     }
 

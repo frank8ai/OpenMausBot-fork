@@ -375,3 +375,87 @@ export function calculatePrefixCacheHitPotential(prefixBytes: number, dynamicTai
   if (total <= 0) return 0;
   return Number((prefixBytes / total).toFixed(4));
 }
+
+export interface MicroLoopSkillCandidate {
+  slug: string;
+  domain: "Infra" | "Fulfill" | "App" | "Shared";
+  rendered_tail_card?: string;
+  content?: string;
+  traffic_percent?: number;
+}
+
+export interface SelectAndInjectMicroLoopSkillsOptions {
+  static_prefix: string;
+  thread_id: string;
+  active_skills?: MicroLoopSkillCandidate[];
+  canary_skills?: MicroLoopSkillCandidate[];
+  max_k?: number;
+  max_tokens?: number;
+  canary_router?: (threadId: string, slug: string, trafficPercent?: number) => boolean;
+}
+
+export interface MicroLoopTailInjectionResult {
+  full_prompt: string;
+  injected_skills_count: number;
+  injected_slugs: string[];
+  prefix_intact: boolean;
+  prefix_bytes: number;
+  tail_bytes: number;
+}
+
+/**
+ * Selects eligible active & canary micro-loop skills and injects them strictly into the tail slot.
+ * Ensures KV-cache prefix invariance (prefix_intact === true).
+ */
+export function selectAndInjectMicroLoopSkills(
+  options: SelectAndInjectMicroLoopSkillsOptions,
+): MicroLoopTailInjectionResult {
+  const {
+    static_prefix,
+    thread_id,
+    active_skills = [],
+    canary_skills = [],
+    max_k = 3,
+    canary_router,
+  } = options;
+
+  const eligible: Array<{ slug: string; card: string }> = [];
+
+  for (const skill of active_skills) {
+    const card = skill.rendered_tail_card || skill.content;
+    if (card) {
+      eligible.push({ slug: skill.slug, card });
+    }
+  }
+
+  for (const canary of canary_skills) {
+    const card = canary.rendered_tail_card || canary.content;
+    if (!card) continue;
+    const isEnrolled = canary_router
+      ? canary_router(thread_id, canary.slug, canary.traffic_percent)
+      : true;
+    if (isEnrolled) {
+      eligible.push({ slug: canary.slug, card });
+    }
+  }
+
+  // Enforce Top-K <= 3
+  const selected = eligible.slice(0, max_k);
+  const dynamicCards = selected.map((s) => s.card);
+
+  const injection = injectTailSlotContext({
+    static_prefix,
+    dynamic_skills: dynamicCards,
+  });
+
+  const prefixIntact = validateTailSlotIntegrity(injection.full_prompt, static_prefix);
+
+  return {
+    full_prompt: injection.full_prompt,
+    injected_skills_count: selected.length,
+    injected_slugs: selected.map((s) => s.slug),
+    prefix_intact: prefixIntact,
+    prefix_bytes: injection.prefix_bytes,
+    tail_bytes: injection.tail_bytes,
+  };
+}
