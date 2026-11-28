@@ -16,11 +16,13 @@ import { closeMessageDb,
   latestMessageAts,
   latestPersonLineAts,
   optionCardsForTools,
+  openCardRows,
   logNotification,
   openRescueMessages,
   LATEST_SAID_BY_BOT_SQL,
   latestSaidByBot,
   markNotificationLogRead,
+  prepared,
   readMessageText,
   recentMessages,
   recentNotificationLog,
@@ -31,6 +33,8 @@ import { closeMessageDb,
   recallMessages,
   searchMessages,
   setActiveLeaf,
+  attachmentNameIndex,
+  threadsReferencing,
   updateMessage, describeMissingFts5 } from "./message-db.ts";
 import type { NotificationLogEntry } from "../shared/notification.ts";
 import { withPeerProvenance } from "./peer-provenance.ts";
@@ -46,6 +50,14 @@ const msg = (id: string, text: string, extra: Partial<Message> = {}): Message =>
   text,
   at: Date.now(),
   ...extra,
+});
+const UPLOAD_A = "3f2b1c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d.png";
+const UPLOAD_B = "9e8d7c6b-5a49-4f3e-ab1a-0c9d8e7f6a5b.jpg";
+const storedUpload = (name: string): NonNullable<Message["attachments"]>[number] => ({
+  kind: "file",
+  path: join(DATA_DIR, "attachments", name),
+  mime: "application/pdf",
+  name: "notes.pdf",
 });
 
 describe("message-db", () => {
@@ -186,6 +198,50 @@ describe("message-db", () => {
     expect(counts.map((row) => ({ ...row }))).toEqual([{ thread_id: "r1", n: 1 }, { thread_id: "r2", n: 1 }]);
   });
 
+  it("threadsReferencing answers a stored upload's name from the index: a patch-added name is found and a patch-removed one is not", () => {
+    insertMessage("t1", msg("m1", "hello", { attachments: [storedUpload(UPLOAD_B)] }));
+    expect(threadsReferencing(UPLOAD_A)).toEqual([]); // the first query builds the index from the rows
+    insertMessage("t1", msg("m2", "", { attachments: [storedUpload(UPLOAD_A)] }));
+    expect(threadsReferencing(UPLOAD_A)).toEqual(["t1"]);
+    // host/turn-attachments.ts patches attachments onto an existing reply, and the upsert keeps the row's old rowid:
+    updateMessage("t1", msg("m2", ""));
+    expect(threadsReferencing(UPLOAD_A)).toEqual([]);
+    expect(threadsReferencing(UPLOAD_B)).toEqual(["t1"]);
+  });
+
+  it("threadsReferencing stops finding a name once a thread that named it is deleted", () => {
+    insertMessage("t1", msg("m1", "", { attachments: [storedUpload(UPLOAD_A)] }));
+    insertMessage("t2", msg("m1", "", { attachments: [storedUpload(UPLOAD_A)] }));
+    expect(threadsReferencing(UPLOAD_A).sort()).toEqual(["t1", "t2"]);
+    deleteThread("t2");
+    expect(threadsReferencing(UPLOAD_A)).toEqual(["t1"]);
+  });
+
+  it("threadsReferencing rebuilds the attachment-name index when messages.db reopens, so it stays exact", () => {
+    insertMessage("t1", msg("m1", "", { attachments: [storedUpload(UPLOAD_A)] }));
+    expect(threadsReferencing(UPLOAD_A)).toEqual(["t1"]);
+    closeMessageDb();
+    insertMessage("t2", msg("m1", "", { attachments: [storedUpload(UPLOAD_A)] })); // the reopen resets the index; the write hook is quiet until the next build
+    expect(threadsReferencing(UPLOAD_A).sort()).toEqual(["t1", "t2"]);
+    expect(threadsReferencing(UPLOAD_B)).toEqual([]);
+  });
+
+  it("threadsReferencing reads the rows for a name no stored upload can have", () => {
+    insertMessage("t1", msg("m1", "saved it as my notes.txt in the folder"));
+    expect(threadsReferencing("my notes.txt")).toEqual(["t1"]);
+    expect(threadsReferencing("no-such-thing.txt")).toEqual([]);
+  });
+
+  it("builds the attachment-name index once, not per query or per write", () => {
+    const before = attachmentNameIndex.builds;
+    insertMessage("t1", msg("m1", "", { attachments: [storedUpload(UPLOAD_A)] }));
+    threadsReferencing(UPLOAD_A);
+    threadsReferencing(UPLOAD_A);
+    updateMessage("t1", msg("m1", "edited", { attachments: [storedUpload(UPLOAD_A)] }));
+    expect(threadsReferencing(UPLOAD_A)).toEqual(["t1"]);
+    expect(attachmentNameIndex.builds).toBe(before + 1);
+  });
+
   it("recall ranks by relevance, scopes to the given threads, and survives updates and deletes", () => {
     insertMessage("own-a", msg("m1", "The site audit found three broken links on the pricing page", { role: "bot" }));
     insertMessage("own-a", msg("m2", "audit", { role: "user" }));
@@ -267,6 +323,7 @@ describe("message-db", () => {
     const now = Date.UTC(2026, 8, 16, 12);
     const hour = 3_600_000;
     insertMessage("dm", msg("d1", "I started the invoice run", { role: "bot", at: now - 3 * hour }));
+    insertMessage("dm", msg("d0", "A reply with the same timestamp", { role: "bot", at: now - hour }));
     insertMessage("dm", msg("d2", "Sent the three flagged invoices.\n\nAnything else?", { role: "bot", at: now - hour }));
     insertMessage("dm", msg("d3", "thanks", { role: "user", at: now - hour + 1 }));
     insertMessage("room", msg("r1", "I can take the deploy", { role: "bot", at: now - 2 * hour, from: { botId: "me", name: "Me", color: "#000" } }));
@@ -471,14 +528,14 @@ describe("latestPersonLineAts", () => {
   });
 });
 
-describe("messages_thread_at", () => {
+describe("thread time indexes", () => {
   beforeEach(() => {
     closeMessageDb();
     rmSync(DATA_DIR, { recursive: true, force: true });
     mkdirSync(DATA_DIR, { recursive: true });
   });
 
-  it("plans a thread's latest rows on messages_thread_at", () => {
+  it("adds the bot text index on reopen and uses it only for recent replies", () => {
     for (let thread = 0; thread < 4; thread += 1) {
       for (let n = 0; n < 50; n += 1) {
         insertMessage(`thread-${thread}`, msg(`m-${thread}-${n}`, "hello from the bot", { role: "bot", at: n }));
@@ -486,19 +543,23 @@ describe("messages_thread_at", () => {
     }
     closeMessageDb();
     const raw = new DatabaseSync(join(DATA_DIR, "messages.db"));
-    const planOf = (sql: string) => raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all()
-      .map((row) => String((row as { detail: string }).detail))
-      .join("\n");
     try {
-      const said = planOf(LATEST_SAID_BY_BOT_SQL.replace("json_each(?)", "json_each('[\"thread-0\"]')"));
-      const ats = planOf("SELECT value AS thread_id, (SELECT MAX(at) FROM messages  WHERE thread_id = value ) AS at FROM json_each(?)");
-      expect(said).toContain("SEARCH m2 USING INDEX messages_thread_at");
-      expect(said).toContain("SEARCH m USING INDEX sqlite_autoindex_messages_1");
-      expect(said.split("\n")).not.toContain("SCAN m");
-      expect(ats).toContain("messages_thread_at");
+      raw.exec("DROP INDEX IF EXISTS messages_thread_bot_text");
     } finally {
       raw.close();
     }
+
+    expect(latestSaidByBot(["thread-0"], "bot", 0).map((row) => row.messageId)).toEqual(["m-0-49"]);
+    const planOf = (sql: string, ...params: (string | number)[]) => prepared(`EXPLAIN QUERY PLAN ${sql}`).all(...params)
+      .map((row) => String((row as { detail: string }).detail))
+      .join("\n");
+    const threads = JSON.stringify(["thread-0"]);
+    const said = planOf(LATEST_SAID_BY_BOT_SQL, 0, "bot", threads, 10);
+    const ats = planOf("SELECT value AS thread_id, (SELECT MAX(at) FROM messages WHERE thread_id = value) AS at FROM json_each(?)", threads);
+    expect(said).toContain("SEARCH m2 USING INDEX messages_thread_bot_text");
+    expect(said).toContain("SEARCH m USING INDEX sqlite_autoindex_messages_1");
+    expect(said.split("\n")).not.toContain("SCAN m");
+    expect(ats).toContain("messages_thread_at");
   });
 });
 
@@ -531,6 +592,13 @@ describe("start-up reads on their indexes", () => {
     expect(optionCardsForTools(["your_computer"])).toEqual([{ threadId: "b", messageId: "second" }, { threadId: "a", messageId: "first" }]);
     expect(optionCardsForTools(["your_computer", "ask_peer"]).map((row) => row.messageId)).toEqual(["second", "first", "other"]);
     expect(optionCardsForTools([])).toEqual([]);
+  });
+
+  it("says which open card is an automation's copy of another one", () => {
+    const card = { title: "Allow?", subtitle: "", options: ["Approve", "Deny"], requestType: "question", requestId: "q" } as Message["card"];
+    insertMessage("run", { ...msg("asked", "", { at: 10, role: "bot" }), kind: "options", card });
+    insertMessage("results", { ...msg("copy", "", { at: 20, role: "bot" }), kind: "options", card, automation: { routineId: "r", runId: "run-1", needsYou: true, copyOf: "asked" } } as Message);
+    expect(openCardRows().map((row) => [row.threadId, row.id, row.copyOf])).toEqual([["run", "asked", null], ["results", "copy", "asked"]]);
   });
 });
 

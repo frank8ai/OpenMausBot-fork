@@ -1,4 +1,5 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { crc32 } from "node:zlib";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -112,8 +113,17 @@ async function expectSkipped(f: ReturnType<typeof fixture>, reason: RegExp) {
   } finally { warn.mockRestore(); }
 }
 
+/** POSIX: signal 0 still reaches a zombie until whatever adopted it collects it, though it no longer runs. */
 function alive(pid: number): boolean {
-  try { process.kill(pid, 0); return true; } catch { return false; }
+  try { process.kill(pid, 0); } catch { return false; }
+  if (process.platform === "linux") {
+    try { const stat = readFileSync(`/proc/${pid}/stat`, "utf8"); return !["Z", "X"].includes(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0]!); } catch { return false; }
+  }
+  if (process.platform === "darwin") {
+    const state = spawnSync("ps", ["-o", "stat=", "-p", String(pid)], { encoding: "utf8" }).stdout.trim();
+    return state !== "" && !state.startsWith("Z");
+  }
+  return true;
 }
 
 afterEach(async () => {
@@ -191,7 +201,8 @@ describe("Chat MCP session", () => {
     const session = await f.mount();
     expect(session.definitions).toEqual([{ type: "function", function: { name: "audit_write", description: "Fixture write", parameters: schema } }]);
     expect(f.read().calls.map((call) => call.method)).not.toContain("tools/call");
-    expect(() => session.validate("audit_write", { value: 42 })).toThrow("input schema");
+    expect(() => session.validate("audit_write", { value: 42 })).toThrow(`Tool arguments do not match the advertised input schema: audit_write: value: must be string.`);
+    expect(() => session.validate("audit_write", 7)).toThrow(`Tool arguments do not match the advertised input schema: audit_write: arguments must be an object.`);
     await expect(session.execute("not_registered", {}, f.controller.signal)).rejects.toThrow("not advertised");
     expect(f.read().calls.map((call) => call.method)).not.toContain("tools/call");
     await expect(session.execute("audit_write", { value: "receipt" }, f.controller.signal)).resolves.toEqual({ text: "recorded:receipt", ok: true });
@@ -679,7 +690,7 @@ describe("Chat MCP session", () => {
       const f = bigFixture();
       const folder = workFolder();
       const elsewhere = workFolder();
-      symlinkSync(elsewhere, join(folder, SAVED_RESULTS_FOLDER));
+      symlinkSync(elsewhere, join(folder, SAVED_RESULTS_FOLDER), process.platform === "win32" ? "junction" : undefined);
       const result = await (await f.mount(false, false, undefined, folder)).execute("audit_write", { value: "test" }, f.controller.signal);
       expect(readdirSync(elsewhere)).toEqual([]);
       expect(result.text).toContain("[MCP result truncated at 50KB; request less output.]");
@@ -853,8 +864,8 @@ describe("Chat MCP approvals by server", () => {
     sessions.push(session);
     expect(session.definitions.map((tool) => tool.function.name).sort()).toEqual(["agents_write", "audit_write", "computer_write"]);
     expect(session.view("agents_write", { value: "x" })).toEqual({ title: "agents_write", input: { value: "x" }, ask: false });
-    expect(session.view("audit_write", { value: "x" })).toEqual({ title: "audit_write", input: { value: "x" }, ask: true, grant: grantFor("audit", "write") });
-    expect(session.view("computer_write", { value: "x" })).toEqual({ title: "computer_write", input: { value: "x" }, ask: true });
+    expect(session.view("audit_write", { value: "x" })).toEqual({ title: "audit_write", permissionTool: "mcp__audit__write", input: { value: "x" }, ask: true, grant: grantFor("audit", "write") });
+    expect(session.view("computer_write", { value: "x" })).toEqual({ title: "computer_write", permissionTool: "mcp__computer__write", input: { value: "x" }, ask: true });
   });
 
   it("ties an allow to the server as launched: the same server keeps it, a changed one under the same name does not", async () => {
@@ -901,7 +912,7 @@ describe("Chat MCP tool directory", () => {
       expect(JSON.parse(search.text).matches[0].name).toBe("payments_list");
       expect(session.view("whop_search_tools", { query: "list payments" })).toEqual({ title: "whop_search_tools", input: { query: "list payments" }, ask: false });
       const args = { name: "payments_list", arguments: { company_id: "biz_1" } };
-      expect(session.view("whop_call_tool", args)).toEqual({ title: "whop_payments_list", input: { company_id: "biz_1" }, ask: true, grant: grantFor("whop", "payments_list") });
+      expect(session.view("whop_call_tool", args)).toEqual({ title: "whop_payments_list", permissionTool: "mcp__whop__payments_list", input: { company_id: "biz_1" }, ask: true, grant: grantFor("whop", "payments_list") });
       await expect(session.execute("whop_call_tool", args, controller.signal)).resolves.toMatchObject({ ok: true, text: "remote execution recorded" });
       expect(remote.calls).toEqual([{ name: "payments_list", arguments: { company_id: "biz_1" } }]);
       const nameless = await session.execute("whop_call_tool", { arguments: {} }, controller.signal);
@@ -938,7 +949,7 @@ describe("Chat MCP tool directory", () => {
       const session = await mountChatTools({ custom: { whop: { type: "http", url: remote.url, headers: {} } } }, controller.signal);
       sessions.push(session);
       expect(session.definitions.map((tool) => tool.function.name)).toEqual(whopLikeCatalog(5).map((tool) => `whop_${tool.name.replace("-", "_")}`));
-      expect(session.view("whop_payments_list", { company_id: "biz_1" })).toEqual({ title: "whop_payments_list", input: { company_id: "biz_1" }, ask: true, grant: grantFor("whop", "payments_list") });
+      expect(session.view("whop_payments_list", { company_id: "biz_1" })).toEqual({ title: "whop_payments_list", permissionTool: "mcp__whop__payments_list", input: { company_id: "biz_1" }, ask: true, grant: grantFor("whop", "payments_list") });
     } finally { await remote.close(); }
   });
 });
@@ -1076,7 +1087,7 @@ describe("Chat MCP servers past the tool limit", () => {
     await expect(session.execute("mcp_describe_tool", { name: "audit_write" }, signal)).resolves.toMatchObject({ ok: true, text: expect.stringContaining('"required":["value"]') });
 
     const call = { name: "audit_write", arguments: { value: "through search" } };
-    expect(session.view("mcp_call_tool", call)).toEqual({ title: "audit_write", input: { value: "through search" }, ask: true, grant: grantFor("audit", "write") });
+    expect(session.view("mcp_call_tool", call)).toEqual({ title: "audit_write", permissionTool: "mcp__audit__write", input: { value: "through search" }, ask: true, grant: grantFor("audit", "write") });
     const misfit = { name: "audit_write", arguments: { value: 7 } };
     expect(session.view("mcp_call_tool", misfit).ask).toBe(false);
     const refused = await session.execute("mcp_call_tool", misfit, signal);
@@ -1657,5 +1668,29 @@ describe("Chat MCP servers starting in the background", () => {
       expect(names(session)).toContain("slow_write");
       expect(await session.join()).toBeUndefined();
     }
+  });
+
+  it("preserves tool definitions order and ensures joinLateChatTools preserves prefix order", async () => {
+    const multi = fixture(`if (message.method === "tools/list") {
+      reply(message, { tools: [
+        { name: "zebra", description: "Z", inputSchema: schema },
+        { name: "apple", description: "A", inputSchema: schema },
+        { name: "mango", description: "M", inputSchema: schema },
+      ] });
+      continue;
+    }`);
+    const session = await mountChatTools({ custom: { zoo: multi.server } }, multi.controller.signal);
+    sessions.push(session);
+    expect(names(session)).toEqual(["zoo_zebra", "zoo_apple", "zoo_mango"]);
+
+    const ask: ChatToolDefinition = {
+      type: "function",
+      function: { name: "ask_user", description: "ask", parameters: { type: "object" } },
+    };
+    session.definitions.push(ask);
+    expect(names(session)).toEqual(["zoo_zebra", "zoo_apple", "zoo_mango", "ask_user"]);
+    await joinLateChatTools(session, [ask]);
+    expect(names(session).slice(0, 3)).toEqual(["zoo_zebra", "zoo_apple", "zoo_mango"]);
+    expect(names(session).at(-1)).toBe("ask_user");
   });
 });

@@ -8,7 +8,7 @@ import { delimiter, dirname, join, resolve } from "node:path";
 import { writeFileAtomic } from "./atomic.ts";
 import { DATA_DIR } from "./config.ts";
 import { browserBundlePaths } from "./browser-bundle-release.ts";
-import { browserProcessesRunning, browserProcessTree, releaseBrowserProfile, stopBrowserProcesses } from "./browser-processes.ts";
+import { browserProcessesRunning, browserProcessTree, browserProfileProcessTrees, releaseBrowserProfile, stopBrowserProcesses } from "./browser-processes.ts";
 import { BROWSER_VIEWPORT, viewportArgs, type PageSize } from "./browser-page-size.ts";
 import { browserRuntimeEnv, ownsBrowserViewport } from "./browser-runtime.ts";
 import { spawnBotWork } from "./oom-score.ts";
@@ -31,6 +31,34 @@ const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
 export function browserRestoreKey(session: string): string {
   if (!/^[A-Za-z0-9_.-]{1,96}$/.test(session)) throw new Error("Invalid browser session.");
   return `omb-${createHash("sha256").update(session).digest("hex")}`;
+}
+
+/** The session's saved sign-ins as they were when a session in the Cloud's browser sandbox opened (browser-sites.ts
+ * backupSignIns): one file per such session, named by its time in ms (its id), encrypted like the restore file and named
+ * apart from it, so agent-browser never restores it. They go wherever the sign-ins are cleared. */
+export function signInsBackupFile(session: string, id: string): string {
+  if (!/^[A-Za-z0-9_.-]{1,96}$/.test(session) || !/^\d{13}$/.test(id)) throw new Error("Invalid browser session.");
+  return `home-backup-${session}-${id}.json.enc`;
+}
+
+/** The id of one of this session's backups from its file name, or null for any other file (another session's included). */
+export function signInsBackupId(session: string, name: string): string | null {
+  const prefix = `home-backup-${session}-`;
+  if (!name.startsWith(prefix) || !name.endsWith(".json.enc")) return null;
+  const id = name.slice(prefix.length, -".json.enc".length);
+  return /^\d{13}$/.test(id) ? id : null;
+}
+
+/** Every backup of the session's sign-ins, removed. */
+export function removeSignInsBackups(directory: string, session: string): void {
+  let names: string[] = [];
+  try { names = readdirSync(directory); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  for (const name of names) {
+    if (signInsBackupId(session, name) === null) continue;
+    try { unlinkSync(join(directory, name)); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  }
 }
 
 const PROFILES_DIR = "agent-browser-profiles";
@@ -131,7 +159,16 @@ export function closeBrowserSession(binaryPath: string, env: NodeJS.ProcessEnv, 
   const session = env.AGENT_BROWSER_SESSION;
   if (!session || !/^[A-Za-z0-9_.-]{1,96}$/.test(session)) return Promise.resolve(false);
   const key = browserDaemonFile(env, ".pid");
-  const attempt = (closingBrowsers.get(key) ?? Promise.resolve(true)).then(() => closeOnce(binaryPath, env, session, timeoutMs)).catch(() => false).finally(() => {
+  const attempt = (closingBrowsers.get(key) ?? Promise.resolve(true)).then(async () => {
+    const trees = await browserProfileProcessTrees(env.AGENT_BROWSER_PROFILE, binaryPath, session);
+    if (trees === null) return false;
+    const closed = await closeOnce(binaryPath, env, session, timeoutMs);
+    let stopped = true;
+    for (const tree of trees) {
+      if (await browserProcessesRunning(tree) && !await stopBrowserProcesses(tree)) stopped = false;
+    }
+    return closed && stopped;
+  }).catch(() => false).finally(() => {
     if (closingBrowsers.get(key) === attempt) closingBrowsers.delete(key);
   });
   closingBrowsers.set(key, attempt);
@@ -553,6 +590,7 @@ export function browserEngineStatus(options: BrowserLookupOptions = {}): Browser
 }
 
 const PROFILE_CACHE_ARG = `--disk-cache-size=${64 * 1024 * 1024}`;
+export const NO_BACK_FORWARD_CACHE = "--disable-back-forward-cache";
 
 /** agent-browser 0.37 relaunches a running Chrome without a word when a command's launch settings differ, so every
  * command for a session must carry these same ones. Chrome fails every connection through port 0. */
@@ -626,7 +664,8 @@ export function agentBrowserIntegration(input: {
   }
   // The gate goes last, so nothing the launcher sets can route Chrome around it; launcher arguments are kept beside its own.
   if (!input.attach) {
-    const launch = { ...env, ...input.launcher };
+    // Chrome keeps up to six pages a tab left alive for Back, each cross-site one in a renderer process of its own.
+    const launch = { ...env, ...input.launcher, AGENT_BROWSER_ARGS: [input.launcher?.AGENT_BROWSER_ARGS, NO_BACK_FORWARD_CACHE].filter(Boolean).join("\n") };
     // A kept profile's disk cache would otherwise grow to Chrome's default of several hundred megabytes per profile.
     if (env.AGENT_BROWSER_PROFILE) launch.AGENT_BROWSER_ARGS = [launch.AGENT_BROWSER_ARGS, PROFILE_CACHE_ARG].filter(Boolean).join("\n");
     // agent-browser 0.37 adds this itself only where it recognises Docker, and a container platform leaves no such mark.
@@ -718,6 +757,7 @@ export async function clearBrowserSessionState(
   };
   try {
     for (const base of bases) for (const suffix of [".json", ".json.enc", ".json.previous", ".json.enc.previous"]) remove(join(directory, base + suffix));
+    removeSignInsBackups(directory, session);
     const pendingDirectory = join(directory, ".tmp");
     let pendingFiles: string[] = [];
     try { pendingFiles = readdirSync(pendingDirectory); }

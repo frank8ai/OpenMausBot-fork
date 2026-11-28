@@ -40,7 +40,7 @@ export type LogSignal =
   | { kind: "retry"; status: number | null; delayMs: number | null; attempt: number | null }
   | { kind: "compressing" }
   | { kind: "context"; tokens: number; threshold: number }
-  | { kind: "provider-error"; message: string };
+  | { kind: "provider-error"; message: string; model?: string };
 
 export type QuietState =
   | { kind: "retrying"; status: number | null; delayMs: number | null; attempt: number | null }
@@ -85,13 +85,18 @@ export function parseQwenLogLine(line: string): LogSignal | null {
 }
 
 /** OpenCode 1.18's shared log, one logfmt row per failed model call of any session or process, like
- *  `level=ERROR … message="stream error" … session.id=ses_… small=false … error.error="AI_APICallError: Rate limit exceeded."`.
- *  `small=true` is the session's title request, not the turn. */
+ *  `level=ERROR … message="stream error" … providerID=opencode-go modelID=kimi-k3 session.id=ses_… small=false … error.error="AI_APICallError: Rate limit exceeded."`.
+ *  `small=true` is the session's title request, not the turn. `model` names the provider and model that failed, which
+ *  the refusal text itself may not. */
 export function parseOpenCodeLogLine(line: string, sessionId: string): LogSignal | null {
   const fields = line.split(" ");
   if (!fields.includes("level=ERROR") || !fields.includes(`session.id=${sessionId}`) || fields.includes("small=true")) return null;
   const error = /\berror\.error="((?:[^"\\]|\\.)*)"/.exec(line)?.[1];
-  return error ? { kind: "provider-error", message: redactSecretsInText(error.replace(/^AI_APICallError:\s*/, "")).slice(0, 200) } : null;
+  if (!error) return null;
+  const provider = /\bproviderID=(\S+)/.exec(line)?.[1];
+  const modelId = /\bmodelID=(\S+)/.exec(line)?.[1];
+  const model = provider && modelId ? `${provider}/${modelId}` : undefined;
+  return { kind: "provider-error", message: redactSecretsInText(error.replace(/^AI_APICallError:\s*/, "")).slice(0, 200), ...(model ? { model } : {}) };
 }
 
 export class LogTail {
@@ -348,7 +353,8 @@ export function quietVerdict(input: {
   const limited = input.logged && waitingOutLimit(input.logged.signal) && input.now - input.logged.at >= limitQuietMs() ? input.logged.signal : null;
   if (limited) {
     const said = limited.kind === "provider-error" ? ` (“${limited.message}”)` : "";
-    return { next, noSignsSince, stop: Object.assign(new RuntimeNoticeError(`${input.name} reached a usage limit${said} and is waiting it out without replying, so this turn was stopped.`, "chat.notice.acpQuietUsageLimit", { name: input.name, said }), { acpUsageLimit: true }) };
+    return { next, noSignsSince, stop: Object.assign(new RuntimeNoticeError(`${input.name} reached a usage limit${said} and is waiting it out without replying, so this turn was stopped.`, "chat.notice.acpQuietUsageLimit", { name: input.name, said }),
+      { acpUsageLimit: true, ...(limited.kind === "provider-error" && limited.model ? { acpUsageLimitModel: limited.model } : {}) }) };
   }
   if (noSignsSince !== null && input.now - noSignsSince >= noSignsStopMs()) {
     return { next, noSignsSince, stop: Object.assign(new RuntimeNoticeError(`${input.name} sent nothing for ${formatQuietLimit(input.quietMs)} with no tool running, no open request to its model and no CPU use, so the turn was stopped as stuck. Send the message again to retry.`, "chat.notice.acpQuietStuck", { name: input.name, quiet: formatQuietLimit(input.quietMs) }), { acpPromptStall: true }) };
@@ -389,6 +395,7 @@ const minutes = (ms: number): string => {
   return `${Math.round(ms / 60_000)} min`;
 };
 
+/** One sentence for the notice row: what a quiet turn is doing, and what ends it. */
 export function describeQuiet(name: string, state: QuietState, quietMs: number, stopAfterMs: number): string {
   const quiet = minutes(quietMs);
   switch (state.kind) {
@@ -405,10 +412,13 @@ export function describeQuiet(name: string, state: QuietState, quietMs: number, 
       return `${name}'s model request failed: "${state.message}" ${name} may retry or stop; no reply for ${quiet} so far.`;
     case "compressing":
       return `${name} is compressing its conversation history to make room. This can take a few minutes; it is still working.`;
-    case "waiting-model":
-      return state.nearFullContext
-        ? `${name} is waiting on its model: no reply for ${quiet}, but its request is still open. Its history is nearly full, so it may be compressing it.`
-        : `${name} is waiting on its model: no reply for ${quiet}, but its request is still open. Slow models and rate limits look like this.`;
+    case "waiting-model": {
+      if (state.nearFullContext) {
+        return `${name} is waiting on its model: no reply for ${quiet}, but its request is still open. Its history is nearly full, so it may be compressing it.`;
+      }
+      const ownStop = stopAfterMs > 0 ? `; with no tool or question active, the turn may stop after ${formatQuietLimit(stopAfterMs)} of silence` : "";
+      return `${name} is waiting on its model: no reply for ${quiet}, but its request is still open. Its model provider may be slow or busy${ownStop}.`;
+    }
     case "busy":
       return `${name} is busy on this computer but has sent nothing for ${quiet}.`;
     case "between-requests":

@@ -46,6 +46,8 @@ function roleMenus(t, isMac) {
       { type: "separator" },
       role(t, "resetZoom", "native.role.actualSize"),
       role(t, "zoomIn", "native.role.zoomIn"),
+      // Electron's Zoom In key is Ctrl+Plus (Ctrl+Shift+=), so the unshifted =/+ key needs its own hidden item off macOS.
+      ...(isMac ? [] : [{ ...role(t, "zoomIn", "native.role.zoomIn"), accelerator: "CommandOrControl+=", visible: false }]),
       role(t, "zoomOut", "native.role.zoomOut"),
       { type: "separator" },
       role(t, "togglefullscreen", "native.role.toggleFullScreen"),
@@ -111,7 +113,7 @@ export function buildApplicationMenu({ environments, activeId, onSwitch, onAddFr
       ...(onAddCloud ? [{ id: "add-cloud", label: t("native.menu.addCloud"), click: () => onAddCloud() }] : []),
       { type: "separator" },
       { id: "organization-sign-in", label: t("native.menu.orgSignIn"), click: onOrganizationSignIn },
-      { label: t("native.menu.connect"), click: onConnect },
+      { label: t("native.menu.connectOther"), click: onConnect },
       { label: t("native.menu.addFromLink"), click: () => onAddFromClipboard() },
       {
         label: active ? t("native.menu.forgetNamed", { name: active.name }) : t("native.menu.forgetServer"),
@@ -122,11 +124,14 @@ export function buildApplicationMenu({ environments, activeId, onSwitch, onAddFr
   };
   const atLogin = openAtLogin ? [{ id: "open-at-login", label: t("native.menu.openAtLogin"), type: "checkbox", checked: openAtLogin.checked, click: () => openAtLogin.onToggle(!openAtLogin.checked) }] : [];
   const roles = roleMenus(t, isMac);
+  const settings = { label: t("native.menu.settings"), accelerator: "CmdOrCtrl+,", click: () => onOpenSettings() };
+  const file = !isMac && openAtLogin ? { ...roles.file, submenu: [...atLogin, { type: "separator" }, role(t, "quit", "native.role.quit")] } : roles.file;
+  if (!isMac) file.submenu.push({ ...settings, visible: false });
   const appMenu = {
     label: app.name,
     submenu: [
       role(t, "about", "native.role.about", { app: app.name }),
-      { label: t("native.menu.settings"), accelerator: "CmdOrCtrl+,", click: () => onOpenSettings() },
+      settings,
       ...atLogin,
       { type: "separator" },
       role(t, "hide", "native.role.hide", { app: app.name }),
@@ -138,7 +143,7 @@ export function buildApplicationMenu({ environments, activeId, onSwitch, onAddFr
   };
   const template = [
     ...(isMac ? [appMenu] : []),
-    !isMac && openAtLogin ? { ...roles.file, submenu: [...atLogin, { type: "separator" }, role(t, "quit", "native.role.quit")] } : roles.file,
+    file,
     roles.edit,
     ...(home && !others.length ? [] : [server]),
     roles.view,

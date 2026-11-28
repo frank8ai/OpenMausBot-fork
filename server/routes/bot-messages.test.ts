@@ -18,6 +18,8 @@ import type { RequestAuth } from "../request-auth.ts";
 import { acceptedSendMatch, sendFingerprint, SendSequencer } from "../send-idempotency.ts";
 import { _queuedCount, drainSteeredMessages, queuedSteeredMessage, queueSteeredMessage } from "../steer-queue.ts";
 import { Store, type Message } from "../store.ts";
+import { sendingSession } from "../sending-sessions.ts";
+import { ownWindowLine } from "../own-window-sends.ts";
 import { typedWords } from "../typed-sends.ts";
 import { USER_ERROR } from "../user-errors.ts";
 import { createBotMessageRoutes, type BotMessageRouteDeps } from "./bot-messages.ts";
@@ -57,8 +59,8 @@ async function fixture(over: Partial<Record<keyof BotMessageRouteDeps, unknown>>
     started: Array<{ text: string; opts: StartOpts }>;
     relayed: Array<Parameters<BotMessageRouteDeps["relayedReaction"]>>;
     serverPresses: Array<{ threadId: string; messageId: string; type: string }>; serverAnswer: "handled" | "refused" | null; records: string | null;
-    fromPhone: boolean; phoneSends: string[];
-  } = { accepted: [], hold: null, refuse: null, busy: false, prompts: [], started: [], relayed: [], serverPresses: [], serverAnswer: null, records: null, fromPhone: false, phoneSends: [] };
+    fromPhone: boolean; phoneSends: string[]; setupSaw: boolean[];
+  } = { accepted: [], hold: null, refuse: null, busy: false, prompts: [], started: [], relayed: [], serverPresses: [], serverAnswer: null, records: null, fromPhone: false, phoneSends: [], setupSaw: [] };
   const startTurn: BotMessageRouteDeps["startTurn"] = async (botId, text, opts = {}) => {
     state.started.push({ text, opts });
     state.prompts.push(promptWithReply(text, opts.replyTo));
@@ -77,6 +79,7 @@ async function fixture(over: Partial<Record<keyof BotMessageRouteDeps, unknown>>
         if (match.kind === "conflict") throw Object.assign(new Error("sendId already belongs to another message"), { status: 409 });
         if (match.kind === "match") return { ok: true as const, threadId: input.threadId, message: match.message };
         const waiting = queuedSteeredMessage(input.botId, input.threadId, input.sendId);
+        if (waiting && (waiting.text !== input.text || waiting.replyToId !== input.replyTo?.id)) throw Object.assign(new Error("sendId already belongs to another message"), { status: 409 });
         if (waiting) return { ok: true as const, queued: true as const, queueId: waiting.id, threadId: input.threadId };
       }
       if (state.busy) {
@@ -84,6 +87,8 @@ async function fixture(over: Partial<Record<keyof BotMessageRouteDeps, unknown>>
         return { ok: true as const, queued: true as const, queueId: queued.id, threadId: input.threadId };
       }
       const message = store.appendMessage(input.threadId, { role: "user", kind: "text", text: input.text, replyToId: input.replyTo?.id, sendId: input.sendId });
+      // A turn that starts at once may set up (lent computers included) before the send answers.
+      state.setupSaw.push(ownWindowLine(input.threadId, message));
       return { ok: true as const, threadId: input.threadId, message };
     });
   };
@@ -134,7 +139,8 @@ async function fixture(over: Partial<Record<keyof BotMessageRouteDeps, unknown>>
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     try {
-      const auth = { kind: "loopback", scopes: ["admin"] } as RequestAuth;
+      const session = req.headers["x-test-session"];
+      const auth = (typeof session === "string" ? { kind: "session", session: { id: session }, scopes: ["admin"] } : { kind: "loopback", scopes: ["admin"] }) as RequestAuth;
       const handled = await dispatchRoutes(routes, { req, res, url, path: url.pathname, method: req.method ?? "GET", auth, json, readBody });
       if (!handled) json(res, 404, { from: "inline routes" });
     } catch (error) {
@@ -145,8 +151,8 @@ async function fixture(over: Partial<Record<keyof BotMessageRouteDeps, unknown>>
   await new Promise<void>((ready) => server.listen(0, "127.0.0.1", ready));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-  const post = async (body: unknown, suffix = "") => {
-    const response = await fetch(`${base}/api/bots/${bot.id}/messages${suffix}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const post = async (body: unknown, suffix = "", headers: Record<string, string> = {}) => {
+    const response = await fetch(`${base}/api/bots/${bot.id}/messages${suffix}`, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
     return { status: response.status, body: await response.json() as Record<string, any> };
   };
   const edit = async (messageId: string, body: unknown) => {
@@ -218,6 +224,44 @@ describe("editing a message with no AI", () => {
     const { store, threadId, edit } = await fixture({ registry: { get: () => undefined }, noAiRefusal: () => null });
     const sent = store.appendMessage(threadId, { role: "user", kind: "text", text: "Hello" });
     expect((await edit(sent.id, { threadId, text: "Hello again" })).body.error).toContain("is unavailable");
+  });
+});
+
+describe("Retry on a line a caller sent through the Bot API", () => {
+  const apiRetry = (calls: Array<[string, string, Message, string | undefined]>, store: () => Store) => ({
+    botApiRetry: async (botId: string, threadId: string, source: Message, sendId?: string) => {
+      calls.push([botId, threadId, source, sendId]);
+      if (source.via !== "api") return null;
+      return store().branchMessage(threadId, source.id, source.text!.trim(), sendId, undefined, undefined, { via: "api" });
+    },
+  });
+
+  it("hands the same words on a caller's line to the Bot API, which runs them as the call ran", async () => {
+    const calls: Array<[string, string, Message, string | undefined]> = [];
+    let held: Store | undefined;
+    const { store, bot, threadId, state, edit } = await fixture(apiRetry(calls, () => held!));
+    held = store;
+    const sent = store.appendMessage(threadId, { role: "user", kind: "text", text: "Sum up the report\n", via: "api" });
+    const answer = await edit(sent.id, { threadId, text: "Sum up the report", sendId: SEND });
+    expect(answer).toMatchObject({ status: 202, body: { ok: true, message: { text: "Sum up the report", via: "api", sendId: SEND } } });
+    expect(calls).toEqual([[bot.id, threadId, expect.objectContaining({ id: sent.id }), SEND]]);
+    expect(state.started).toEqual([]);
+  });
+
+  it("keeps new words on a caller's line, and the same words on a person's line, an ordinary edit", async () => {
+    const calls: Array<[string, string, Message, string | undefined]> = [];
+    let held: Store | undefined;
+    const { store, threadId, state, edit } = await fixture(apiRetry(calls, () => held!));
+    held = store;
+    const sent = store.appendMessage(threadId, { role: "user", kind: "text", text: "Sum up the report", via: "api" });
+    expect((await edit(sent.id, { threadId, text: "Sum up the other report" })).status).toBe(202);
+    const mine = store.appendMessage(threadId, { role: "user", kind: "text", text: "Mine" });
+    expect((await edit(mine.id, { threadId, text: "Mine" })).status).toBe(202);
+    expect(calls).toEqual([]);
+    expect(state.started).toMatchObject([
+      { text: "Sum up the other report", opts: { editedMessageId: sent.id } },
+      { text: "Mine", opts: { editedMessageId: mine.id } },
+    ]);
   });
 });
 
@@ -302,6 +346,35 @@ describe("POST /api/bots/:id/messages and who typed it", () => {
     const relayed = await post({ threadId, sendId: OTHER_SEND, text: words, expectedActiveLeafId: store.activeLeaf(threadId), expectedApprovalMode: "ask" }, "/guarded");
     expect(relayed.status, JSON.stringify(relayed.body)).toBe(202);
     expect(typedWords(threadId, [relayed.body.message])).toBe("");
+  });
+
+  it("notes the signed-in session that sent a line, so a Cloud's bot knows which lent computer they type on", async () => {
+    const { threadId, post } = await fixture();
+    expect((await post({ threadId, sendId: SEND, text: words }, "", { "x-test-session": "pc-session" })).status).toBe(202);
+    expect(sendingSession(threadId, SEND)).toBe("pc-session");
+    expect((await post({ threadId, sendId: OTHER_SEND, text: words })).status).toBe(202);
+    expect(sendingSession(threadId, OTHER_SEND)).toBeUndefined();
+  });
+
+  it("keeps the first sender's session when a conflicting send reuses a queued line's sendId", async () => {
+    const { threadId, post, state } = await fixture();
+    state.busy = true;
+    const first = await post({ threadId, sendId: SEND, text: words }, "", { "x-test-session": "pc-session" });
+    expect(first.status).toBe(202);
+    expect(first.body).toMatchObject({ queued: true });
+    const conflict = await post({ threadId, sendId: SEND, text: "Something else" }, "", { "x-test-session": "laptop-session" });
+    expect(conflict.status, JSON.stringify(conflict.body)).toBe(409);
+    expect(sendingSession(threadId, SEND)).toBe("pc-session");
+  });
+
+  it("notes no session for a refused send, so an accepted retry from another session names its own", async () => {
+    const { threadId, post, state } = await fixture();
+    state.refuse = new DirectSendRefused(409, { error: "This workspace is at its spend limit.", code: "spend_cap" });
+    expect((await post({ threadId, sendId: SEND, text: words }, "", { "x-test-session": "pc-session" })).status).toBe(409);
+    expect(sendingSession(threadId, SEND)).toBeUndefined();
+    state.refuse = null;
+    expect((await post({ threadId, sendId: SEND, text: words }, "", { "x-test-session": "laptop-session" })).status).toBe(202);
+    expect(sendingSession(threadId, SEND)).toBe("laptop-session");
   });
 
   it("does not take a bare loopback send as a person's on a headless server, where it may be a bot's shell", async () => {
@@ -597,6 +670,117 @@ describe("a typed answer to a card the server refuses", () => {
   });
 });
 
+describe('a plain send with answer: "never"', () => {
+  const question = (store: Store, threadId: string) => store.appendMessage(threadId, {
+    role: "bot", kind: "options", text: "Which color?", card: {
+      title: "A question", subtitle: "Which color?", options: ["Blue", "Green"], requestId: "req-question", requestType: "question",
+    },
+  });
+  const approval = (store: Store, threadId: string) => store.appendMessage(threadId, {
+    role: "bot", kind: "options", text: "Run the command?", card: {
+      title: "An approval", subtitle: "Run the command?", options: [], requestId: "req-approval", requestType: "permission", tool: "Bash",
+    },
+  });
+  const credential = (store: Store, threadId: string) => store.appendMessage(threadId, {
+    role: "bot", kind: "secret", text: "Enter the key", secret: {
+      target: "xaiApiKey", label: "xAI API key", description: "", placeholder: "", helpUrl: "", requestKey: "secret-1",
+    },
+  });
+  const signIn = (store: Store, threadId: string) => store.appendMessage(threadId, {
+    role: "bot", kind: "signin", text: "Sign in to example.test", signIn: {
+      url: "https://example.test/", site: "example.test", place: "browser",
+    },
+  });
+  const REFUSED = {
+    error: "a question, approval, sign-in or credential request is waiting in this conversation, so nothing was sent; answer it, then send again",
+    code: "card_waiting",
+  };
+
+  it("still answers a waiting card when the option is omitted", async () => {
+    let store!: Store;
+    let cardId = "";
+    const typedCardAnswer = vi.fn(async (_auth: RequestAuth, threadId: string, text: string) => ({
+      status: 202, message: store.appendMessage(threadId, { role: "user", kind: "text", text, replyToId: cardId }),
+    }));
+    const { threadId, state, post, sent, store: opened } = await fixture({ typedCardAnswer });
+    store = opened;
+    cardId = question(store, threadId).id;
+
+    const answered = await post({ threadId, sendId: SEND, text: "Blue" });
+    expect(answered.status, JSON.stringify(answered.body)).toBe(202);
+    expect(typedCardAnswer).toHaveBeenCalledOnce();
+    expect(sent()).toMatchObject([{ text: "Blue", replyToId: cardId }]);
+    expect(state.accepted).toEqual([]);
+  });
+
+  it.each([
+    ["question", question],
+    ["approval", approval],
+    ["credential", credential],
+    ["sign-in", signIn],
+  ])("refuses the send while a %s is waiting, and appends nothing", async (_kind, append) => {
+    const typedCardAnswer = vi.fn(async () => null);
+    const { store, threadId, state, post, sent } = await fixture({ typedCardAnswer });
+    append(store, threadId);
+
+    const refused = await post({ threadId, sendId: SEND, text: "Start the next task", answer: "never" });
+    expect(refused).toEqual({ status: 409, body: REFUSED });
+    expect(typedCardAnswer).not.toHaveBeenCalled();
+    expect(state.accepted).toEqual([]);
+    expect(sent()).toEqual([]);
+  });
+
+  it("sends normally when no card waits, and never reaches the typed-answer path", async () => {
+    const typedCardAnswer = vi.fn(async () => null);
+    const { threadId, post, sent } = await fixture({ typedCardAnswer });
+
+    const sentMessage = await post({ threadId, sendId: SEND, text: "Start the next task", answer: "never" });
+    expect(sentMessage.status, JSON.stringify(sentMessage.body)).toBe(202);
+    expect(sent()).toMatchObject([{ text: "Start the next task", sendId: SEND }]);
+    expect(typedCardAnswer).not.toHaveBeenCalled();
+  });
+
+  it("does not refuse for a waiting card left on an abandoned branch", async () => {
+    const { store, threadId, post, sent } = await fixture();
+    const asked = question(store, threadId);
+    // A new line under the question's parent makes its own branch the active one; the question stays on the old branch.
+    store.branchMessage(threadId, asked.id, "Start the next task");
+
+    const send = await post({ threadId, sendId: SEND, text: "Start the next task", answer: "never" });
+    expect(send.status, JSON.stringify(send.body)).toBe(202);
+    expect(sent().filter((message) => message.sendId === SEND)).toMatchObject([{ text: "Start the next task", sendId: SEND }]);
+  });
+
+  it("keeps a sendId retry idempotent when a card starts waiting after the first send", async () => {
+    const { store, threadId, post, sent } = await fixture();
+    const first = await post({ threadId, sendId: SEND, text: "Start the next task", answer: "never" });
+    expect(first.status, JSON.stringify(first.body)).toBe(202);
+    question(store, threadId);
+
+    const again = await post({ threadId, sendId: SEND, text: "Start the next task", answer: "never" });
+    expect(again.status, JSON.stringify(again.body)).toBe(202);
+    expect(again.body.message.id).toBe(first.body.message.id);
+    expect(sent()).toHaveLength(1);
+  });
+
+  it("rejects any other answer value", async () => {
+    const { threadId, post } = await fixture();
+    for (const answer of ["auto", "always", null, 1]) {
+      expect(await post({ threadId, text: "Start", answer }), JSON.stringify(answer))
+        .toEqual({ status: 400, body: { error: 'answer must be "never" when set' } });
+    }
+    expect((await post({ threadId, text: "Start" })).status).toBe(202);
+  });
+
+  it("applies only to a typed message", async () => {
+    const { threadId, post, show } = await fixture();
+    const widgetId = show("pullRequests");
+    const refusal = { status: 400, body: { error: 'answer: "never" applies only to a typed message' } };
+    expect(await post({ threadId, sendId: SEND, text: "Hi", answer: "never" }, "/guarded")).toEqual(refusal);
+    expect(await post({ threadId, sendId: SEND, widgetAction: { messageId: widgetId, ref: "confirm" }, answer: "never" })).toEqual(refusal);
+  });
+});
+
 describe("POST /api/bots/:id/messages/guarded with a reaction another app relayed", () => {
   const relay = (threadId: string, replyToId: string | undefined, leaf: string | null, patch: Record<string, unknown> = {}) => ({
     threadId, sendId: SEND, reaction: "+1", replyToId, expectedActiveLeafId: leaf, expectedApprovalMode: "ask",
@@ -674,5 +858,79 @@ describe("POST /api/bots/:id/messages from a registered phone", () => {
     state.fromPhone = true;
     expect((await post({ threadId: "someone-elses-thread", sendId: OTHER_SEND, text: "Hi" })).status).toBe(409);
     expect(state.phoneSends).toEqual([]);
+  });
+});
+
+describe("POST /api/bots/:id/messages from the desktop app's own window", () => {
+  const words = "What can you see on my other Mac?";
+
+  it("notes a plain send from the desktop's own page as the window's", async () => {
+    const { threadId, post } = await fixture();
+    const plain = await post({ threadId, sendId: SEND, text: words });
+    expect(plain.status, JSON.stringify(plain.body)).toBe(202);
+    expect(ownWindowLine(threadId, plain.body.message)).toBe(true);
+  });
+
+  it("lets the turn a send starts at once see the window's line while it sets up", async () => {
+    const { threadId, state, post } = await fixture();
+    const plain = await post({ threadId, sendId: SEND, text: words });
+    expect(plain.status, JSON.stringify(plain.body)).toBe(202);
+    expect(state.setupSaw).toEqual([true]);
+  });
+
+  it("leaves no proof for a send that was refused", async () => {
+    const { threadId, state, post } = await fixture();
+    state.refuse = new DirectSendRefused(409, { error: "spend cap reached", code: "spend_cap" });
+    expect((await post({ threadId, sendId: SEND, text: words })).status).toBe(409);
+    expect(ownWindowLine(threadId, { role: "user", sendId: SEND, text: words })).toBe(false);
+  });
+
+  it("notes neither a press nor a relay", async () => {
+    const { store, bot, threadId, post, show } = await fixture();
+    const pressed = await post({ threadId, sendId: SEND, text: words, widgetAction: { messageId: show("routineForm"), ref: "confirm", values: { days: "mon,tue,wed,thu,fri,sat,sun", report: "discord:releases" } } });
+    expect(pressed.status, JSON.stringify(pressed.body)).toBe(202);
+    expect(ownWindowLine(threadId, pressed.body.message)).toBe(false);
+    store.patchBot(bot.id, { approvalMode: "ask", autoApprove: false });
+    const relayed = await post({ threadId, sendId: OTHER_SEND, text: words, expectedActiveLeafId: store.activeLeaf(threadId), expectedApprovalMode: "ask" }, "/guarded");
+    expect(relayed.status, JSON.stringify(relayed.body)).toBe(202);
+    expect(ownWindowLine(threadId, relayed.body.message)).toBe(false);
+  });
+
+  it("notes no proof for a send that only repeats or collides with a press already in the thread", async () => {
+    const { threadId, post, show } = await fixture();
+    const widgetId = show("routineForm");
+    const pressed = await post({ threadId, sendId: SEND, widgetAction: { messageId: widgetId, ref: "confirm", values: { days: "mon,tue,wed,thu,fri,sat,sun", report: "discord:releases" } } });
+    expect(pressed.status, JSON.stringify(pressed.body)).toBe(202);
+    const line = pressed.body.message;
+    expect((await post({ threadId, sendId: SEND, text: line.text })).status).toBe(409);
+    expect(ownWindowLine(threadId, line)).toBe(false);
+    const repeat = await post({ threadId, sendId: SEND, text: line.text, replyToId: widgetId });
+    expect(repeat.status, JSON.stringify(repeat.body)).toBe(202);
+    expect(repeat.body.message.id).toBe(line.id);
+    expect(ownWindowLine(threadId, line)).toBe(false);
+  });
+
+  it("notes no proof for a send that only repeats a press still waiting in the queue", async () => {
+    const { store, bot, threadId, state, post, show } = await fixture();
+    state.busy = true;
+    const widgetId = show("routineForm");
+    const pressed = await post({ threadId, sendId: SEND, widgetAction: { messageId: widgetId, ref: "confirm", values: { days: "mon,tue,wed,thu,fri,sat,sun", report: "discord:releases" } } });
+    expect(pressed.status, JSON.stringify(pressed.body)).toBe(202);
+    const waiting = queuedSteeredMessage(bot.id, threadId, SEND)!;
+    expect(waiting, "the press waits in the queue").toBeTruthy();
+    const repeat = await post({ threadId, sendId: SEND, text: waiting.text, replyToId: widgetId });
+    expect(repeat.status, JSON.stringify(repeat.body)).toBe(202);
+    expect(repeat.body.queueId).toBe(waiting.id);
+    drainSteeredMessages(store, () => {});
+    const line = store.messagesFor(threadId).find((message) => message.sendId === SEND);
+    expect(line?.text, "the press became the thread's line").toBe(waiting.text);
+    expect(ownWindowLine(threadId, line)).toBe(false);
+  });
+
+  it("does not note a bare loopback send on a headless server, where it may be a bot's shell", async () => {
+    const { threadId, post } = await fixture({}, false);
+    const plain = await post({ threadId, sendId: SEND, text: words });
+    expect(plain.status, JSON.stringify(plain.body)).toBe(202);
+    expect(ownWindowLine(threadId, plain.body.message)).toBe(false);
   });
 });

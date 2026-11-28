@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setLocale } from "@/lib/i18n";
-import { BrowserProxyRow, NewBrowserSettings, ServerSitesRow } from "./BrowserSettingsRows";
+import { BrowserProxyRow, BuiltInBrowserRow, NewBrowserSettings, ServerSitesRow } from "./BrowserSettingsRows";
 
 const fixture = vi.hoisted(() => ({
   config: undefined as Record<string, unknown> | undefined,
@@ -141,6 +141,28 @@ describe("Built-in browser proxy setting", () => {
     expect(fixture.dispatch.mock.calls[0]![0].config.browserEngine.proxyConfigured).toBe(true);
   });
 
+  it("keeps a reopened saved proxy empty and says it is saved", async () => {
+    const saved = { features: { browser: true }, browserEngine: { kind: "engine", proxySaved: true, proxyConfigured: true } };
+    fixture.config = { features: { browser: true }, browserEngine: { kind: "engine", proxyConfigured: false } };
+    fixture.api.mockResolvedValue(saved);
+    show();
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="SOCKS5 proxy"]')!;
+    expect(input.placeholder).toBe("socks5://127.0.0.1:1080");
+    flushSync(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "socks5://127.0.0.1:1080");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    flushSync(() => [...host.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "Save")?.click());
+    await vi.waitFor(() => expect(fixture.dispatch).toHaveBeenCalledWith({ type: "configStatus", config: saved }));
+    flushSync(() => root.unmount());
+    root = createRoot(host);
+    show();
+    const again = host.querySelector<HTMLInputElement>('input[aria-label="SOCKS5 proxy"]')!;
+    expect(again.value).toBe("");
+    expect(again.placeholder).toBe("Proxy saved. Enter a new address to replace it.");
+    expect([...host.querySelectorAll("button")].some((button) => button.textContent === "Remove")).toBe(true);
+  });
+
   it("hides the shared proxy control from Team Cloud admins who are not the owner", () => {
     owner.value = true;
     fixture.config = { team: { id: "team", name: "Team" }, features: { browser: true }, browserEngine: { kind: "engine", proxyEditable: false } };
@@ -150,5 +172,35 @@ describe("Built-in browser proxy setting", () => {
     fixture.config = { team: { id: "team", name: "Team" }, features: { browser: true }, browserEngine: { kind: "engine", proxyEditable: true } };
     show();
     expect(host.querySelector('input[aria-label="SOCKS5 proxy"]')).not.toBeNull();
+  });
+});
+
+describe("Built-in browser without Google Chrome", () => {
+  const show = () => flushSync(() => root.render(createElement(BuiltInBrowserRow)));
+  const row = () => host.textContent ?? "";
+
+  it("says the bots use a basic browser, and how to fix it, while Google Chrome is not installed", () => {
+    fixture.config = { features: { browser: true }, browserEngine: { kind: "engine", noChrome: true, myChrome: true } };
+    show();
+    expect(row()).toContain("Ready. Bots use a basic browser because Google Chrome isn't installed.");
+    expect(row()).toContain("Many sites block it. Install Google Chrome and restart MausBot.");
+    expect(row()).toContain("If a site still blocks bots, give the bot a My Chrome profile in Browser profiles.");
+  });
+
+  it("leaves out My Chrome where there is none to use", () => {
+    fixture.config = { features: { browser: true }, browserEngine: { kind: "engine", noChrome: true, myChrome: false } };
+    show();
+    expect(row()).toContain("Install Google Chrome and restart MausBot.");
+    expect(row()).not.toContain("My Chrome");
+  });
+
+  it("says only Ready when the bots' browser is Chrome, and nothing of Chrome while the browser is off", () => {
+    fixture.config = { features: { browser: true }, browserEngine: { kind: "engine", myChrome: true } };
+    show();
+    expect(row()).toContain("Ready");
+    expect(row()).not.toContain("Google Chrome");
+    fixture.config = { features: { browser: false }, browserEngine: { kind: "engine", noChrome: true, myChrome: true } };
+    show();
+    expect(row()).not.toContain("Google Chrome");
   });
 });

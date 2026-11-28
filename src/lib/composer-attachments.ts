@@ -1,6 +1,7 @@
 import { isCitationAttachment, serializeCitation, type CitationAttachment } from "./citations.ts";
 import { randomUuid } from "./random-uuid.ts";
 import { FILE_MAX_BYTES } from "../../shared/upload-limits.ts";
+import { serverFetch } from "./relay-server.ts";
 export { dataContextFor, type DataContext, type DataViewContext } from "../../shared/data-context.ts";
 
 export type PasteAttachment = {
@@ -301,7 +302,7 @@ async function uploadWithRetry<T>(url: string, init: RequestInit): Promise<T> {
   for (let attempt = 0; attempt < UPLOAD_ATTEMPTS; attempt += 1) {
     let response: Response;
     try {
-      response = await fetch(url, init);
+      response = await serverFetch(url, init);
     } catch (error) {
       const aborted = typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
       if (aborted || attempt === UPLOAD_ATTEMPTS - 1) throw error;
@@ -724,7 +725,7 @@ export function discardUnsentUpload(attachment: Attachment): void {
   if ((attachment.kind !== "image" && attachment.kind !== "file") || !attachment.path) return;
   const name = attachmentBasename(attachment.path);
   if (!/^[A-Za-z0-9-]+\.[A-Za-z0-9]{1,10}$/.test(name)) return;
-  void fetch(`/api/attachments/${encodeURIComponent(name)}`, { method: "DELETE" }).catch(() => undefined);
+  void serverFetch(`/api/attachments/${encodeURIComponent(name)}`, { method: "DELETE" }).catch(() => undefined);
 }
 
 export function attachmentBasename(path: string): string {
@@ -792,13 +793,28 @@ export async function intakeFiles<T extends DroppedFile & { type: string }>(
     imageSlots?: number;
     /** Image bytes the message can still take; images past it are left out the same way. */
     imageBytes?: number;
+    /** The file's place on the computer the bot runs on, or "": a file over the upload limits is attached by that place
+     * instead, so the bot reads the original there. Only the desktop app on its own server gives one. */
+    localPath?: (file: T) => string;
   },
 ): Promise<{ attachments: Attachment[]; problems: AttachProblem[]; notice: string | null }> {
   const { allowImages, getPath, uploadImage } = _opts;
   const images = allowImages ? _files.filter((file) => isImageFile(file)) : [];
   const overflow = new Set(fitImagesToSlots(images, _opts.imageSlots ?? Infinity, _opts.imageBytes).leftOut);
-  const leftOut = [...overflow].map((file) => file.name);
-  const files = _files.filter((file) => !overflow.has(file));
+  const inPlace = new Map<T, FileAttachment>();
+  if (_opts.localPath) {
+    for (const file of _files) {
+      if (!overflow.has(file) && file.size <= (allowImages && isImageFile(file) ? IMAGE_MAX_BYTES : FILE_MAX_BYTES)) continue;
+      let path = "";
+      try {
+        path = _opts.localPath(file);
+      } catch {
+      }
+      if (path) inPlace.set(file, fileAttachment(file.name, path, file.size));
+    }
+  }
+  const leftOut = [...overflow].filter((file) => !inPlace.has(file)).map((file) => file.name);
+  const files = _files.filter((file) => !overflow.has(file) || inPlace.has(file));
   const uploadFile = _opts.uploadFile ?? (async (file: T, anyType?: boolean) => {
     if (!file.arrayBuffer) return null;
     return fileAttachmentFromFile(file as unknown as File, anyType);
@@ -814,6 +830,8 @@ export async function intakeFiles<T extends DroppedFile & { type: string }>(
     uploadError?: AttachProblem;
     uploadErrorText?: string;
   }> => {
+    const located = inPlace.get(file);
+    if (located) return { attachments: [located], rejectedNames: [] };
     if (allowImages && isImageFile(file)) {
       try {
         const attachment = await uploadImage(file);

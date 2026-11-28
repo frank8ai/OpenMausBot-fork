@@ -6,8 +6,10 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { InstanceConfigMap } from "./contracts.ts";
 import { resolveClaudeConfigDir } from "./drivers/claude.ts";
-import { codexHome } from "./drivers/codex-identity.ts";
-import { antigravityPlanUsage } from "./drivers/antigravity-usage-limits.ts";
+import { codexHome } from "./drivers/codex-identity.ts"; import { chatgptAccountHome, chatgptAccountSignsInByDevice } from "./drivers/codex-account-home.ts";
+import { codexHasCredits } from "./codex-credits.ts";
+import { claudeExtraLabel, claudeModelWindow, claudeScopedWeekly } from "./claude-usage-models.ts";
+import { antigravityNativePlanUsage, antigravityPlanUsage, antigravityRunsNativeCli } from "./drivers/antigravity-usage-limits.ts";
 import { harnessHome, sealedFixture } from "./env-path.ts";
 
 export type PlanDriver = "claude" | "codex" | "grok" | "opencode" | "antigravity";
@@ -47,19 +49,15 @@ export interface PlanWindows {
   weekly: PlanWindow;
   extra: PlanExtra[];
   models: PlanModelUsage[];
+  codexCredits?: true; // Codex only: the ChatGPT account has credits to spend past a full window, or has no limit
 }
 
-export interface PlanProviderRow {
+export interface PlanProviderRow extends PlanWindows {
   id: string;
   name: string;
   driver: string;
-  plan: string | null;
   ok: boolean;
   error: string | null;
-  fiveHour: PlanWindow;
-  weekly: PlanWindow;
-  extra: PlanExtra[];
-  models: PlanModelUsage[];
 }
 
 export interface PlanUsageReport {
@@ -73,8 +71,10 @@ export interface PlanAccount {
   driver: PlanDriver;
   environment: Record<string, string | undefined>;
   configDir?: string;
-  /** No usage reading: a ChatGPT plan signed in through OpenMausBot has no CLI login on disk, and a Claude instance whose config sets `usageMeter: false` keeps its login unread (a refused turn still fails over). */
+  /** No usage reading: a ChatGPT plan signed in through OpenMausBot has no CLI login on disk, and a Claude or Antigravity instance whose config sets `usageMeter: false` keeps its login unread (a refused turn still fails over). */
   noUsage?: true;
+  /** An Antigravity account's CLI path: whether it runs the native CLI is read when its limits are. */
+  antigravityCli?: string;
 }
 
 export interface PlanCredential {
@@ -118,7 +118,6 @@ const CREDENTIAL_READ_MAX_BYTES = 1_000_000;
 const KEYCHAIN_TIMEOUT_MS = 5_000;
 const KEYCHAIN_MAX_BUFFER = 1_000_000;
 const CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials";
-const CLAUDE_MODEL_FAMILIES = ["opus", "sonnet", "haiku"];
 const MONTHLY_SPEND = "Monthly spend";
 const EXTRA_USAGE = "Extra Usage";
 
@@ -147,21 +146,21 @@ const PRODUCT_NAME: Record<PlanDriver, string> = {
   antigravity: "Antigravity",
 };
 
-export function planAccountsFromInstances(instances: InstanceConfigMap): PlanAccount[] {
+export function planAccountsFromInstances(instances: InstanceConfigMap, env: NodeJS.ProcessEnv = process.env): PlanAccount[] {
   const accounts: PlanAccount[] = [];
   for (const [id, entry] of Object.entries(instances)) {
     const driver = DRIVER_OF[entry.driver];
     if (!driver) continue;
-    const config = asRecord(entry.config);
-    const configDir = typeof config?.configDir === "string" ? config.configDir : undefined;
+    const config = asRecord(entry.config), configDir = typeof config?.configDir === "string" ? config.configDir : undefined;
+    const ownCodexHome = driver === "codex" && chatgptAccountSignsInByDevice(config, env);
     accounts.push({
       id,
       name: entry.displayName?.trim() || PRODUCT_NAME[driver],
       driver,
-      environment: { ...entry.environment },
+      environment: { ...entry.environment, ...(ownCodexHome ? { CODEX_HOME: chatgptAccountHome(id) } : {}) },
       ...(configDir ? { configDir } : {}),
-      // Reading ~/.codex/auth.json for a ChatGPT-plan provider would report (and hold it on) another account's limit.
-      ...(config?.authMode === "chatgpt-plan" || (driver === "claude" && config?.usageMeter === false) ? { noUsage: true as const } : {}),
+      // Reading ~/.codex/auth.json for a browser-signed ChatGPT plan would report (and hold it on) another account's limit.
+      ...((config?.authMode === "chatgpt-plan" && !ownCodexHome) || ((driver === "claude" || driver === "antigravity") && config?.usageMeter === false) ? { noUsage: true as const } : driver === "antigravity" && typeof config?.cli === "string" ? { antigravityCli: config.cli } : {}),
     });
   }
   return accounts;
@@ -172,6 +171,7 @@ export function parseClaudeUsage(body: unknown): PlanWindows {
   const extra: PlanExtra[] = [];
   const models: PlanModelUsage[] = [];
   if (root) {
+    const weeklyExtra: string[] = [];
     for (const [key, value] of Object.entries(root)) {
       if (key === "five_hour" || key === "seven_day" || key === "spend" || key === "extra_usage") continue;
       if (!/^[a-z][a-z0-9_]{0,40}$/i.test(key)) continue;
@@ -179,8 +179,14 @@ export function parseClaudeUsage(body: unknown): PlanWindows {
       if (!window) continue;
       const model = claudeModelWindow(key);
       if (model) addModelWindow(models, model.name, extraLine(model.window, window));
-      else extra.push(extraLine(claudeExtraLabel(key), window));
+      else {
+        const label = claudeExtraLabel(key);
+        extra.push(extraLine(label, window));
+        if (key.startsWith("seven_day_")) weeklyExtra.push(label);
+      }
     }
+    const keyed = [...models.filter((model) => model.windows.some((line) => line.label === "Weekly")).map((model) => model.name), ...weeklyExtra];
+    for (const limit of claudeScopedWeekly(root.limits, keyed)) addModelWindow(models, limit.name, extraLine("Weekly", openWindow(limit.usedPercent, isoOrNull(limit.resetsAt))));
   }
   sortModelWindows(models);
   const fiveHour = (root && readClaudeWindow(root.five_hour)) ?? closedWindow();
@@ -203,7 +209,7 @@ export function parseCodexUsage(body: unknown): PlanWindows {
   const extra = [...assigned.extra];
   if (root) collectCodexNamedLimits(root, models, extra);
   sortModelWindows(models);
-  return { ...assigned, extra, models, plan: planLabel(root?.plan_type ?? root?.plan) };
+  return { ...assigned, extra, models, plan: planLabel(root?.plan_type ?? root?.plan), ...(codexHasCredits(root?.credits) ? { codexCredits: true as const } : {}) };
 }
 
 export function parseGrokUsage(credits: unknown, billing?: unknown, settings?: unknown): PlanWindows {
@@ -331,12 +337,7 @@ function closedWindow(): PlanWindow {
 
 function openWindow(usedPercent: number, resetsAt: string | null): PlanWindow {
   const used = clampPercent(usedPercent);
-  return {
-    available: true,
-    usedPercent: used,
-    remainingPercent: clampPercent(100 - used),
-    resetsAt,
-  };
+  return { available: true, usedPercent: used, remainingPercent: clampPercent(100 - used), resetsAt };
 }
 
 function extraLine(label: string, window: PlanWindow): PlanExtra {
@@ -502,30 +503,6 @@ export function claudeHasExtraUsageRoom(row: Pick<PlanProviderRow, "driver" | "f
  * bought on top of them. */
 function readClaudeBudget(root: Record<string, unknown>, hasWindows: boolean): PlanExtra | null {
   return readSpendBudget(root.spend) ?? readExtraUsage(root.extra_usage, hasWindows ? EXTRA_USAGE : MONTHLY_SPEND);
-}
-
-function claudeExtraLabel(key: string): string {
-  const suffix = key.startsWith("seven_day_")
-    ? key.slice("seven_day_".length)
-    : key.replace(/^five_hour_/, "");
-  return titleWords(suffix);
-}
-
-function titleWords(suffix: string): string {
-  const words = suffix.split("_").filter((part) => part.length > 0);
-  if (words.length === 0) return "Window";
-  return words.map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join(" ");
-}
-
-function claudeModelWindow(key: string): { name: string; window: string } | null {
-  const weekly = key.startsWith("seven_day_");
-  const fiveHour = key.startsWith("five_hour_");
-  if (!weekly && !fiveHour) return null;
-  const suffix = key.slice(weekly ? "seven_day_".length : "five_hour_".length);
-  const lower = suffix.toLowerCase();
-  const family = CLAUDE_MODEL_FAMILIES.find((name) => lower === name || lower.startsWith(`${name}_`));
-  if (!family) return null;
-  return { name: titleWords(suffix), window: weekly ? "Weekly" : "5-hour" };
 }
 
 function addModelWindow(models: PlanModelUsage[], name: string, line: PlanExtra): void {
@@ -707,7 +684,7 @@ function planUsageCacheKey(accounts: PlanAccount[]): string {
       .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
       .map(([name, value]) => `${name}=${value}`)
       .join("\n");
-    return [account.id, account.driver, account.name, account.configDir ?? "", environment, account.noUsage ? "no-usage" : "usage"].join("\u0000");
+    return [account.id, account.driver, account.name, account.configDir ?? "", environment, account.noUsage ? "no-usage" : "usage", account.antigravityCli ?? ""].join("\u0000");
   }).join("\n");
 }
 
@@ -913,13 +890,13 @@ function okRow(account: PlanAccount, windows: PlanWindows): PlanProviderRow {
     fiveHour: windows.fiveHour,
     weekly: windows.weekly,
     extra: windows.extra,
-    models: windows.models,
+    models: windows.models, ...(windows.codexCredits ? { codexCredits: true as const } : {}),
   };
 }
 
 async function fetchProvider(account: PlanAccount, deps: PlanUsageDeps): Promise<PlanProviderRow | null> { // null: OpenCode, in every fleet, with no key of its own
   let credential: PlanCredential;
-  if (account.driver === "antigravity") { const windows = await antigravityPlanUsage(account.id, deps); return windows && okRow(account, windows); } // null: no sign-in, or Google gave nothing
+  if (account.driver === "antigravity") { const native = await antigravityRunsNativeCli(account.antigravityCli, { ...process.env, ...account.environment }); const windows = await (native ? antigravityNativePlanUsage(account.id, account.environment, deps) : antigravityPlanUsage(account.id, deps)); return windows && okRow(account, windows); } // null: no sign-in, or Google gave nothing
   try {
     credential = await deps.credentials.read(account);
   } catch {

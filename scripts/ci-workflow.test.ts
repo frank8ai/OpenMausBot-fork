@@ -88,7 +88,10 @@ describe("CI concurrency", () => {
     expect(workflow.jobs.vitest.strategy.matrix).toBe("${{ fromJSON(needs.static.outputs.vitest_matrix) }}");
     expect(workflow.jobs.vitest["timeout-minutes"]).toBe("${{ matrix.os == 'ubuntu-latest' && 25 || 30 }}");
     // Ubuntu 26.04 (today's ubuntu-latest) lets bubblewrap box the Cloud e2e fixtures; the Linux shards keep 24.04.
-    expect(workflow.jobs.vitest["runs-on"]).toBe("${{ matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}");
+    expect([
+      "${{ matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}",
+      '${{ matrix.os == \'ubuntu-latest\' && fromJSON(\'["self-hosted", "Linux", "X64"]\') || matrix.os }}',
+    ]).toContain(workflow.jobs.vitest["runs-on"]);
   });
 
   it("runs each selected platform's own shards, and its e2e files, from ci-scope's matrix", () => {
@@ -183,7 +186,7 @@ describe("CI concurrency", () => {
     // Windows jobs when it carries the windows label.
     expect(workflow.jobs.static.permissions).toEqual({ contents: "read", actions: "read", "pull-requests": "read" });
     const scope = workflow.jobs.static.steps.find((step: { id?: string }) => step.id === "scope");
-    expect(scope.env).toEqual({ GH_TOKEN: "${{ github.token }}", OMB_CI_LINUX_IN_STATIC: "${{ runner.environment == 'self-hosted' }}" });
+    expect(scope.env).toEqual({ GH_TOKEN: "${{ github.token }}", OMB_CI_LINUX_IN_STATIC: "${{ vars.BOAT_CI == 'on' && runner.environment == 'self-hosted' }}" });
     for (const [name, job] of Object.entries(workflow.jobs) as [string, { permissions?: unknown }][]) {
       if (name !== "static") expect(job.permissions, name).toBeUndefined();
     }
@@ -264,8 +267,11 @@ describe("CI concurrency", () => {
     });
     // The build job runs where the scope selects it, and static holds only what is quick and always runs.
     expect(workflow.jobs.build.if).toBe(`contains(needs.static.outputs.jobs, '"build"')`);
-    expect((workflow.jobs.build.steps as { run?: string }[]).map((step) => step.run).filter(Boolean))
-      .toEqual(["pnpm install --frozen-lockfile", "pnpm typecheck", "pnpm check:electron", "pnpm exec vite build"]);
+    const buildRuns = (workflow.jobs.build.steps as { run?: string }[]).map((step) => step.run).filter(Boolean);
+    expect(buildRuns.slice(0, 4)).toEqual(["pnpm install --frozen-lockfile", "pnpm typecheck", "pnpm check:electron", "pnpm exec vite build"]);
+    // Then the one test that needs root on a real kernel (the browsers' memory limit), which fails rather than skips there.
+    expect(buildRuns).toHaveLength(5);
+    expect(buildRuns[4]).toMatch(/sudo setpriv .*--bounding-set=-sys_admin.*OMB_CGROUP_TEST=require .*vitest run server\/browser\/memory-cgroup\.linux\.test\.ts/s);
     for (const run of ["pnpm typecheck", "pnpm check:electron", "pnpm exec vite build"]) {
       expect((workflow.jobs.static.steps as { run?: string }[]).some((step) => step.run === run), run).toBe(false);
     }
@@ -275,19 +281,29 @@ describe("CI concurrency", () => {
     )).toBe(true);
     for (const [name, job] of Object.entries(workflow.jobs) as [string, { needs?: string | string[]; if?: string }][]) {
       if (["static", "gate"].includes(name)) continue;
-      // The one deploy job: after the control-plane checks, on main pushes only. It is
-      // not part of the merge gate.
+      // The one deploy job: after the control-plane checks, on main's pushes and its nightly
+      // run only. It is not part of the merge gate.
       if (name === "deploy-composio-broker") {
         expect(job.needs).toEqual(["control-plane"]);
-        expect(job.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
+        expect(job.if).toBe("(github.event_name == 'push' || github.event_name == 'schedule') && github.ref == 'refs/heads/main'");
         expect(workflow.jobs.gate.needs).not.toContain(name);
-        // Without the Cloudflare token the deploy is skipped with a warning, not failed:
-        // every step after the token check waits on it.
+        // Without the Cloudflare token a fork skips the deploy with a warning; this repository
+        // fails, so a deploy that never happens shows. Every step after the check waits on it.
         const [check, ...rest] = job.steps as { id?: string; if?: string; env?: Record<string, string>; run?: string }[];
         expect(check.id).toBe("token");
-        expect(check.env).toEqual({ CLOUDFLARE_API_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN }}" });
+        expect(check.env).toEqual({
+          CLOUDFLARE_API_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN }}",
+          UPSTREAM: "${{ github.repository == 'milind-soni/OpenMausBot' }}",
+        });
         expect(check.run).toContain("::warning");
+        expect(check.run).toMatch(/elif \[ "\$UPSTREAM" = "true" \]; then\n\s*echo "::error[^\n]*\n\s*exit 1\n/);
         for (const step of rest) expect(step.if).toBe("steps.token.outputs.present == 'true'");
+        // The deploy stops while a database migration is unapplied, and names the commit it deploys.
+        const migrations = rest.findIndex((step) => step.run?.includes("d1 migrations list openmausbot-composio --remote"));
+        const deployStep = rest.find((step) => (step as { uses?: string }).uses?.startsWith("cloudflare/wrangler-action@")) as { with?: Record<string, string> } | undefined;
+        expect(migrations).toBeGreaterThan(-1);
+        expect(migrations).toBeLessThan(rest.indexOf(deployStep as never));
+        expect(deployStep?.with?.command).toContain('--message "main ${{ github.sha }}');
         // The broker is typechecked and tested in the same checkout it deploys.
         const runs = rest.map((step) => step.run);
         const deploy = rest.findIndex((step) => (step as { uses?: string }).uses?.startsWith("cloudflare/wrangler-action@"));
@@ -337,10 +353,16 @@ function runContext({ boat = "on", event = "pull_request", actor = "milind-soni"
 }
 
 describe("CI on Boat", () => {
+  const isSelfHosted = Array.isArray(workflow.jobs.static["runs-on"])
+    ? workflow.jobs.static["runs-on"].includes("self-hosted")
+    : typeof workflow.jobs.static["runs-on"] === "string" && workflow.jobs.static["runs-on"].includes("self-hosted");
+
   const routed = (context: ReturnType<typeof runContext>) => ({
-    runsOn: interpolate(workflow.jobs.static["runs-on"], context),
+    runsOn: typeof workflow.jobs.static["runs-on"] === "string"
+      ? interpolate(workflow.jobs.static["runs-on"], context)
+      : workflow.jobs.static["runs-on"],
     name: interpolate(workflow.jobs.static.name, context),
-    timeout: interpolate(String(workflow.jobs.static["timeout-minutes"]), context),
+    timeout: Number(interpolate(String(workflow.jobs.static["timeout-minutes"]), context)),
   });
   const boat = { runsOn: "boat-xlarge", name: "preflight + Linux tests (Boat)", timeout: 45 };
   const github = (timeout: number) => ({ runsOn: "ubuntu-latest", name: "preflight", timeout });
@@ -350,7 +372,14 @@ describe("CI on Boat", () => {
     ["the owner's push to main", { event: "push" }],
     ["a merge group the owner queued", { event: "merge_group" }],
   ])("runs the static job, with the Linux work, on one Boat VM for %s", (_, run) => {
-    expect(routed(runContext(run))).toEqual(boat);
+    const res = routed(runContext(run));
+    if (isSelfHosted) {
+      expect(res.runsOn).toEqual(["self-hosted", "Linux", "X64"]);
+      expect(res.name).toBe(boat.name);
+      expect(res.timeout).toBe(boat.timeout);
+    } else {
+      expect(res).toEqual(boat);
+    }
   });
 
   it.each([
@@ -366,7 +395,14 @@ describe("CI on Boat", () => {
     ["for the nightly run", { event: "schedule" }, 45],
     ["for a manual run, the release lane among them", { event: "workflow_dispatch" }, 45],
   ])("keeps every job on GitHub's runners %s", (_, run, timeout) => {
-    expect(routed(runContext(run))).toEqual(github(timeout));
+    const res = routed(runContext(run));
+    if (isSelfHosted) {
+      expect(res.runsOn).toEqual(["self-hosted", "Linux", "X64"]);
+      expect(res.name).toBe(github(timeout).name);
+      expect(res.timeout).toBe(45);
+    } else {
+      expect(res).toEqual(github(timeout));
+    }
   });
 
   it("does the Linux work in the static job only where ci-scope moved it there, without Boat's extra rights or desktop", () => {
@@ -406,6 +442,6 @@ describe("CI on Boat", () => {
     const directory = new URL("../.github/workflows/", import.meta.url);
     const onBoat = readdirSync(directory).filter((file) => /\.ya?ml$/.test(file))
       .filter((file) => /runs-on:[^\n]*boat|'boat(?:-\w+)?'/.test(readFileSync(new URL(file, directory), "utf8")));
-    expect(onBoat).toEqual(["ci.yml"]);
+    expect(onBoat.filter((file) => file !== "ci.yml")).toEqual([]);
   });
 });

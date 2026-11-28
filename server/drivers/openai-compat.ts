@@ -1,7 +1,7 @@
 // Transcript-replay driver for OpenRouter, Groq, Together, llama.cpp, and
 // other endpoints that speak the OpenAI chat-completions contract.
 import { titleCaseModelId, type ModelCatalog, type ProviderDriver } from "../contracts.ts";
-import { operatorEnvKey } from "../credential-env.ts";
+import { onWorkspaceServer, operatorEnvKey } from "../credential-env.ts";
 import { isLoopback } from "../provider-key-check.ts";
 import { lmStudioV1Catalog } from "./local-inject.ts";
 import { isContextName, isOllama, pickedName, serveWithWindow } from "./ollama-context.ts";
@@ -66,6 +66,9 @@ const OPENAI_MODELS: ModelCatalog = {
     { id: "gpt-5-mini", label: "gpt-5-mini" },
   ],
 };
+
+/** Gemini takes a clip inline in the request; a larger one keeps going as sampled frames. */
+const GEMINI_VIDEO_BYTES = 12 * 1024 * 1024;
 
 /** Google's Gemini API, added as an OpenAI-compatible server (Settings → API keys → Other). */
 function isGeminiOrigin(url: string): boolean {
@@ -161,6 +164,7 @@ function decodeConfig(raw: unknown): OpenAICompatConfig {
   if (config.catalog !== undefined && !CATALOGS.includes(config.catalog as never)) throw new Error("catalog must be \"openai\", \"lmstudio\" or \"ollama\"");
   if (config.replyWaitMinutes !== undefined && !isReplyWait(config.replyWaitMinutes)) throw new Error(`replyWaitMinutes must be a whole number from 1 to ${MAX_REPLY_WAIT_MINUTES}`);
   const envUrl = ownKey ? undefined : process.env.OPENAI_COMPAT_URL;
+  const inherits = !ownKey && onWorkspaceServer(config.url, envUrl);
   return {
     ...(config.tools !== undefined ? { tools: config.tools as boolean } : {}),
     ...(config.managedModels ? { managedModels: config.managedModels as string[] } : {}),
@@ -175,11 +179,11 @@ function decodeConfig(raw: unknown): OpenAICompatConfig {
     key: typeof config.key === "string" && config.key ? config.key : undefined,
     model: typeof config.model === "string" && config.model
       ? config.model
-      : ownKey ? undefined : process.env.OPENAI_COMPAT_MODEL || undefined,
+      : inherits ? process.env.OPENAI_COMPAT_MODEL || undefined : undefined,
     // An explicit empty override disables inherited routing; absent still inherits the global pin.
     provider: typeof config.provider === "string"
       ? config.provider || undefined
-      : ownKey ? undefined : process.env.OPENAI_COMPAT_PROVIDER || undefined,
+      : inherits ? process.env.OPENAI_COMPAT_PROVIDER || undefined : undefined,
   };
 }
 
@@ -402,6 +406,7 @@ export const OpenAICompatDriver: ProviderDriver<OpenAICompatConfig> = {
       selectedReasoning: (model, variant) => Boolean(variant && fact(model)?.thinking?.choices.includes(variant)),
       refreshModels: fetchModels,
       imageInput: (model) => fact(model)?.vision ?? true,
+      ...(gemini ? { videoBytes: GEMINI_VIDEO_BYTES } : {}),
       toolUse: (model) => fact(model)?.tools ?? true,
       ...(ollamaCandidate ? {
         serverUnavailable: async () => {

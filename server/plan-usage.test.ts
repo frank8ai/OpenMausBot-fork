@@ -16,6 +16,7 @@ import {
   type PlanFetch,
   type PlanResponse,
 } from "./plan-usage.ts";
+import { chatgptAccountHome } from "./drivers/codex-account-home.ts";
 
 const SECRET = "plan-usage-fixture-secret";
 const NOW = 1_800_000_000_000;
@@ -141,6 +142,53 @@ describe("plan usage parsers", () => {
     expect(parsed.models).toEqual([]);
   });
 
+  it("shows a per-model weekly limit that arrives in the limits list", () => {
+    const resetsAt = "2026-12-01T15:00:00.000Z";
+    const parsed = parseClaudeUsage({
+      five_hour: null,
+      seven_day: { utilization: 79, resets_at: resetsAt },
+      limits: [
+        { kind: "weekly_scoped", group: "weekly", percent: 95, resets_at: resetsAt, scope: { model: { display_name: "Fable" } } },
+      ],
+    });
+    expect(parsed.weekly).toMatchObject({ available: true, usedPercent: 79, remainingPercent: 21 });
+    expect(parsed.models).toEqual([
+      { name: "Fable", windows: [expect.objectContaining({ label: "Weekly", usedPercent: 95, remainingPercent: 5, resetsAt })] },
+    ]);
+    expect(parsed.extra).toEqual([]);
+  });
+
+  it("lists a model's weekly limit once when it comes both as a key and in the limits list", () => {
+    const parsed = parseClaudeUsage({
+      seven_day_opus: { utilization: 40, resets_at: "2026-12-01T15:00:00.000Z" },
+      seven_day_fable: { utilization: 94 },
+      limits: [
+        { kind: "weekly_scoped", percent: 41, resets_at: 1_800_000_000, scope: { model: { display_name: "Opus 4.5" } } },
+        { kind: "weekly_scoped", percent: 95, scope: { model: { display_name: "Fable" } } },
+        { kind: "weekly_scoped", percent: 7, scope: { model: { display_name: "Haiku\nsk-ant-abc" } } },
+        { kind: "session", percent: 10, scope: { model: { display_name: "Haiku" } } },
+        { kind: "weekly_scoped", percent: "high", scope: { model: { display_name: "Sonnet" } } },
+        { kind: "weekly_scoped", percent: 5, scope: {} },
+        null,
+      ],
+    });
+    expect(parsed.models).toEqual([
+      { name: "Opus", windows: [expect.objectContaining({ label: "Weekly", usedPercent: 40 })] },
+    ]);
+    expect(parsed.extra).toEqual([expect.objectContaining({ label: "Fable", usedPercent: 94 })]);
+  });
+
+  it("still shows a model's weekly limit from the limits list when only its 5-hour window comes as a key", () => {
+    const parsed = parseClaudeUsage({
+      five_hour_fable: { utilization: 30 },
+      limits: [{ kind: "weekly_scoped", percent: 95, scope: { model: { display_name: "Fable" } } }],
+    });
+    expect(parsed.models).toEqual([
+      { name: "Fable", windows: [expect.objectContaining({ label: "Weekly", usedPercent: 95 })] },
+    ]);
+    expect(parsed.extra).toEqual([expect.objectContaining({ label: "Fable", usedPercent: 30 })]);
+  });
+
   it("classifies Codex windows by duration and does not stuff a 30-day window into weekly", () => {
     const parsed = parseCodexUsage({
       plan_type: "plus",
@@ -171,6 +219,23 @@ describe("plan usage parsers", () => {
     ]);
     expect(parsed.models).toEqual([]);
     expect(JSON.stringify(parsed)).not.toContain(SECRET);
+  });
+
+  it("marks Codex credits only for a positive balance or an unlimited account", () => {
+    const flag = (credits: unknown) => parseCodexUsage({ plan_type: "plus", ...(credits === undefined ? {} : { credits }) }).codexCredits;
+    expect(flag({ has_credits: true, unlimited: false, balance: "12.50" })).toBe(true);
+    expect(flag({ has_credits: false, unlimited: true, balance: null })).toBe(true);
+    const odd = [
+      undefined, null, "yes", 1, [], {},
+      { has_credits: "true", unlimited: 1 }, { has_credits: null, unlimited: null },
+      { has_credits: false, unlimited: false, balance: "0" },
+      { has_credits: true, unlimited: false, balance: "0" },
+      { has_credits: true, balance: null },
+      { has_credits: true, balance: "abc" },
+      { has_credits: true, balance: true },
+      { has_credits: true, balance: "1,234.00" },
+    ];
+    for (const credits of odd) expect(flag(credits)).toBeUndefined();
   });
 
   it("keeps Codex model windows separate from the account plan", () => {
@@ -633,6 +698,28 @@ describe("plan usage fetcher", () => {
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(report.providers.map((row) => row.id)).toEqual(["codex"]);
+  });
+
+  it("reads each Cloud ChatGPT account's limits from its own Codex home, never the first account's", async () => {
+    const instances = {
+      codex: { driver: "codex" },
+      chatgpt: { driver: "codex", displayName: "ChatGPT plan", config: { authMode: "chatgpt-plan" } },
+      "chatgpt-work": { driver: "codex", displayName: "Work", config: { authMode: "chatgpt-plan" } },
+    };
+    const accounts = planAccountsFromInstances(instances, { OMB_CLOUD_ROLE: "home" });
+    expect(accounts).toEqual([
+      { id: "codex", name: "Codex", driver: "codex", environment: {} },
+      { id: "chatgpt", name: "ChatGPT plan", driver: "codex", environment: { CODEX_HOME: chatgptAccountHome("chatgpt") } },
+      { id: "chatgpt-work", name: "Work", driver: "codex", environment: { CODEX_HOME: chatgptAccountHome("chatgpt-work") } },
+    ]);
+    const tokens = new Map([
+      [join("/home/fixture/.codex", "auth.json"), "first-fixture"],
+      [join(chatgptAccountHome("chatgpt-work"), "auth.json"), "work-fixture"],
+    ]);
+    const reader = fileCredentialReader({ now: () => NOW, env: { HOME: "/home/fixture" },
+      readText: (path) => tokens.has(path) ? JSON.stringify({ tokens: { access_token: tokens.get(path) } }) : null });
+    expect(await Promise.all(accounts.map(async (account) => (await reader.read(account)).token)))
+      .toEqual(["first-fixture", null, "work-fixture"]);
   });
 
   it("reads every Claude instance's login with no setting, and none whose config sets usageMeter to false", async () => {

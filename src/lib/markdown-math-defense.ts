@@ -2,16 +2,6 @@ import katex from "katex";
 import { fromHtmlIsomorphic } from "hast-util-from-html-isomorphic";
 import remarkMath from "remark-math";
 
-/**
- * 软件架构师《四层渲染防腐架构规范 (v1.0)》核心实现
- *
- * L1: 流式分块状态机 (StreamingBlockSplitter) — 单 $ 绝不跨行，不参与块切分
- * L2: 词法准入防腐层 (StrictMathExtension / micromark) — 同行闭合、<=240字符、边界守门、CJK熔断、括号平衡
- * L3: AST 阶段门禁 (remarkMathGuard) — 超长或非法控制符原地退化为 text
- * L4: KaTeX 零红字沙箱 (rehypeSafeKatex) — 仅执行一次 throwOnError:true，严禁二次调用，零红字降级
- */
-
-// 1. CJK 与 LaTeX 语法工具函数
 export const CJK_REGEX = /[\u4e00-\u9fa5\u3000-\u303f\uff01-\uff5e\u3400-\u4dbf]/;
 const LEGAL_TEXT_MACROS = new Set([
   "text",
@@ -26,9 +16,6 @@ const LEGAL_TEXT_MACROS = new Set([
   "textnormal",
 ]);
 
-/**
- * 检查公式中是否含有未被合法文本宏包裹的 CJK 字符
- */
 export function hasIllegalCJK(text: string): boolean {
   if (!CJK_REGEX.test(text)) return false;
   let i = 0;
@@ -61,19 +48,15 @@ export function hasIllegalCJK(text: string): boolean {
         macroStack.pop();
       }
       braceDepth--;
+      if (braceDepth < 0) braceDepth = 0;
     } else if (CJK_REGEX.test(ch)) {
-      if (macroStack.length === 0) {
-        return true;
-      }
+      if (macroStack.length === 0) return true;
     }
     i++;
   }
   return false;
 }
 
-/**
- * 检查公式中非转义的花括号是否严格平衡（最终为0且过程中非负）
- */
 export function isBracesBalanced(text: string): boolean {
   let depth = 0;
   let escaped = false;
@@ -97,9 +80,114 @@ export function isBracesBalanced(text: string): boolean {
   return depth === 0;
 }
 
-/**
- * L2: 词法准入扩展 (StrictMathExtension)
- */
+const PARAGRAPH_BREAK = /\n[ \t]*\n/;
+const MATH_BLOCK_BREAKER = /(?:^|\n)[ \t]*(?:#{1,6}\s|\|(?::?-+:?\|)+\s*(?:\n|$)|\|(?:[^|\r\n]+\|){2,}[ \t]*(?:\n|$)|[-*_]{3,}\s*(?:\n|$))/;
+const CURRENCY_DOLLAR = /(?<![$\p{L}\p{N}])(?:R|US|AU|A|CA|C|NZ|HK|SG|S|MX|NT|BZ|Z)\$(?=[ \t\u00a0]?\d)/gu;
+
+export function cleanInlineTeX(math: string): string {
+  return math
+    .replace(/\r?\n[ \t]*(?:>[ \t]*)+[ \t]*/g, "\n")
+    .replace(/%[^\r\n]*(\r?\n|$)/g, " ")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
+}
+
+export function protectDisplayMath(text: string): { text: string; displayMath: string[] } {
+  const display: string[] = [];
+  let result = "";
+  let i = 0;
+
+  while (i < text.length) {
+    if (text[i] === "\\") {
+      let backslashes = 1;
+      while (i + backslashes < text.length && text[i + backslashes] === "\\") backslashes++;
+      result += text.slice(i, i + backslashes);
+      i += backslashes;
+      continue;
+    }
+
+    if (text[i] === "$" && text[i + 1] === "$") {
+      const start = i;
+      let closeIndex = -1;
+      let j = start + 2;
+      while (j < text.length) {
+        if (text[j] === "\\") {
+          let b = 1;
+          while (j + b < text.length && text[j + b] === "\\") b++;
+          j += b;
+          continue;
+        }
+        if (text[j] === "$" && text[j + 1] === "$") {
+          closeIndex = j;
+          break;
+        }
+        j++;
+      }
+
+      if (closeIndex === -1) {
+        result += "\\$\\$";
+        i += 2;
+        continue;
+      }
+
+      const body = text.slice(start + 2, closeIndex);
+      if (PARAGRAPH_BREAK.test(body) || MATH_BLOCK_BREAKER.test(body)) {
+        result += "\\$\\$";
+        i += 2;
+        continue;
+      }
+
+      const token = `\\u0000OMB_MATH_${display.length}\\u0000`;
+      const trimmed = body.replace(/^\n+|\n+$/g, "");
+      const isIndented = start > 0 && /^[ \t]+$/.test(text.slice(Math.max(0, text.lastIndexOf("\n", start - 1) + 1), start));
+      const fullMath = isIndented && !trimmed.includes("\n") ? `$$${trimmed}$$` : `$$\n${trimmed}\n$$`;
+      display.push(fullMath);
+      result += token;
+      i = closeIndex + 2;
+      continue;
+    }
+
+    result += text[i];
+    i++;
+  }
+
+  return { text: result, displayMath: display };
+}
+
+export function escapeLiteralDollars(text: string): string {
+  const { text: masked, displayMath } = protectDisplayMath(text);
+  const hidden = masked.replace(CURRENCY_DOLLAR, (sign) => `${sign.slice(0, -1)}\\$`);
+  const literal = new Set<number>();
+  const singles: number[] = [];
+  for (let i = 0; i < hidden.length; i++) {
+    if (hidden[i] === "$" && hidden[i - 1] !== "\\") singles.push(i);
+  }
+  let open: number | null = null;
+  for (const at of singles) {
+    if (open !== null) {
+      const span = hidden.slice(open, at);
+      const closes = !span.includes("\n")
+        && !/\s/.test(hidden[at - 1] ?? "")
+        && !/\d/.test(hidden[at + 1] ?? "");
+      if (closes) {
+        open = null;
+        continue;
+      }
+      literal.add(open);
+    }
+    open = /\S/.test(hidden[at + 1] ?? "") ? at : null;
+    if (open === null) literal.add(at);
+  }
+  if (open !== null) literal.add(open);
+
+  let escaped = "";
+  for (let i = 0; i < hidden.length; i++) escaped += literal.has(i) ? "\\$" : hidden[i];
+  displayMath.forEach((math, index) => {
+    escaped = escaped.split(`\\u0000OMB_MATH_${index}\\u0000`).join(math);
+  });
+  return escaped;
+}
+
 function isLineEnding(code: number | null): boolean {
   return code === null || code === -5 || code === -4 || code === -3 || code === 10 || code === 13;
 }
@@ -140,7 +228,6 @@ export function createStrictMathText(options: { singleDollarTextMath?: boolean }
           return nok(code);
         }
 
-        // Opener 检查：单 $ 后严禁紧跟空白（空格、Tab、换行）或 EOF
         if (sizeOpen === 1) {
           if (code === 32 || code === 9 || isLineEnding(code)) {
             return nok(code);
@@ -156,7 +243,6 @@ export function createStrictMathText(options: { singleDollarTextMath?: boolean }
           return nok(code);
         }
 
-        // 单 $ 严格同行闭合：遇到换行立即 nok
         if (sizeOpen === 1 && isLineEnding(code)) {
           return nok(code);
         }
@@ -167,12 +253,10 @@ export function createStrictMathText(options: { singleDollarTextMath?: boolean }
           return sequenceClose(code);
         }
 
-        // 长度上限门禁：单行公式内容不得超过 240 字符
         if (sizeOpen === 1 && contentChars.length > 240) {
           return nok(code);
         }
 
-        // 括号与转义状态跟踪
         if (isEscaped) {
           isEscaped = false;
         } else if (code === 92) {
@@ -181,32 +265,37 @@ export function createStrictMathText(options: { singleDollarTextMath?: boolean }
           braceDepth++;
         } else if (code === 125) {
           braceDepth--;
-          if (braceDepth < 0) return nok(code);
+          if (braceDepth < 0) {
+            return nok(code);
+          }
         }
 
+        token = effects.enter("mathTextData");
         contentChars.push(code);
         prevCode = code;
-
-        if (code === 32) {
-          effects.enter("space");
-          effects.consume(code);
-          effects.exit("space");
-          return between;
-        }
-
-        if (isLineEnding(code)) {
-          effects.enter("lineEnding");
-          effects.consume(code);
-          effects.exit("lineEnding");
-          return between;
-        }
-
-        effects.enter("mathTextData");
-        return data(code);
+        effects.consume(code);
+        return data;
       }
 
       function data(code: number | null): any {
-        if (code === null || code === 32 || code === 36 || isLineEnding(code)) {
+        if (code === null) {
+          effects.exit("mathTextData");
+          return nok(code);
+        }
+
+        if (sizeOpen === 1 && isLineEnding(code)) {
+          effects.exit("mathTextData");
+          return nok(code);
+        }
+
+        if (code === 36) {
+          effects.exit("mathTextData");
+          token = effects.enter("mathTextSequence");
+          sizeClose = 0;
+          return sequenceClose(code);
+        }
+
+        if (code === 32 || code === 9) {
           effects.exit("mathTextData");
           return between(code);
         }
@@ -244,23 +333,18 @@ export function createStrictMathText(options: { singleDollarTextMath?: boolean }
         }
 
         if (sizeClose === sizeOpen) {
-          // Closer 边界门禁（单 $）：
           if (sizeOpen === 1) {
-            // 1. 闭合前严禁为空白
             if (prevCode === 32 || prevCode === 9) {
               token.type = "mathTextData";
               return data(code);
             }
-            // 2. 闭合时括号必须平衡
             if (braceDepth !== 0) {
               return nok(code);
             }
-            // 3. CJK 熔断：公式文本中出现的汉字必须在文本宏内
             const contentStr = String.fromCharCode(...contentChars);
             if (hasIllegalCJK(contentStr)) {
               return nok(code);
             }
-            // 4. 闭合 $ 之后严禁紧跟数字（防 $1,500 与 $2,000 错配）
             if (isDigit(code)) {
               token.type = "mathTextData";
               return data(code);
@@ -325,9 +409,6 @@ export function createStrictMathText(options: { singleDollarTextMath?: boolean }
   };
 }
 
-/**
- * L2: 词法准入 remark 插件：挂载 StrictMathExtension
- */
 export function remarkStrictMath(this: any, options: any = {}) {
   remarkMath.call(this, options);
 
@@ -340,9 +421,6 @@ export function remarkStrictMath(this: any, options: any = {}) {
   }
 }
 
-/**
- * L3: AST 阶段门禁 (remarkMathGuard)
- */
 function walkMdast(node: any, parent: any, visitor: (node: any, parent: any) => void) {
   if (!node) return;
   visitor(node, parent);
@@ -361,17 +439,10 @@ export function remarkMathGuard() {
         const isInline = node.type === "inlineMath";
         let invalid = false;
 
-        // 1. 长度门禁
         if (isInline && val.length > 240) invalid = true;
         if (!isInline && val.length > 5000) invalid = true;
-
-        // 2. 括号平衡门禁
         if (!invalid && !isBracesBalanced(val)) invalid = true;
-
-        // 3. CJK 汉字合法性门禁
         if (!invalid && hasIllegalCJK(val)) invalid = true;
-
-        // 4. 控制字符门禁
         // oxlint-disable-next-line no-control-regex
         if (!invalid && /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(val)) invalid = true;
 
@@ -385,9 +456,6 @@ export function remarkMathGuard() {
   };
 }
 
-/**
- * L4: KaTeX 零红字沙箱 (rehypeSafeKatex)
- */
 function hastToText(node: any): string {
   if (!node) return "";
   if (node.type === "text") return node.value || "";

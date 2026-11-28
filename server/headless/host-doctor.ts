@@ -3,9 +3,10 @@
 // a server that runs the MausBot connector it also asks that for its own checks, which start one throwaway box probe.
 import { execFile } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statfsSync } from "node:fs";
-import { arch, cpus, homedir, release, totalmem } from "node:os";
-import { dirname, join, posix, resolve } from "node:path";
+import { arch, cpus, release, totalmem } from "node:os";
+import { dirname, posix, resolve } from "node:path";
 
+import { defaultDataDir, type DataHomes } from "../data-dir.ts";
 import { PRODUCTION_CLOUD_ORIGIN } from "../devs-report-send.ts";
 import { EXIT, flag, usageError } from "./args.ts";
 import type { VerbContext, VerbOutcome } from "./context.ts";
@@ -265,7 +266,7 @@ export function hostReport(checks: readonly HostCheck[]): { result: Record<strin
 
 function run(command: string, args: string[]): Promise<CommandResult> {
   return new Promise((done) => {
-    execFile(command, args, { timeout: 10_000, env: { ...process.env, LC_ALL: "C" } }, (error, stdout, stderr) => {
+    execFile(command, args, { timeout: 10_000, env: { ...process.env, LC_ALL: "C" }, windowsHide: true }, (error, stdout, stderr) => {
       done({ ok: !error, stdout: String(stdout), stderr: String(stderr), missing: (error as NodeJS.ErrnoException | null)?.code === "ENOENT" });
     });
   });
@@ -311,12 +312,12 @@ export function systemProbe(): HostProbe {
   };
 }
 
-export async function hostDoctor(ctx: VerbContext, probe: HostProbe = systemProbe()): Promise<VerbOutcome> {
+export async function hostDoctor(ctx: VerbContext, probe: HostProbe = systemProbe(), homes: DataHomes = {}): Promise<VerbOutcome> {
   const rawPort = flag(ctx.flags, "port") ?? ctx.env.OMB_PORT ?? "8799";
   const port = Number(rawPort);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) throw usageError("--port must be 1-65535");
   // A Linux machine's path, also when the checks are tested on Windows.
-  const dataDir = posix.resolve(flag(ctx.flags, "data-dir") ?? (ctx.env.OMB_DATA_DIR || join(homedir(), ".openmausbot")));
+  const dataDir = posix.resolve(flag(ctx.flags, "data-dir") ?? defaultDataDir(ctx.env, homes.under, homes.realHome));
   const domain = flag(ctx.flags, "domain")?.trim().toLowerCase();
   return hostReport(await checkHost(probe, { dataDir, port, ...(domain ? { domain } : {}) }));
 }

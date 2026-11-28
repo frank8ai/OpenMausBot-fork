@@ -8,6 +8,7 @@ import { startFakeHttpMcp } from "../testing/fake-http-mcp-server.ts";
 import { whopLikeCatalog } from "../testing/whop-like-catalog.ts";
 import { buildMcpServers } from "./pi-mcp-servers.ts";
 import { mcpStdioServer } from "../mcp-gate-config.ts";
+import { agentsStartupMs } from "./chat-mcp-tools.ts";
 
 import extension, {
   allocateToolName,
@@ -268,6 +269,59 @@ describe("Pi MCP startup budgets", () => {
       await remote.close();
     }
   });
+
+  /** A command server that answers initialize only once the test creates `<name>.answer` in `dir`. */
+  function slowToStart(dir: string, name: string): string {
+    const asked = JSON.stringify(join(dir, `${name}.asked`)), answer = JSON.stringify(join(dir, `${name}.answer`));
+    return fakeMcpScript(`
+      import { existsSync, writeFileSync } from "node:fs";
+      let buffer = "";
+      process.stdin.setEncoding("utf8");
+      const send = (value) => process.stdout.write(JSON.stringify(value) + "\\n");
+      process.stdin.on("data", (chunk) => {
+        buffer += chunk;
+        let newline;
+        while ((newline = buffer.indexOf("\\n")) !== -1) {
+          const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
+          if (!line.trim()) continue;
+          const msg = JSON.parse(line);
+          if (msg.method === "initialize") {
+            writeFileSync(${asked}, "");
+            const wait = setInterval(() => {
+              if (!existsSync(${answer})) return;
+              clearInterval(wait);
+              send({ jsonrpc: "2.0", id: msg.id, result: { capabilities: { tools: {} } } });
+            }, 10);
+          } else if (msg.method === "tools/list") send({ jsonrpc: "2.0", id: msg.id, result: { tools: [{ name: "coordinate_bots", inputSchema: { type: "object" } }] } });
+        }
+      });
+    `);
+  }
+
+  it("gives the agents server the start time other engines give it, a plain command server 8 seconds", async () => {
+    const { startupMs } = buildMcpServers({ threadId: "t", text: "hi", integrations: { agents: { command: "node", args: ["agents"], env: {} } } })!.agents as { startupMs?: number };
+    expect(startupMs).toBe(agentsStartupMs());
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const dir = tempDir();
+      const agents = new StdioMcp({ command: process.execPath, args: [slowToStart(dir, "agents")], startupMs });
+      const plain = new StdioMcp({ command: process.execPath, args: [slowToStart(dir, "plain")] });
+      clients.push(agents, plain);
+      const mounting = watch(agents.init().then(() => agents.listTools()));
+      const failing = watch(plain.init().then(() => plain.listTools()));
+      await untilReal(() => existsSync(join(dir, "agents.asked")) && existsSync(join(dir, "plain.asked")));
+      await vi.advanceTimersByTimeAsync(12_000);
+      await untilReal(() => failing.done);
+      expect(String(failing.error)).toMatch(/timed out/);
+      expect(mounting.done).toBe(false);
+      writeFileSync(join(dir, "agents.answer"), "");
+      await untilReal(() => mounting.done);
+      expect(mounting.error).toBeUndefined();
+      expect(mounting.value!.map((tool) => tool.name)).toEqual(["coordinate_bots"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("Pi MCP extension registration", () => {
@@ -287,6 +341,50 @@ describe("Pi MCP extension registration", () => {
     writeFileSync(process.env.OMB_MCP_CONFIG, JSON.stringify({ toolScope, ...other }));
     return dir;
   };
+
+  it.each([undefined, { allow: ["native:bash", "native:powershell"] }])(
+    "rejects shell timeouts mistaken for milliseconds with scope %j",
+    async (toolScope) => {
+      scopeConfig(toolScope);
+      const f = scopedApi(["bash", "powershell"]);
+      await extension(f.api);
+      for (const toolName of ["bash", "powershell"]) {
+        const input = { command: "echo should-not-run", timeout: 90_000 };
+        expect(await f.handlers.get("tool_call")?.({ toolName, input })).toMatchObject({
+          block: true,
+          reason: expect.stringMatching(/seconds.*900/),
+        });
+        expect(input.timeout).toBe(90_000);
+      }
+    },
+  );
+
+  it("bounds shell calls without a timeout and preserves valid seconds", async () => {
+    scopeConfig(undefined);
+    const f = scopedApi(["bash", "powershell", "read"]);
+    await extension(f.api);
+    for (const toolName of ["bash", "powershell"]) {
+      const input: { command: string; timeout?: number } = { command: "echo bounded" };
+      expect(await f.handlers.get("tool_call")?.({ toolName, input })).toBeUndefined();
+      expect(input.timeout).toBe(120);
+      for (const timeout of [0.1, 90, 900]) {
+        const explicit = { command: "echo valid", timeout };
+        expect(await f.handlers.get("tool_call")?.({ toolName, input: explicit })).toBeUndefined();
+        expect(explicit.timeout).toBe(timeout);
+      }
+    }
+    const input = { path: "fixture.txt" };
+    expect(await f.handlers.get("tool_call")?.({ toolName: "read", input })).toBeUndefined();
+    expect(input).toEqual({ path: "fixture.txt" });
+  });
+
+  it.each([0, -1, NaN, Infinity, null, "90"])("rejects invalid shell timeout %s", async (timeout) => {
+    scopeConfig(undefined);
+    const f = scopedApi(["bash"]);
+    await extension(f.api);
+    expect(await f.handlers.get("tool_call")?.({ toolName: "bash", input: { command: "echo invalid", timeout } }))
+      .toMatchObject({ block: true, reason: expect.stringMatching(/seconds/) });
+  });
 
   it("intersects native and package tools before the first turn and after restoration", async () => {
     scopeConfig({ allow: ["native:read", "native:edit", "native:write"] });

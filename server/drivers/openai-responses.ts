@@ -99,7 +99,7 @@ function inputContent(content: ChatContentPart[]) {
 }
 
 function inputItems(message: OpenAIChatMessage, replay: ResponseItem[] | undefined): ResponseItem[] {
-  if (message.role === "system") return [];
+  if (message.role === "system" || message.role === "developer") return [];
   // A stateless reasoning model needs every output item back untouched, its reasoning and assistant `phase` included:
   // https://developers.openai.com/api/docs/guides/reasoning#keeping-reasoning-items-in-context
   if (replay) return replay;
@@ -125,14 +125,14 @@ export function responsesRequest(input: {
   /** The reasoning level the person picked, as the Chat Completions body would carry it in `reasoning_effort`. */
   effort?: unknown;
 }): Record<string, unknown> {
-  const instructions = input.messages.filter((message) => message.role === "system" && typeof message.content === "string")
+  const instructions = input.messages.filter((message) => (message.role === "system" || message.role === "developer") && typeof message.content === "string")
     .map((message) => message.content).join("\n\n");
+  const developerItems: ResponseItem[] = instructions ? [{ role: "developer", content: instructions }] : [];
   return {
     model: input.model,
     stream: true,
     store: false,
-    ...(instructions ? { instructions } : {}),
-    input: input.messages.flatMap((message) => inputItems(message, input.replay(message))),
+    input: [...developerItems, ...input.messages.flatMap((message) => inputItems(message, input.replay(message)))],
     ...(input.summaries || typeof input.effort === "string" ? { reasoning: {
       ...(typeof input.effort === "string" ? { effort: input.effort } : {}), ...(input.summaries ? { summary: "auto" } : {}),
     } } : {}),
@@ -169,6 +169,7 @@ export async function readResponsesStream(body: ReadableStream<Uint8Array> | nul
   let usage: Completion["usage"] = null;
   const streamed = new Set<unknown>();
   const done = new Map<number, ResponseItem>();
+  const finishedItems = new Set<string>();
   const calls = new ChatToolCalls();
   let callCount = 0;
 
@@ -188,6 +189,7 @@ export async function readResponsesStream(body: ReadableStream<Uint8Array> | nul
   };
   const finishItem = (item: ResponseItem, position: number) => {
     done.set(position, item);
+    if (typeof item.id === "string") finishedItems.add(item.id);
     if (item.type === "function_call") {
       calls.add([{ index: callCount++, id: item.call_id, type: "function", function: { name: item.name, arguments: item.arguments } }], true);
     } else if (item.type === "message" && !streamed.has(item.id)) {
@@ -197,8 +199,14 @@ export async function readResponsesStream(body: ReadableStream<Uint8Array> | nul
     }
   };
   const finish = (response: Record<string, unknown> | undefined) => {
-    if (!done.size && Array.isArray(response?.output)) {
-      for (const [position, item] of response.output.entries()) if (object(item)) finishItem(item as ResponseItem, position);
+    if (Array.isArray(response?.output)) {
+      // Items the stream never finished (a cut message) join from the final output; one without an id only when nothing
+      // finished, so a call already finished under another position can never run twice.
+      const none = !done.size;
+      for (const [position, item] of response.output.entries()) {
+        const known = object(item) ? (item as ResponseItem).id : undefined;
+        if (object(item) && !done.has(position) && (typeof known === "string" ? !finishedItems.has(known) : none)) finishItem(item as ResponseItem, position);
+      }
     }
     const used = object(response?.usage);
     const cachedInput = object(used?.input_tokens_details)?.cached_tokens;

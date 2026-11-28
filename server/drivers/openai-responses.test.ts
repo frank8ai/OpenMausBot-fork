@@ -140,14 +140,15 @@ async function fixture(script: Script, apiUrl = OPENAI, models: unknown[] = []) 
     instance, recorder, calls, threadId, directory,
     paths: () => calls.map((call) => call.path),
     turn: async (input: Partial<SendTurnInput> = {}) => {
+      const id = input.threadId ?? threadId;
       const seen = recorder.events.length;
-      await instance.adapter.sendTurn({ threadId, text: "Store the receipt.", model: MODEL, integrations, approvalMode: "full", ...input });
+      await instance.adapter.sendTurn({ threadId: id, text: "Store the receipt.", model: MODEL, integrations, approvalMode: "full", ...input });
       const end = await vi.waitFor(() => {
-        const found = recorder.events.slice(seen).find((event) => event.type === "turn.completed");
+        const found = recorder.events.slice(seen).find((event) => event.type === "turn.completed" && event.threadId === id);
         if (!found) throw new Error("turn still running");
         return found;
       }, { timeout: 10_000, interval: 10 });
-      return { end, events: recorder.events.slice(seen) };
+      return { end, events: recorder.events.slice(seen).filter((event) => event.threadId === id) };
     },
   };
 }
@@ -216,16 +217,35 @@ describe("the Responses request", () => {
       ],
     });
     expect(body).toEqual({
-      model: MODEL, stream: true, store: false, instructions: "Be brief.",
+      model: MODEL, stream: true, store: false,
       reasoning: { summary: "auto" },
       tools: [{ type: "function", name: "audit_write", description: "Writes", parameters: { type: "object" }, strict: false }],
       input: [
+        { role: "developer", content: "Be brief." },
         { role: "user", content: [{ type: "input_text", text: "Look" }, { type: "input_image", image_url: "data:image/png;base64,AAAA", detail: "auto" }] },
         { role: "assistant", content: "Looking." },
         { type: "function_call", call_id: "call_9", name: "audit_write", arguments: "{}" },
         { type: "function_call_output", call_id: "call_9", output: '{"ok":true}' },
       ],
     });
+  });
+
+  it("migrates system messages to input[0] as developer role and leaves top-level instructions unset", () => {
+    const body = responsesRequest({
+      model: MODEL,
+      summaries: false,
+      replay: () => undefined,
+      tools: [],
+      messages: [
+        { role: "system", content: "Static developer instructions." },
+        { role: "user", content: "Hi" },
+      ],
+    });
+    expect(body).not.toHaveProperty("instructions");
+    expect(body.input).toEqual([
+      { role: "developer", content: "Static developer instructions." },
+      { role: "user", content: "Hi" },
+    ]);
   });
 });
 
@@ -245,6 +265,68 @@ describe("a model that refuses tools over Chat Completions, at OpenAI's address"
 
     expect(await f.turn()).toMatchObject({ end: { ok: true } });
     expect(f.paths()).toEqual(["/v1/chat/completions", "/v1/responses", "/v1/responses"]);
+  });
+
+  it("retries a chat refusal on the route another turn already picked", async () => {
+    let held: ServerResponse | null = null;
+    let chats = 0;
+    const f = await fixture((call, response) => {
+      if (call.path.endsWith("/chat/completions")) {
+        chats += 1;
+        if (chats === 1) { held = response; return; }
+        const first = held;
+        held = response;
+        if (first) reject(first, 400, refusalOf(MODEL));
+        return;
+      }
+      answer(response, "Hello there.");
+      if (held) {
+        const loser = held;
+        held = null;
+        reject(loser, 400, refusalOf(MODEL));
+      }
+    });
+    const [left, right] = await Promise.all([f.turn({ threadId: randomUUID() }), f.turn({ threadId: randomUUID() })]);
+    expect([left, right].map((turn) => ({ ok: turn.end.type === "turn.completed" && turn.end.ok, error: failureOf(turn.events) }))).toEqual([{ ok: true, error: "" }, { ok: true, error: "" }]);
+    expect(f.paths()).toEqual(["/v1/chat/completions", "/v1/chat/completions", "/v1/responses", "/v1/responses"]);
+  });
+
+  it("retries a missing Responses route on the route another turn already picked", async () => {
+    let primed = false;
+    let held: ServerResponse | null = null;
+    let responses = 0;
+    const plain = (response: ServerResponse) => {
+      response.writeHead(200, { "content-type": "text/event-stream" });
+      response.write(`data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "Plain." }, finish_reason: "stop" }] })}\n\n`);
+      response.end("data: [DONE]\n\n");
+    };
+    const f = await fixture((call, response) => {
+      if (!primed) {
+        if (call.path.endsWith("/chat/completions")) return reject(response, 400, refusalOf(MODEL));
+        primed = true;
+        return answer(response, "Primed.");
+      }
+      if (call.path.endsWith("/responses")) {
+        responses += 1;
+        if (responses === 1) { held = response; return; }
+        const first = held;
+        held = response;
+        if (first) reject(first, 404, "<html>Not found</html>");
+        return;
+      }
+      plain(response);
+      if (held) {
+        const loser = held;
+        held = null;
+        reject(loser, 404, "<html>Not found</html>");
+      }
+    });
+    expect(await f.turn()).toMatchObject({ end: { ok: true } });
+    const [left, right] = await Promise.all([f.turn({ threadId: randomUUID() }), f.turn({ threadId: randomUUID() })]);
+    expect([left, right].map((turn) => ({ ok: turn.end.type === "turn.completed" && turn.end.ok, error: failureOf(turn.events) }))).toEqual([{ ok: true, error: "" }, { ok: true, error: "" }]);
+    const raced = f.calls.slice(2);
+    expect(raced.map((call) => call.path)).toEqual(["/v1/responses", "/v1/responses", "/v1/chat/completions", "/v1/chat/completions"]);
+    expect(raced.slice(2).map((call) => call.body.reasoning_effort)).toEqual(["none", "none"]);
   });
 
   it("keeps the reasoning level the person picked when it moves to Responses", async () => {
@@ -321,17 +403,17 @@ describe("tool rounds over Responses", () => {
       expect(call.body).not.toHaveProperty("reasoning_effort");
       expect(call.body).not.toHaveProperty("messages");
     }
-    expect(first!.body.input.map((item: any) => item.type ?? item.role)).toEqual(["user"]);
-    expect(first!.body.tools[0]).toMatchObject({ type: "function", name: "audit_write", strict: false, parameters: { required: ["name"] } });
+    expect(first!.body.input.map((item: any) => item.type ?? item.role)).toEqual(["developer", "user"]);
+    expect(first!.body.tools.find((t: any) => t.name === "audit_write")).toMatchObject({ type: "function", name: "audit_write", strict: false, parameters: { required: ["name"] } });
     expect(first!.body.tools[0]).not.toHaveProperty("function");
 
-    expect(second!.body.input.slice(1)).toEqual([
+    expect(second!.body.input.slice(2)).toEqual([
       reasoningItem(),
       callItem(),
       { type: "function_call_output", call_id: "call_1", output: JSON.stringify({ ok: true, result: "Stored." }) },
     ]);
-    expect(third!.body.input.slice(1, 3)).toEqual([reasoningItem(), callItem()]);
-    expect(third!.body.input.slice(4)).toEqual([
+    expect(third!.body.input.slice(2, 4)).toEqual([reasoningItem(), callItem()]);
+    expect(third!.body.input.slice(5)).toEqual([
       reasoningItem("rs_2"),
       messageItem("Checking once more.", "msg_2", "commentary"),
       callItem("audit_write", '{"name":"second"}', "call_2", "fc_2"),
@@ -449,13 +531,73 @@ describe("what Responses can answer", () => {
     expect(textOf(seen, "assistant_text")).toBe("Note.\n\nAnswer.");
   });
 
-  it("does not finish a turn on an incomplete response", async () => {
+  it("continues a response cut at the output limit", async () => {
+    let responses = 0;
     const f = await fixture(onResponses((response) => {
-      events(response, [textDelta("Half"), { type: "response.incomplete", response: { status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, output: [], usage } }]);
+      responses += 1;
+      if (responses === 1) {
+        events(response, [created, textDelta("Half"), done(messageItem("Half")), {
+          type: "response.incomplete",
+          response: { status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, output: [messageItem("Half")], usage },
+        }]);
+        return;
+      }
+      answer(response, " and half.");
     }));
     const { end, events: seen } = await f.turn();
-    expect(end).toMatchObject({ ok: false });
-    expect(failureOf(seen)).toContain("provider did not finish the response (length)");
+    expect(end).toMatchObject({ ok: true });
+    const continuation = f.calls.at(-1)!;
+    expect(continuation.path).toContain("/responses");
+    expect(continuation.body.input.at(-1)).toEqual({
+      role: "user",
+      content: "[OpenMausBot: your reply was cut at the output limit. Continue exactly where you stopped.]",
+    });
+    expect(textOf(seen, "assistant_text")).toBe("Half and half.");
+  });
+
+  it("replays a cut message when only its reasoning item finished", async () => {
+    let responses = 0;
+    const f = await fixture(onResponses((response) => {
+      responses += 1;
+      if (responses === 1) {
+        const reasoning = reasoningItem();
+        events(response, [
+          created,
+          { type: "response.reasoning_summary_text.delta", item_id: "rs_1", output_index: 0, summary_index: 0, delta: "Thinking it over." },
+          done(reasoning, 0),
+          textDelta("Half"),
+          { type: "response.incomplete", response: { status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, output: [reasoning, messageItem("Half")], usage } },
+        ]);
+        return;
+      }
+      answer(response, " and half.");
+    }));
+    const { end, events: seen } = await f.turn();
+    expect(end).toMatchObject({ ok: true });
+    const continuation = f.calls.at(-1)!;
+    expect(continuation.body.input.filter((item: any) => item.type === "message" && item.content?.[0]?.text === "Half")).toHaveLength(1);
+    expect(textOf(seen, "assistant_text")).toBe("Half and half.");
+  });
+
+  it("does not repeat a cut message whose done event carried no output index", async () => {
+    let responses = 0;
+    const f = await fixture(onResponses((response) => {
+      responses += 1;
+      if (responses === 1) {
+        const reasoning = reasoningItem();
+        const partial = messageItem("Half");
+        events(response, [
+          created,
+          done(partial),
+          { type: "response.incomplete", response: { status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, output: [reasoning, partial], usage } },
+        ]);
+        return;
+      }
+      answer(response, " and half.");
+    }));
+    const { end, events: seen } = await f.turn();
+    expect(end).toMatchObject({ ok: true });
+    expect(textOf(seen, "assistant_text")).toBe("Half and half.");
   });
 
   it("refuses a tool call cut off by an incomplete response without running it", async () => {

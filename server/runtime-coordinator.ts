@@ -34,6 +34,9 @@ const requestKey = (root: Assignment): string => root.origin.kind === "person" ?
 const BRIEF_MAX = 12_000;
 const RUNTIME_DEPTH = /^Assignment depth limit reached/;
 const NEEDS_INPUT = /^needs input:/i;
+/** A NEEDS INPUT line whose whole value says there is nothing to ask ("none", "无", …) asks nothing. */
+const NOTHING_TO_ASK = new Set(["none", "nothing", "n/a", "nil", "-", "—", "无", "無", "没有", "沒有", "无需", "暂无", "なし", "없음", "нет",
+  "ninguna", "ninguno", "nada", "aucune", "aucun", "rien", "keine", "nichts", "nenhuma", "nenhum", "không", "ไม่มี"]);
 
 /** Per-turn stalls belong to the host's watchdog: this only keeps the runtime's window out of its way. */
 const TURN_STALL_MS = 24 * 60 * 60_000;
@@ -85,8 +88,18 @@ export function needsInputQuestion(text: string): string | undefined {
   const at = /^default:/i.test(lines[last]!.trim()) ? filled(last - 1) : last;
   const line = at < 0 ? "" : lines[at]!.trim();
   if (!NEEDS_INPUT.test(line)) return undefined;
-  const question = [line.slice("NEEDS INPUT:".length), ...lines.slice(at + 1)].join("\n").trim();
+  const value = line.slice("NEEDS INPUT:".length).trim();
+  if (NOTHING_TO_ASK.has(value.replace(/[.!。！]+$/u, "").toLowerCase())) return undefined;
+  const question = [value, ...lines.slice(at + 1)].join("\n").trim();
   return question || undefined;
+}
+
+export function handoffReply(text: string): Pick<HostTurnResult, "text" | "question"> {
+  return { text: text.slice(0, BRIEF_MAX), question: needsInputQuestion(text) ?? null };
+}
+
+export function handoffQuestion(result: Pick<HostTurnResult, "text" | "question">): string | undefined {
+  return result.question === undefined ? needsInputQuestion(result.text) : result.question ?? undefined;
 }
 
 export function view(a: Assignment, parent?: Assignment): HandoffView {
@@ -152,9 +165,11 @@ export class RuntimeCoordinator implements Coordinator {
   private readonly now: () => number;
   private readonly log: (line: string) => void;
   /** The person's stops, remembered: which bots' work on which request they stopped, and when. */
-  private readonly stops: Array<{ at: number; request: string; bots: Set<string> }> = [];
+  private readonly stops: Array<{ at: number; request: string; bots: Set<string>; rootId?: string }> = [];
   /** The cause of the stop running now, if any (stopFor). */
   private stopCause: string | undefined;
+  /** A single hand-off is being stopped (stopHandoff): its thread's other work is not part of that stop. */
+  private stoppingHandoff = false;
   private opened = false;
   private prunedAt: number | undefined;
 
@@ -172,6 +187,7 @@ export class RuntimeCoordinator implements Coordinator {
       clock: { now: () => this.now(), monotonic: () => performance.now() },
       limits: { depth: 4, requests: REQUESTS_PER_ROOT, executions: EXECUTIONS_PER_ROOT, turnStallMs: TURN_STALL_MS, inputWaitMs: PARKED_LIMIT_MS, inputRemindMs: PARKED_REMIND_MS, ...handoffLimits(), ...options.runtimeLimits },
       ...(options.log ? { log: options.log } : {}),
+      ...(options.restartCut ? { restartCut: options.restartCut } : {}),
     });
   }
 
@@ -245,6 +261,27 @@ export class RuntimeCoordinator implements Coordinator {
     return this.live().map(row => this.project(row));
   }
 
+  threadActivity(threads: ReadonlyMap<string, ReadonlySet<string>>): {
+    awaitingAnswer: Set<string>; activeDirect: Set<string>; queued: Map<string, Map<string, HandoffView>>;
+  } {
+    this.ready();
+    const awaitingAnswer = new Set<string>();
+    const activeDirect = new Set<string>();
+    const queued = new Map<string, Map<string, HandoffView>>();
+    for (const row of this.live()) {
+      const { threadId, groupId } = row.assignee.destination;
+      const bots = threads.get(threadId);
+      if (!bots) continue;
+      if (row.status === "needs_input") awaitingAnswer.add(threadId);
+      if (groupId === undefined) activeDirect.add(threadId);
+      if (row.status !== "queued" || groupId || !bots.has(row.assignee.botId)) continue;
+      let byBot = queued.get(threadId);
+      if (!byBot) { byBot = new Map(); queued.set(threadId, byBot); }
+      if (!byBot.has(row.assignee.botId)) byBot.set(row.assignee.botId, this.project(row));
+    }
+    return { awaitingAnswer, activeDirect, queued };
+  }
+
   children(id: string): HandoffView[] {
     this.ready();
     const parent = this.store.get(id);
@@ -267,7 +304,10 @@ export class RuntimeCoordinator implements Coordinator {
     const assignee: Assignee = { botId: target.botId, destination: { kind: target.groupId ? "room_thread" : thread === "standing" ? "standing_thread" : "work_thread",
       threadId: target.threadId, ...(target.groupId ? { groupId: target.groupId } : {}) } };
     const own = ownThread(lineage, assignee, options.ownThread);
-    if (!answersSender(parent, mode, target) && (own ? lineage.slice(0, -1) : lineage).some(n => ancestorOf(address(n), target))) throw new Error(ANCESTOR);
+    const wanted: Reply = mode === "notify" ? "none" : options.reply ?? "resume";
+    const reply: Reply = wanted === "none" ? "none" : root.reply === "poll" ? "poll" : wanted;
+    // Same rule as the runtime's admit: only a reply that would wait on the ancestor's completion closes a wait cycle.
+    if (!answersSender(parent, mode, target) && reply === "resume" && (own ? lineage.slice(0, -1) : lineage).some(n => ancestorOf(address(n), target))) throw new Error(ANCESTOR);
     if (this.stoppedFor(root, target.botId)) throw new Error(STOPPED_AGAIN);
     const siblings = this.store.children(parent.id);
     const existing = siblings.findLast(c => c.assignee.botId === target.botId && c.assignee.destination.groupId === target.groupId && c.brief === brief && c.mode === mode
@@ -281,8 +321,6 @@ export class RuntimeCoordinator implements Coordinator {
     // A bot's own threads wait on it by design and can never ask it back (the ancestor rule above), so no two bots can cross.
     const waiting = own || mode === "notify" || target.groupId !== undefined ? undefined : this.waitingOn(source.botId, target.botId);
     if (waiting) throw new Error(crossed(this.host.names(this.project(waiting.request), this.project(waiting.parent)).requester, waiting.request));
-    const wanted: Reply = mode === "notify" ? "none" : options.reply ?? "resume";
-    const reply: Reply = wanted === "none" ? "none" : root.reply === "poll" ? "poll" : wanted;
     const requester: Requester = { kind: "bot_turn", botId: parent.assignee.botId, threadId: parent.assignee.destination.threadId,
       chief: this.host.chiefOf(address(parent)), ...(parent.id === root.id && root.requester.runId !== undefined ? { runId: root.requester.runId } : {}) };
     const level = this.host.levelOf(target, this.project(parent));
@@ -453,11 +491,28 @@ export class RuntimeCoordinator implements Coordinator {
   /** With no reason given, the stop is the person's, unless it is part of a stop already under way: see stopFor. */
   stopAwaitingDirect(threadId: string, reason?: string): void {
     this.ready();
+    // The host stops a teammate's whole thread when one of its turns is aborted; when that turn is one hand-off the person
+    // stopped, the runtime already ends that hand-off and what it handed on, and other requests queued there go on.
+    if (reason === undefined && this.stoppingHandoff) return;
     const cause = reason ?? this.stopCause ?? STOPPED_BY_USER;
     const stopping = cause === STOPPED_BY_USER ? this.live().filter(n => n.assignee.destination.threadId === threadId) : [];
     const trees = stopping.map(n => ({ root: this.store.get(n.rootId), work: this.subtree(n).filter(a => !isTerminal(a)) }));
     this.stopFor(cause, () => this.runtime.stopRequester({ threadId }, cause));
     for (const { root, work } of trees) if (root) this.rememberStop(root, work);
+  }
+
+  stopHandoff(id: string): "stopped" | "ended" | undefined {
+    this.ready();
+    const n = this.store.get(id);
+    if (!n?.parentId) return undefined;
+    if (isTerminal(n)) return "ended";
+    const root = this.store.get(n.rootId);
+    const work = this.subtree(n).filter(a => !isTerminal(a));
+    const outer = this.stoppingHandoff;
+    this.stoppingHandoff = true;
+    try { this.stopFor(STOPPED_BY_USER, () => this.runtime.cancel(id, STOPPED_BY_USER, "stopped")); } finally { this.stoppingHandoff = outer; }
+    if (root) this.rememberStop(root, work, true);
+    return "stopped";
   }
 
   /** Runs a stop with its cause. A teammate's turn it ends stops that teammate's thread as well (the host's abort handler
@@ -470,19 +525,24 @@ export class RuntimeCoordinator implements Coordinator {
   }
 
   /** The person's stop, remembered (scoped to that request): the bots whose work on it the stop ended don't take the same
-   * request from another bot again, unless the person asked again after the stop. In memory only, for a day. */
-  private rememberStop(root: Assignment, work: readonly Assignment[]): void {
+   * request from another bot again, unless the person asked again after the stop. In memory only, for a day. A `scoped`
+   * stop holds for that one request's tree only, never for another request in the same words, and needs no person's words:
+   * a routine run's tree is held the same way. */
+  private rememberStop(root: Assignment, work: readonly Assignment[], scoped = false): void {
     const request = requestKey(root);
     const bots = new Set(work.filter(a => this.store.get(a.id)?.status === "cancelled").map(a => a.assignee.botId));
     const at = this.now();
     while (this.stops.length && at - this.stops[0]!.at > STOP_MEMORY_MS) this.stops.shift();
-    if (request && bots.size) this.stops.push({ at, request, bots });
+    if (!bots.size) return;
+    if (scoped) this.stops.push({ at, request, bots, rootId: root.id });
+    else if (request) this.stops.push({ at, request, bots });
   }
 
   /** Work for `root`'s request was stopped for `botId`, and this request is not one the person made after that stop. */
   private stoppedFor(root: Assignment, botId: string): boolean {
     const request = requestKey(root);
-    return request !== "" && this.stops.some(stop => stop.request === request && stop.bots.has(botId) && root.createdAt <= stop.at && this.now() - stop.at <= STOP_MEMORY_MS);
+    return this.stops.some(stop => stop.bots.has(botId) && this.now() - stop.at <= STOP_MEMORY_MS
+      && (stop.rootId !== undefined ? stop.rootId === root.id : request !== "" && stop.request === request && root.createdAt <= stop.at));
   }
 
   activeDirect(threadId: string): boolean {
@@ -661,7 +721,7 @@ export class RuntimeCoordinator implements Coordinator {
     if (signal.aborted) return { kind: "failed", outcome: "stopped", text: result.text };
     if (result.cap) return { kind: "continue", text: result.text, note: result.cap.note, ...(result.cap.handoffPath ? { handoffPath: result.cap.handoffPath } : {}), ...evidence(result) };
     if (result.cards) return { kind: "needs_input", question: result.cards.question, cards: result.cards.ids, ...evidence(result) };
-    const question = root ? undefined : needsInputQuestion(result.text);
+    const question = root ? undefined : handoffQuestion(result);
     if (!root && a.origin.kind === "person" && result.approvalAsk && !result.stalled && question === undefined) return { kind: "needs_input", question: result.approvalAsk, ...evidence(result) };
     if (!result.ok) return { kind: "failed", outcome: result.stalled ? "stalled" : "provider_error", text: result.text, ...(result.failure ? { failure: result.failure } : {}), ...evidence(result) };
     if (question === undefined) return { kind: "completed", text: result.text, ...(await this.statusOnly(a, parent, input.turn, result, signal) ? { statusOnly: true } : {}), ...evidence(result) };

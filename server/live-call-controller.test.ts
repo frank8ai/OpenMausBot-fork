@@ -110,6 +110,14 @@ describe("LiveCallController lifecycle", () => {
     expect(other.deps.createSession).toHaveBeenCalledWith(expect.objectContaining({ botId: "bot2", voice: "sol" }));
   });
 
+  it.each(["nuri", "juni", "flitz", "brise", "sillage", "nira", "harema", "shida", "noeul"])("starts the called bot's session in %s instead of the app's voice", async (voice) => {
+    const t = setup({ botVoice: () => voice });
+    const started = await t.controller.start({ auth: owner, ...BOT, client: "desktop", sdp: "a" });
+    expect(t.deps.createSession).toHaveBeenCalledWith(expect.objectContaining({ voice }));
+    expect(started.call.voice).toBe(voice);
+    await t.controller.shutdown();
+  });
+
   it("uses the app's voice when the bot's own is not a GPT-Live voice", async () => {
     const t = setup({ botVoice: () => "Kore" });
     await t.controller.start({ auth: owner, ...BOT, client: "desktop", sdp: "a" });
@@ -585,6 +593,15 @@ describe("LiveCallController lifecycle", () => {
         const t = gemini();
         await expect(t.controller.start({ auth: owner, ...BOT, client })).rejects.toMatchObject({ status: 400, message: LIVE_GEMINI_NEEDS_APP });
         expect(t.deps.createSession).not.toHaveBeenCalled();
+      }
+    });
+
+    it("lets a phone app that runs Gemini's session itself start the call", async () => {
+      for (const client of ["ios", "android"] as const) {
+        const t = gemini();
+        const started = await t.controller.start({ auth: owner, ...BOT, client, relays: ["gemini"] });
+        expect(started.gemini?.type).toBe("gemini");
+        expect(t.deps.createSession).toHaveBeenCalledTimes(1);
       }
     });
 

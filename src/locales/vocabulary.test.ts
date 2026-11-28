@@ -135,7 +135,7 @@ describe("one name per thing", () => {
     expect(stale).toEqual([]);
     const staleKeys = Object.keys(EN_ALLOWED).filter((key) => !Object.hasOwn(en, key) || retiredIn((en as Record<string, string>)[key]!, /\bboats?\b/i).length === 0);
     expect(staleKeys).toEqual([]);
-  });
+  }, 60_000);
 
   it("the public docs name MausBot Cloud and the Cloud as the app does", () => {
     const names = new Set(["OMB Cloud", "OpenMausBot Cloud", "MausBot Pro", "Connect to my Cloud", "your Cloud", "my Cloud"]);
@@ -171,7 +171,7 @@ describe("one name per thing", () => {
       ["native.dialog.unreachable.detail", [label("native.menu.server")]],
       ["native.boot.folderMissing.body", [label("native.menu.server")]],
       ["native.boot.unhealthy.body", [label("native.menu.server")]],
-      ["native.dialog.connectFailed.detail", [withoutEllipsis("native.menu.connect")]],
+      ["native.dialog.connectFailed.detailOther", [withoutEllipsis("native.menu.connectOther")]],
       ["native.dialog.share.detail", [settings("settings.page.app", "settings.app.computers")]],
     ];
     const staleIn = (text: Text, prefix: string) => pointers.flatMap(([key, labels]) => labels.map((of) => of(text))

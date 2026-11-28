@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { OUTSIDE, workOriginSchema, type WorkOrigin } from "../peer-provenance.ts";
 import { personKey } from "../person-key.ts";
 import { createActingPeople, HandedPeople, onlyTheirs, privateHandBack, withPerson, type ActingLine, type DirectRequest, type RoomRun } from "./acting-person.ts";
+import { handoffReply } from "../runtime-coordinator.ts";
 
 const ADA = personKey({ id: "", email: "ada@acme.test" });
 const BEN = personKey({ id: "", email: "ben@acme.test" });
@@ -219,10 +220,57 @@ describe("what work in one person's private chat hands back", () => {
     const asked = privateHandBack({ ok: true, text: "Found two.\nNEEDS INPUT: Forward the salary review to Ben?", cards: { question: "Forward the salary review to Ben?", ids: ["c1"] } }, place(null));
     expect(asked).toEqual({ ok: true, text: "NEEDS INPUT: Helper has a question for Ada, in Helper's chat with Ada.", cards: { question: "Helper has a question for Ada, in Helper's chat with Ada.", ids: ["c1"] }, privateQuestion: true });
     expect(privateHandBack({ ok: true, text: "Found two.\nNEEDS INPUT: Forward it to Ben?" }, place(null)), "only she can answer it").toMatchObject({ privateQuestion: true });
+    expect(privateHandBack({ ok: true, text: "Found two.\nNEEDS INPUT: 无" }, place(null)), "a line that asks nothing").toEqual({ ok: true, text: "Done. The result is in Helper's chat with Ada." });
+    expect(privateHandBack({ ok: true, text: "Found two.\nNEEDS INPUT: Which account?\nDefault: staging" }, place(null)), "a question with a default").toMatchObject({ text: "NEEDS INPUT: Helper has a question for Ada, in Helper's chat with Ada.", privateQuestion: true });
   });
 
   it("hands everything back into her own private chat, and anything from a chat others read already", () => {
     expect(privateHandBack(done, place(ADA))).toBe(done);
     expect(privateHandBack(done, { child: null, parent: null, bot: "Helper", person: "them" })).toBe(done);
+  });
+
+  it("redacts an explicit question even when its line lies beyond the summary", () => {
+    const outcome = { ok: true, ...handoffReply(`${"x".repeat(12_001)}\nNEEDS INPUT: Forward the salary review to Ben?\nDefault: Forward it`) };
+    const safe = privateHandBack(outcome, place(null));
+    expect(safe).toEqual({ ok: true, text: "NEEDS INPUT: Helper has a question for Ada, in Helper's chat with Ada.",
+      question: "Helper has a question for Ada, in Helper's chat with Ada.", privateQuestion: true });
+    expect(JSON.stringify(safe)).not.toContain("salary");
+    expect(privateHandBack(outcome, place(BEN))).toEqual(safe);
+    expect(privateHandBack(outcome, place(ADA))).toBe(outcome);
+  });
+
+  it("keeps an explicit absence of a question when the shortened summary ends on one", () => {
+    const outcome = { ok: true, text: "NEEDS INPUT: Forward the salary review to Ben?", question: null };
+    expect(privateHandBack(outcome, place(null))).toEqual({ ok: true, text: "Done. The result is in Helper's chat with Ada.", question: null });
+  });
+});
+
+describe("handing on for the desktop app's own window", () => {
+  it("records the lender for work that lends when no person's line names one, and nothing for work that doesn't", () => {
+    const { people, handed } = world({ threads: { own: [{ id: "m1", at: 1, role: "user" }] }, direct: { own: request("g1", { messageId: "m1" }) } });
+    expect(people.requester("own", "g1")).toBeNull();
+    people.handOn({ threadId: "own", generation: "g1" }, { id: "lends", rootId: "r" }, true, ADA);
+    people.handOn({ threadId: "own", generation: "g1" }, { id: "plain", rootId: "r2" }, false, ADA);
+    expect(handed.get("lends")).toMatchObject({ person: ADA, lends: true });
+    expect(handed.get("plain")).toBeUndefined();
+    expect(people.handedOrigin(userOrigin(), "lends")).toMatchObject({ person: ADA, lends: true });
+  });
+
+  it("records nobody when another person's words joined the turn, or its line was steered in", () => {
+    const joined = world({ threads: { own: [{ id: "m1", at: 1, role: "user" }, said("m2", 2, BEN)] }, direct: { own: request("g1", { messageId: "m1" }) } });
+    joined.people.handOn({ threadId: "own", generation: "g1" }, { id: "n", rootId: "r" }, true, ADA);
+    expect(joined.handed.get("n")).toBeUndefined();
+    const named = world({ threads: { ada: [said("m1", 1, ADA), said("m2", 2, BEN)] }, direct: { ada: request("g1", { messageId: "m1" }) } });
+    named.people.handOn({ threadId: "ada", generation: "g1" }, { id: "n", rootId: "r" }, true, ADA);
+    expect(named.handed.get("n")).toBeUndefined();
+    const steered = world({ threads: { own: [{ id: "m1", at: 1, role: "user", steered: true }] }, direct: { own: request("g1", { messageId: "m1" }) } });
+    steered.people.handOn({ threadId: "own", generation: "g1" }, { id: "n", rootId: "r" }, true, ADA);
+    expect(steered.handed.get("n")).toBeUndefined();
+  });
+
+  it("keeps the person whose own line started the turn over the lender", () => {
+    const { people, handed } = world({ threads: { ada: [said("m1", 1, ADA)] }, direct: { ada: request("g1", { messageId: "m1" }) } });
+    people.handOn({ threadId: "ada", generation: "g1" }, { id: "n", rootId: "r" }, true, BEN);
+    expect(handed.get("n")?.person).toBe(ADA);
   });
 });

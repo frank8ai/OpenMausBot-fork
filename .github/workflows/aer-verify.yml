@@ -38,16 +38,16 @@ jobs:
           [ -z "$BASE_REF" ] && BASE_REF="HEAD~1"
 
           CONTRACT_BLOB=$(git hash-object -w .aer/acceptance/default.yml)
-          SCRIPT_BLOB=$(git hash-object -w scripts/reproduce_katex_multiline_leak.py)
+          SCRIPT_BLOB=$(git hash-object -w scripts/reproduce_fast_brain_routing.py)
           MANIFEST_BLOB=$(git hash-object -w config/verification-manifest.json)
-          TEST_BLOB=$(git hash-object -w tests/test_katex_multiline_leak.py)
+          TEST_BLOB=$(git hash-object -w tests/test_fast_brain_routing.py)
 
           TMP_INDEX=$(mktemp)
           GIT_INDEX_FILE="$TMP_INDEX" git read-tree "$BASE_REF"
           GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$CONTRACT_BLOB",".aer/acceptance/default.yml"
-          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100755,"$SCRIPT_BLOB","scripts/reproduce_katex_multiline_leak.py"
+          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100755,"$SCRIPT_BLOB","scripts/reproduce_fast_brain_routing.py"
           GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$MANIFEST_BLOB","config/verification-manifest.json"
-          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$TEST_BLOB","tests/test_katex_multiline_leak.py"
+          GIT_INDEX_FILE="$TMP_INDEX" git update-index --add --cacheinfo 100644,"$TEST_BLOB","tests/test_fast_brain_routing.py"
 
           ALIGNED_TREE=$(GIT_INDEX_FILE="$TMP_INDEX" git write-tree)
           rm -f "$TMP_INDEX"
@@ -65,6 +65,11 @@ jobs:
           umask 000
           chmod -R a+rX .
           chmod 1777 /tmp 2>/dev/null || true
+
+          # Clean up any leftover artifacts from prior runs to free disk space
+          rm -rf "$PWD/.aer_tmp" /tmpfs_work/*/.aer_tmp /tmp/.aer_tmp* /tmp/aer_tmp* 2>/dev/null || true
+          docker container prune -f 2>/dev/null || true
+          docker volume prune -f 2>/dev/null || true
 
           mkdir -p "$PWD/.aer_tmp"
           chmod 1777 "$PWD/.aer_tmp"

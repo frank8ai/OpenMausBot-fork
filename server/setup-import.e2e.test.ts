@@ -159,8 +159,11 @@ describe("bringing in another AI tool's setup through the desktop app's own serv
     const told = await turn(later, "Review it");
     expect(told.system).not.toContain("review-pr");
     expect(told.linked(".agents", "review-pr")).toBeNull();
-    // There is one copy for all bots: nothing here deletes it.
-    expect((await api("DELETE", `/api/bots/${later.id}/skills/review-pr`)).status).toBe(404);
+    // Removing it here leaves the one shared copy, and every other bot, alone; switching it on here brings it back.
+    const removed = await api("DELETE", `/api/bots/${later.id}/skills/review-pr`);
+    expect(removed.status).toBe(200);
+    expect(JSON.parse(removed.text)).toEqual({ ok: true, scope: "bot", sourceFilesTouched: false });
+    expect(await enabled(later.id)).toEqual({ "release-notes": true });
     expect((await api("PATCH", "/api/config", { features: { skillsLibrary: true } })).status).toBe(200);
     expect(await enabled(starter.id)).toEqual({ "release-notes": true, "review-pr": true });
     expect((await api("PATCH", `/api/bots/${later.id}/skills/review-pr`, { enabled: true })).status).toBe(200);
@@ -181,5 +184,38 @@ describe("bringing in another AI tool's setup through the desktop app's own serv
     expect(system).toContain("- review-pr: Reviews a pull request.");
     // "Also use my Claude Code skills" is still on from above: Claude has release-notes from its own folder.
     expect(system).not.toContain("release-notes");
+  });
+
+  it("brings Hermes Agent's and OpenClaw's skills and MCP servers in, and never their secrets or Hermes' own skills", async () => {
+    const skill = (name: string) => `---\nname: ${name}\ndescription: The ${name} skill.\n---\n\nDo the ${name} steps.\n`;
+    put(".hermes/skills/devops/deploy-k8s/SKILL.md", skill("deploy-k8s"));
+    put(".hermes/skills/research/arxiv/SKILL.md", skill("arxiv"));
+    put(".hermes/skills/.bundled_manifest", "arxiv:0f3a\n");
+    put(".hermes/config.yaml", "mcp_servers:\n  linear:\n    url: https://mcp.linear.app/mcp\n");
+    put(".hermes/.env", `OPENROUTER_API_KEY=${SENTINEL}\n`);
+    put(".openclaw/workspace/skills/triage/SKILL.md", skill("triage"));
+    put(".openclaw/openclaw.json", '{\n  // JSON5\n  "mcp": { "servers": { "events": { "url": "https://events.example.test/stream", "transport": "sse" }, } },\n}\n');
+    put(".openclaw/secrets.json", SENTINEL);
+
+    const found = await api("GET", "/api/setup-import");
+    expect(JSON.parse(found.text)).toEqual({
+      skills: [{ name: "deploy-k8s", source: "hermes" }, { name: "triage", source: "openclaw" }],
+      tools: [{ name: "linear", source: "hermes" }, { name: "events", source: "openclaw" }],
+    });
+    const brought = await api("POST", "/api/setup-import", { skills: true, tools: true });
+    expect(JSON.parse(brought.text)).toMatchObject({ skills: { added: ["deploy-k8s", "triage"] }, tools: { added: ["linear", "events"] } });
+    const starter = (JSON.parse((await api("GET", "/api/bots")).text) as { bots: Array<{ id: string; name: string }> }).bots.find((bot) => bot.name !== "Later Bot")!;
+    const skills = JSON.parse((await api("GET", `/api/bots/${starter.id}/skills`)).text).skills as Array<{ name: string; source: string }>;
+    expect(skills).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "deploy-k8s", source: "~/.hermes/skills/devops/deploy-k8s", origin: "imported" }),
+      expect.objectContaining({ name: "triage", source: "~/.openclaw/workspace/skills/triage", origin: "imported" }),
+    ]));
+    expect(skills.map((one) => one.name)).not.toContain("arxiv");
+    const mcp = await api("GET", "/api/mcp/servers");
+    expect(JSON.parse(mcp.text).servers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "linear", url: "https://mcp.linear.app/mcp", enabled: false }),
+      expect.objectContaining({ name: "events", type: "sse", enabled: false }),
+    ]));
+    for (const said of [found.text, brought.text, mcp.text]) expect(said).not.toContain(SENTINEL);
   });
 });
