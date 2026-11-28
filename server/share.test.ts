@@ -3,7 +3,7 @@ import type { ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import { redactSecretsInText } from "../shared/redact.ts";
 import type { TemplateCard } from "../shared/share-card.ts";
@@ -12,6 +12,7 @@ import { createShareToolRoute, importSource, type ShareToolContext } from "./rou
 import { GithubTemplateError } from "./share-github.ts";
 import { createCommunityPublisher, type CommunityResult } from "./share-publish.ts";
 import { pagesHomeSignature } from "./pages/access.ts";
+import type { ExportablePackageSkill } from "./package-export.ts";
 import { createShareHost, creditName, readFolderFromDisk } from "./share.ts";
 import type { Routine } from "./routines.ts";
 import type { BotRecord } from "./store.ts";
@@ -42,14 +43,15 @@ const routine = { id: "r1", name: "Morning sweep", botId: "bot-1", prompt: "Swee
 const clean = (overrides: Partial<BotRecord> = {}) => bot({ soul: "Be brief.", ...overrides });
 
 function host(options: { submit?: (submission: unknown) => Promise<CommunityResult>; signedIn?: boolean; bots?: BotRecord[]; picture?: (bot: BotRecord) => string | undefined; brief?: string;
-  personNames?: Array<string | undefined>; suggestedCredit?: string } = {}) {
+  personNames?: Array<string | undefined>; suggestedCredit?: string; skills?: ExportablePackageSkill[] } = {}) {
   const dataDir = scratch(), botFolder = scratch();
   const patches: Array<{ messageId: string; card: TemplateCard }> = [];
   const bots = options.bots ?? [bot()];
   const publisher = createCommunityPublisher({ access: () => options.signedIn === false ? null : { kind: "desktop", url: "https://admin.example.com/api/cloud/pages/token", token: "t" } });
   const share = createShareHost({
     dataDir, bots: () => bots, groups: () => [], routines: () => [routine], brief: () => options.brief,
-    collectTeamSkills: (list) => ({ ok: true, skipped: [], skillsByBot: new Map(list.map((each) => [each.id, [{ name: "triage", description: "Sort the inbox.", instructions: skillText, enabled: true }]])) }),
+    collectTeamSkills: (list) => ({ ok: true, skipped: [], skillsByBot: new Map(list.map((each) => [each.id,
+      (options.skills ?? [{ name: "triage", description: "Sort the inbox.", instructions: skillText, enabled: true }]).map((skill) => ({ ...skill }))])) }),
     picture: options.picture ?? (() => undefined), botFolder: (id) => join(botFolder, id),
     publisher: options.submit ? { ...publisher, submit: options.submit } : publisher,
     patch: (_threadId, messageId, _text, card) => patches.push({ messageId, card }),
@@ -94,6 +96,34 @@ describe("making a template", () => {
     const titled = share.export({ scope: "bot", bot: bot() }, []);
     expect(titled.card.tagline).toBe("Inbox helper");
     expect(share.get(titled.card.id).details.summary).toBe("Keeps the inbox tidy.");
+  });
+
+  it("leaves a switched-off skill out of a bot's and a department's template and names it under Left out", () => {
+    const off = "---\nname: drafts\ndescription: Old drafts.\n---\n\n# Drafts\n\nRead C:/Users/janedoe/Documents/drafts first.\n";
+    const skills = [
+      { name: "triage", description: "Sort the inbox.", instructions: skillText, enabled: true },
+      { name: "drafts", description: "Old drafts.", instructions: off, enabled: false },
+    ];
+    const { share } = host({ skills });
+    for (const [target, part] of [[{ scope: "bot" as const, bot: bot() }, "skills[drafts]"], [{ scope: "department" as const, section: "Ops", bots: [bot()] }, "Helper: skills[drafts]"]] as const) {
+      const made = share.export(target, []);
+      expect(made.card.counts.skills).toBe(1);
+      expect(made.card.skipped).toContain(`skills switched off on the bot (${part})`);
+      expect(existsSync(join(made.dir, "skills", "triage", "SKILL.md"))).toBe(true);
+      expect(existsSync(join(made.dir, "skills", "drafts"))).toBe(false);
+      expect(JSON.stringify(share.get(made.card.id).details)).not.toMatch(/drafts|janedoe/);
+    }
+  });
+
+  it("keeps every switched-on skill, and a skill with no switch, in the template", () => {
+    const { share } = host({ skills: [
+      { name: "triage", description: "Sort the inbox.", instructions: skillText, enabled: true },
+      { name: "notes", description: "Keep notes.", instructions: "---\nname: notes\ndescription: Keep notes.\n---\n\nWrite to C:/Users/janedoe/notes.md.\n" },
+    ] });
+    const made = share.export({ scope: "bot", bot: bot() }, []);
+    expect(made.card.counts.skills).toBe(2);
+    expect(made.card.skipped).not.toEqual(expect.arrayContaining([expect.stringContaining("switched off")]));
+    expect(readFileSync(join(made.dir, "skills", "notes", "SKILL.md"), "utf8")).toContain("Write to ~/notes.md.");
   });
 
   it("makes the same template again in the same folder and keeps its card", () => {
@@ -255,6 +285,68 @@ describe("publishing without the person's details", () => {
     const card = await share.publish(made.card.id);
     expect(botFile(sent)).toContain("Keeps ~\\inbox tidy.");
     expect(card.scrubbed).toEqual({ paths: 1, emails: 0, phones: 0, names: 0 });
+  });
+
+  it("uploads only the fields a template carries from a folder edited to hold connections, memory, approval and unknown keys", async () => {
+    let sent: { files: Record<string, string | { base64: string }> } | null = null;
+    const { share, patches } = host({ bots: [clean()], submit: async (submission) => { sent = submission as never; return ok; } });
+    const made = share.export({ scope: "bot", bot: clean() }, []);
+    share.shown(made.card.id, "thread-1", "message-1");
+    const file = join(made.dir, "bot.md");
+    const [, head, body] = readFileSync(file, "utf8").match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)!;
+    const meta = parseYaml(head!);
+    meta.author = { name: "Community", url: "https://example.com/me" };
+    meta.publisher = { organization: "acme", name: "Acme" };
+    meta.privateNotes = "UNKNOWN_TOP_LEVEL";
+    meta.connections = [{ key: "crm", label: "CRM", reason: "Used by Helper", mcp: { transport: "http", url: "https://crm.example.com/mcp/CONNECTION_PATH", valueNames: ["X-CRM-TOKEN"] } }];
+    meta.presets = [{ key: "p", name: "PRESET_NAME", bot: {} }];
+    Object.assign(meta.agents[0], { connections: ["crm"], seed: { memory: { "MEMORY.md": "SEED_MEMORY_LINE" } }, approval: "ask", model: "UNKNOWN_AGENT_KEY" });
+    meta.agents[0].appearance.ring = "UNKNOWN_LOOK";
+    writeFileSync(file, `---\n${stringifyYaml(meta)}---\n${body}`);
+    const skill = join(made.dir, "skills", "triage", "SKILL.md");
+    writeFileSync(skill, readFileSync(skill, "utf8").replace("description: Sort the inbox.", "description: Sort the inbox.\nallowed-tools: Bash(SKILL_TOOL:*)\nmetadata:\n  owner: SKILL_OWNER"));
+
+    const card = await share.publish(made.card.id);
+    expect(card.status).toBe("published");
+    const everything = JSON.stringify(sent!.files);
+    for (const gone of ["UNKNOWN_TOP_LEVEL", "CONNECTION_PATH", "X-CRM-TOKEN", "PRESET_NAME", "SEED_MEMORY_LINE", "UNKNOWN_AGENT_KEY", "UNKNOWN_LOOK", "SKILL_TOOL", "SKILL_OWNER", "example.com/me", "acme"]) {
+      expect(everything).not.toContain(gone);
+    }
+    const published = frontmatter(botFile(sent));
+    expect(published).not.toHaveProperty("connections");
+    expect(published).not.toHaveProperty("publisher");
+    expect(published.author).toEqual({ name: "Community" });
+    expect(Object.keys(published.agents[0]).sort()).toEqual(["appearance", "description", "key", "name", "skills", "soul", "title", "tools"]);
+    expect(frontmatter(String(sent!.files["skills/triage/SKILL.md"]))).toEqual({ name: "triage", description: "Sort the inbox." });
+    expect(card.skipped).toEqual(expect.arrayContaining(["connection addresses", "the connections a bot uses", "a bot's starter memory", "a bot's approval level",
+      "preset bots", "skill settings other than name and description", "fields a template doesn't carry"]));
+    expect(patches.at(-1)!.card.skipped).toEqual(card.skipped);
+    expect(readFileSync(file, "utf8")).not.toMatch(/SEED_MEMORY_LINE|CONNECTION_PATH|approval/);
+  });
+
+  it("takes a picture's metadata out before it is uploaded, its pixels as they were", async () => {
+    let sent: { files: Record<string, string | { base64: string }> } | null = null;
+    const segment = (marker: number, payload: Buffer) => Buffer.concat([Buffer.from([0xff, marker, (payload.length + 2) >> 8, (payload.length + 2) & 0xff]), payload]);
+    const pixels = Buffer.from([0x12, 0x34, 0x56]);
+    const jpeg = Buffer.concat([
+      Buffer.from([0xff, 0xd8]),
+      segment(0xe0, Buffer.from("JFIF\0\x01\x01\0\0\x01\0\x01\0\0", "latin1")),
+      segment(0xe1, Buffer.from("Exif\0\0GPS 37.7749 -122.4194 Canon EOS", "latin1")),
+      segment(0xfe, Buffer.from("taken at home", "latin1")),
+      segment(0xc0, Buffer.from([8, 0, 1, 0, 1, 1, 1, 0x11, 0])),
+      segment(0xda, Buffer.from([1, 1, 0, 0, 0x3f, 0])),
+      pixels,
+      Buffer.from([0xff, 0xd9]),
+    ]);
+    const pictured = clean();
+    const { share } = host({ bots: [pictured], picture: () => `data:image/jpeg;base64,${jpeg.toString("base64")}`, submit: async (submission) => { sent = submission as never; return ok; } });
+    await share.publish(share.export({ scope: "bot", bot: pictured }, []).card.id);
+    const [path, value] = Object.entries(sent!.files).find(([name]) => name.startsWith("avatars/"))!;
+    expect(path).toMatch(/\.jpg$/);
+    const uploaded = Buffer.from((value as { base64: string }).base64, "base64");
+    expect(uploaded.toString("latin1")).not.toMatch(/Exif|GPS|Canon|taken at home/);
+    expect(uploaded.includes(pixels)).toBe(true);
+    expect(uploaded.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
   });
 
   it("credits the name in Published by, the community when it is cleared, and the last one when a bot publishes", async () => {

@@ -35,6 +35,7 @@ import { writeFileAtomic } from "./atomic.ts";
 import { productName } from "./brand.ts";
 import { createTeamPackageExport, TeamExportError, type ExportablePackageSkill, type TeamExportSkip } from "./package-export.ts";
 import type { Routine } from "./routines.ts";
+import { publicTemplate } from "./share-allow-list.ts";
 import { COMMUNITY_MAX_BYTES, COMMUNITY_MAX_FILES, type CommunityPublisher } from "./share-publish.ts";
 import type { BotRecord, GroupRecord } from "./store.ts";
 import { parseTeamManifest } from "./team-manifest.ts";
@@ -99,6 +100,7 @@ const SKIP_WORDS: Record<string, string> = {
   picture_too_large: "a picture over 64 KB", picture_invalid: "a picture that couldn't be read", files_not_shared: "files attached to a routine",
   lead_not_in_group_chat: "a group chat goal whose lead isn't in the chat", skill_changed: "a skill that changed while it was being shared",
   skill_conflict: "a skill two bots have in different versions", bot_skill_limit: "skills past a bot's limit", team_skill_limit: "skills past the department's limit",
+  skill_off: "skills switched off on the bot",
 };
 /** The line a template gets when its bot or department has no words of its own; a card leaves it out. */
 const plainTagline = (scope: TemplateScope) => `A ${scope === "bot" ? "bot" : "department"} shared from ${productName()}.`;
@@ -363,6 +365,13 @@ export function createShareHost(deps: ShareHostDeps) {
     if (!bots.length) throw new ShareError("This department has no bots to share.");
     const skills = deps.collectTeamSkills(bots, "all");
     if (!skills.ok) throw new ShareError(skills.error);
+    const skipped = [...skills.skipped];
+    for (const bot of bots) {
+      const list = skills.skillsByBot.get(bot.id) ?? [];
+      const where = target.scope === "bot" ? "" : `${bot.name}: `;
+      for (const skill of list) if (skill.enabled === false) skipped.push({ part: `${where}skills[${skill.name}]`, reason: "skill_off" });
+      skills.skillsByBot.set(bot.id, list.filter((skill) => skill.enabled !== false));
+    }
     const fileSkips = new Set<string>();
     for (const bot of bots) {
       for (const skill of skills.skillsByBot.get(bot.id) ?? []) {
@@ -401,7 +410,7 @@ export function createShareHost(deps: ShareHostDeps) {
         skillSelection: "all",
         avatars,
         mcpServers: {},
-        skipped: skills.skipped,
+        skipped,
         // Connections never travel in a template, so a key in one doesn't keep it from being published.
         beforeRedaction: (definition) => { credential = scrubTree({ ...definition, connections: undefined }).counts.secrets > 0; },
       });
@@ -488,7 +497,7 @@ export function createShareHost(deps: ShareHostDeps) {
     files(id: string): { slug: string; files: Record<string, string | Uint8Array> } {
       const record = records.get(id);
       if (!record || record.status === "gone") throw new ShareError("This template was deleted.", 404);
-      const { document } = scrubbedPackage(folderPackage(record.dir, record.scope), namesFor(record.author ?? deps.suggestedCredit?.()));
+      const { document } = scrubbedPackage(publicTemplate(folderPackage(record.dir, record.scope)).document, namesFor(record.author ?? deps.suggestedCredit?.()));
       return { slug: record.slug, files: writeShareFolder(document, record.scope) };
     },
 
@@ -500,22 +509,28 @@ export function createShareHost(deps: ShareHostDeps) {
       if (record.status === "publishing") return lastCards.get(id) ?? cardOf(record);
       if (deps.publisher.availability()) return update(record, { status: "draft", error: undefined });
       const credit = options.author ?? record.author ?? "";
-      let document: PackageDocument, counts: ScrubCounts;
+      let document: PackageDocument, counts: ScrubCounts, leftOut: string[];
       try {
-        ({ document, counts } = scrubbedPackage(folderPackage(record.dir, record.scope), namesFor(credit, options.names)));
+        const allowed = publicTemplate(folderPackage(record.dir, record.scope));
+        leftOut = allowed.leftOut;
+        ({ document, counts } = scrubbedPackage(allowed.document, namesFor(credit, options.names)));
       } catch (error) {
         if (error instanceof ShareError) return update(record, { status: "failed", error: error.message });
         throw error;
       }
       if (record.secret || counts.secrets > 0) return update(record, { status: "failed", error: SECRET_REFUSAL, secret: true }, document);
       document = withCredit(document, credit);
-      if (Object.values(counts).some((count) => count > 0) && ownFolder(record)) writeFolder(record.dir, writeShareFolder(document, record.scope));
+      if ((leftOut.length || Object.values(counts).some((count) => count > 0)) && ownFolder(record)) {
+        rmSync(record.dir, { recursive: true, force: true });
+        writeFolder(record.dir, writeShareFolder(document, record.scope));
+      }
+      const skipped = [...new Set([...record.skipped, ...leftOut])];
       const scrubbed = shownCounts(addScrubCounts({ ...emptyScrubCounts(), ...record.scrubbed }, counts));
       const files = writeShareFolder(withoutSkillFiles(document), record.scope);
       const bytes = Object.values(files).reduce((sum, value) => sum + (typeof value === "string" ? Buffer.byteLength(value) : value.byteLength), 0);
       if (Object.keys(files).length > COMMUNITY_MAX_FILES) return update(record, { status: "failed", error: `A template can have at most ${COMMUNITY_MAX_FILES} files.` }, document);
       if (bytes > COMMUNITY_MAX_BYTES) return update(record, { status: "failed", error: "This template is bigger than 4 MB. Leave out large pictures or skills, then publish again." }, document);
-      update(record, { status: "publishing", error: undefined, scrubbed, ...(options.author === undefined ? {} : { author: options.author }) }, document);
+      update(record, { status: "publishing", error: undefined, scrubbed, skipped, ...(options.author === undefined ? {} : { author: options.author }) }, document);
       const result = await deps.publisher.submit({
         slug: record.slug,
         files: Object.fromEntries(Object.entries(files).map(([path, value]) => [path, typeof value === "string" ? value : { base64: Buffer.from(value).toString("base64") }])),

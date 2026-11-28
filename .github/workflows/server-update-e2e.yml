@@ -24,7 +24,7 @@ concurrency:
 jobs:
   e2e:
     name: update, roll back and recover (${{ matrix.layout }})
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 40
     strategy:
       fail-fast: false
