@@ -1,13 +1,6 @@
 // Security: model text never turns an arbitrary local path into a browser request; transcript paths resolve through
 // attachmentImageUrl.
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
@@ -17,7 +10,6 @@ import {
   ExternalLink,
   Eye,
   FileText,
-  FolderOpen,
   ImageOff,
   LoaderCircle,
   Maximize2,
@@ -33,12 +25,14 @@ import {
 } from "@/lib/composer-attachments";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import { revealBridge, revealHostPath, revealProblemText, REVEALABLE_PATH } from "@/lib/reveal-host-path";
 import { serverErrorText } from "@/lib/server-error";
 import { CopyImageButton } from "./CopyImageButton";
 import { FilePreviewButton } from "./FilePreviewButton";
 import { chipNameAction, SaveIconButton, useHtmlPreview } from "./HtmlFilePreview";
-import { ImageLoading } from "./ImageLoading"; import { openLinkedFolder } from "./RevealOriginalMenu"; import { serverFetch } from "@/lib/relay-server";
+import { ImageLoading } from "./ImageLoading"; import { OutsideWorkspaceFile } from "./OutsideWorkspacePreview"; import { openLinkedFolder } from "./RevealOriginalMenu"; import { isPlaceId } from "@/lib/place-chat"; import { serverFetch } from "@/lib/relay-server";
+import { usePreviewZoom } from "./preview-zoom";
+
+export { OutsideWorkspaceFile };
 
 export interface PreviewImage {
   src: string;
@@ -225,20 +219,25 @@ export async function requestMessageFile(
   filePath: string,
   message: MessageAttachmentContext,
   signal: AbortSignal,
-  options?: { entry?: string; list?: boolean; mediaLink?: boolean },
+  options?: { entry?: string; list?: boolean; mediaLink?: boolean; allowOutsideWorkspace?: boolean },
 ): Promise<Response> {
   const response = await serverFetch(`/api/threads/${encodeURIComponent(message.threadId)}/messages/${encodeURIComponent(message.messageId)}/file`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       path: filePath,
-      ...(options?.entry !== undefined ? { entry: options.entry } : options?.list ? { listFolder: true } : options?.mediaLink ? { media: true } : {}),
+      ...(options?.allowOutsideWorkspace ? { allowOutsideWorkspace: true } : {}),
+      ...(options?.entry !== undefined ? { entry: options.entry } : options?.allowOutsideWorkspace ? {} : options?.list ? { listFolder: true } : options?.mediaLink ? { media: true } : {}),
     }),
     signal,
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => null) as { error?: string; code?: string } | null;
-    throw Object.assign(new Error(serverErrorText(body, body?.error ?? t("attach.downloadFailed"))), { code: body?.code, status: response.status });
+    const body = await response.json().catch(() => null) as { error?: string; code?: string; canOpenOutside?: unknown } | null;
+    throw Object.assign(new Error(serverErrorText(body, body?.error ?? t("attach.downloadFailed"))), {
+      code: body?.code,
+      status: response.status,
+      ...(body?.canOpenOutside === true ? { canOpenOutside: true } : {}),
+    });
   }
   return response;
 }
@@ -255,6 +254,7 @@ export function useLocalFileSave(filePath: string, name?: string, message?: Mess
   const [reason, setReason] = useState("");
   const [savedTo, setSavedTo] = useState("");
   const [failureCode, setFailureCode] = useState<unknown>(undefined);
+  const [canOpenOutside, setCanOpenOutside] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const request = useRef<AbortController | null>(null);
   const saving = useRef(false);
@@ -276,11 +276,12 @@ export function useLocalFileSave(filePath: string, name?: string, message?: Mess
     setReason("");
     setSavedTo("");
     setFailureCode(undefined);
+    setCanOpenOutside(false);
     setFolder(null);
     setState("idle");
   }, [filePath, entry, message?.messageId, message?.threadId]);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (options?: { allowOutsideWorkspace?: boolean }) => {
     if (saving.current) return;
     if (!message) {
       setReason(t("attach.unavailableOld"));
@@ -294,17 +295,23 @@ export function useLocalFileSave(filePath: string, name?: string, message?: Mess
     }
     setReason("");
     setFailureCode(undefined);
+    setCanOpenOutside(false);
     setState("saving");
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     try {
-      const response = await requestMessageFile(filePath, message, controller.signal, entry === undefined ? { list: true } : { entry });
+      const requestOptions = entry !== undefined
+        ? { entry }
+        : options?.allowOutsideWorkspace
+          ? { allowOutsideWorkspace: true }
+          : { list: true };
+      const response = await requestMessageFile(filePath, message, controller.signal, requestOptions);
       if (response.headers.get("x-openmausbot-folder") === "1") {
         const listing = await response.json() as MessageFolderListing;
         if (!mounted.current || controller.signal.aborted) return;
         setState("idle");
-        if (!(await openLinkedFolder(filePath)) && !controller.signal.aborted) setFolder(listing); // Security: only a path this message's route just authorized reaches the desktop bridge.
+        if (!(!isPlaceId(message.threadId) && await openLinkedFolder(filePath)) && !controller.signal.aborted) setFolder(listing); // Security: only a path this message's route just authorized reaches the desktop bridge.
         return;
       }
       const blob = await response.blob();
@@ -342,6 +349,7 @@ export function useLocalFileSave(filePath: string, name?: string, message?: Mess
       if (!mounted.current || controller.signal.aborted) return;
       setReason(error instanceof Error ? error.message : t("attach.saveFailed"));
       setFailureCode((error as { code?: unknown } | null)?.code);
+      setCanOpenOutside((error as { canOpenOutside?: unknown } | null)?.canOpenOutside === true);
       setState("failed");
     } finally {
       if (request.current === controller) {
@@ -352,7 +360,7 @@ export function useLocalFileSave(filePath: string, name?: string, message?: Mess
   }, [filePath, entry, message?.messageId, message?.threadId, name]);
 
   const outsideWorkspace = failureCode === "outside_workspace"; // Retrying can't move a file into the folder or make it smaller.
-  return { state, reason, savedTo, outsideWorkspace, retryable: state === "failed" && !outsideWorkspace && failureCode !== "file_too_large", folder, save };
+  return { state, reason, savedTo, outsideWorkspace, canOpenOutside, retryable: state === "failed" && !outsideWorkspace && failureCode !== "file_too_large", folder, save };
 }
 
 export function saveFailureText(save: { reason: string; outsideWorkspace: boolean }): string {
@@ -417,37 +425,6 @@ export function MessageFolderFiles({ folderPath, listing, message }: {
   );
 }
 
-export function OutsideWorkspaceFile({ filePath, standalone = false }: { filePath: string; standalone?: boolean }) {
-  const [problem, setProblem] = useState("");
-  const reveal = revealBridge();
-  if (!reveal || !REVEALABLE_PATH.test(filePath)) {
-    return (
-      <code title={t("attach.outsideWorkspacePath")} className="select-all whitespace-pre-wrap break-all text-ink">
-        {filePath}
-      </code>
-    );
-  }
-  const show = async () => {
-    setProblem("");
-    const result = await revealHostPath(filePath);
-    const text = revealProblemText(result);
-    if (text) setProblem(text);
-  };
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => void show()}
-        title={filePath}
-        className={standalone ? "ui-button touch:min-h-10" : "inline-flex max-w-full min-w-0 items-center gap-1 text-accent underline decoration-accent/40 hover:decoration-accent"}
-      >
-        <FolderOpen size={standalone ? 14 : 12} className="shrink-0" aria-hidden="true" />
-        {t("attach.showInFolder")}
-      </button>
-      {problem && <span role="alert" className="text-danger">{problem}</span>}
-    </>
-  );
-}
 
 export function AttachmentPreviewDialog({
   image,
@@ -468,6 +445,8 @@ export function AttachmentPreviewDialog({
   const [loadedSources, setLoadedSources] = useState<Set<string>>(() => new Set());
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const zoom = usePreviewZoom();
+  useLayoutEffect(() => zoom.reset(), [current.src, zoom.reset]);
 
   useLayoutEffect(() => {
     closeRef.current = onClose;
@@ -532,6 +511,7 @@ export function AttachmentPreviewDialog({
 
   return createPortal(
     <div
+      ref={zoom.overlay}
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
@@ -586,7 +566,7 @@ export function AttachmentPreviewDialog({
             </button>
           </div>
         </header>
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-8">
+        <div ref={zoom.stage} className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-8">
           {!loaded && !failed && (
             <div className="absolute inset-4 flex animate-pulse items-center justify-center rounded-xl bg-white/[0.055] sm:inset-8" role="status">
               <span className="flex items-center gap-2 text-[13px] text-white/55">
@@ -609,6 +589,8 @@ export function AttachmentPreviewDialog({
           ) : (
             <img
               key={`${current.src}:${attempt}`}
+              ref={zoom.image}
+              style={zoom.style}
               src={current.src}
               alt={current.name}
               onLoad={() => setLoadedSources((sources) => new Set(sources).add(current.src))}
@@ -943,7 +925,11 @@ export function AttachedFileChip({ file, message, linked = false, compact = fals
               : saveFailureText(save)}
           {failed && save.outsideWorkspace && (
             <div className="mt-1 flex flex-wrap items-center gap-x-1.5">
-              <OutsideWorkspaceFile filePath={file.shownPath ?? file.path} />
+              <OutsideWorkspaceFile
+                filePath={file.shownPath ?? file.path}
+                onOpenOutside={save.canOpenOutside ? () => void save.save({ allowOutsideWorkspace: true }) : undefined}
+                openOutsideLabel={t("attach.saveOutsideFile")}
+              />
             </div>
           )}
         </div>
@@ -1003,7 +989,13 @@ function CompactFileChip({ file, message, linked, save, preview, className }: {
         <span role={failed ? "alert" : "status"} className={cn("px-2.5 text-[12px]", failed ? "text-danger" : "text-ink-secondary")}>
           {save.state === "saving" ? t("attach.downloading") : saveFailureText(save)}
           {failed && save.outsideWorkspace && (
-            <span className="ms-1.5 inline-flex flex-wrap items-center gap-x-1.5"><OutsideWorkspaceFile filePath={file.shownPath ?? file.path} /></span>
+            <span className="ms-1.5 inline-flex flex-wrap items-center gap-x-1.5">
+              <OutsideWorkspaceFile
+                filePath={file.shownPath ?? file.path}
+                onOpenOutside={save.canOpenOutside ? () => void save.save({ allowOutsideWorkspace: true }) : undefined}
+                openOutsideLabel={t("attach.saveOutsideFile")}
+              />
+            </span>
           )}
         </span>
       )}
