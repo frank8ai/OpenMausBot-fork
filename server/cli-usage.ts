@@ -58,6 +58,7 @@ export const USAGE = `openmausbot — your team of AI bots, ready in a few steps
   openmausbot access list | add EMAIL [--chat-only] | remove EMAIL
   openmausbot service install [the same way-in options as serve] [--port N] [--data-dir DIR] | uninstall
                     [--sentinel]   (the health scan below, every two minutes, instead of the server)
+  openmausbot solo-status [--data-dir DIR] [--once] [--daemon] [--interval SECONDS] [--json] (local project watcher; see --help)
   openmausbot sentinel [--data-dir DIR] [--out DIR] [--once] [--json]   (read-only health scan; see --help)
   openmausbot config backups | restore NAME    (dated copies of the settings file; see --help)
   openmausbot browser install [--with-deps] | status
@@ -135,3 +136,4 @@ ${HEADLESS_USAGE}
 Install once with \`npm install -g openmausbot\`, then type \`openmausbot\`.
 Or run without a global install: \`npx openmausbot\`. Node 24+ is required.
 `;
+

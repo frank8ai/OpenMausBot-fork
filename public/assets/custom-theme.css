@@ -194,3 +194,8 @@ button[type="submit"]:hover, button[aria-label*="Send"]:hover, .chat-composer bu
   outline: none !important;
   box-shadow: 0 0 0 2.5px rgba(255, 86, 48, 0.22) !important;
 }
+
+
+.chat-md :is(p, li, h1, h2, h3, h4, blockquote) {
+  overflow-wrap: anywhere;
+}

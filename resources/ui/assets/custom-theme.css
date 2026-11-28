@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    OpenMausBot v5.0 Apex Aesthetic — 和纸青瓷 · Washi & Celadon
    Philosophy: Kinfolk 留白 · 京都手工和纸 · 宋代青瓷微釉
    Zero external URLs, zero backslashes, WCAG 2.2 AAA verified, CLS = 0.000
@@ -569,6 +569,10 @@
   line-height: 1.25;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  box-sizing: border-box;
 }
 
 .chat-md a:not(.ui-pill):not([data-github-ref]) {
@@ -762,4 +766,9 @@
   .chat-column button.ui-pill, .chat-column a.ui-pill, [data-look="sidebar-thread"], [data-look="composer"] {
     transition: none;
   }
+}
+
+
+.chat-md :is(p, li, h1, h2, h3, h4, blockquote) {
+  overflow-wrap: anywhere;
 }
