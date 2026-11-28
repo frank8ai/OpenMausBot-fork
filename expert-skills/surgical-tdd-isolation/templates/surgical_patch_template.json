@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SurgicalPatchInstruction",
+  "type": "object",
+  "required": [
+    "target_file",
+    "target_ast_node",
+    "operation",
+    "code_patch",
+    "verification_test"
+  ],
+  "properties": {
+    "target_file": {
+      "type": "string",
+      "description": "\u76f8\u5bf9\u6216\u7edd\u5bf9\u6587\u4ef6\u8def\u5f84"
+    },
+    "target_ast_node": {
+      "type": "object",
+      "required": [
+        "kind",
+        "identifier"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "function_declaration",
+            "method_definition",
+            "class_declaration",
+            "variable_declarator"
+          ]
+        },
+        "identifier": {
+          "type": "string"
+        },
+        "start_line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        }
+      }
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "replace_body",
+        "replace_node",
+        "insert_before",
+        "insert_after"
+      ]
+    },
+    "code_patch": {
+      "type": "string",
+      "description": "\u7cbe\u51c6\u6539\u5199\u7684\u4ee3\u7801\u6bb5\uff0c\u5fc5\u987b\u6ee1\u8db3\u539f\u6709\u7f29\u8fdb\u4e0e\u8bed\u6cd5\u6811\u5408\u89c4\u6027"
+    },
+    "verification_test": {
+      "type": "object",
+      "required": [
+        "test_file",
+        "expected_red_error",
+        "expected_green_exit_code"
+      ],
+      "properties": {
+        "test_file": {
+          "type": "string"
+        },
+        "expected_red_error": {
+          "type": "string"
+        },
+        "expected_green_exit_code": {
+          "type": "integer",
+          "default": 0
+        }
+      }
+    }
+  }
+}

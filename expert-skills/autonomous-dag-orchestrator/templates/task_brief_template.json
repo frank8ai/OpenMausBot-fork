@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AutonomousTaskBrief",
+  "version": "4.1.0",
+  "task": {
+    "task_id": "TASK-202611-001",
+    "verb": "Implement",
+    "object": "Autonomous DAG Orchestrator Engine",
+    "assignee_bot_id": "09e3d0a6-3a02-4a09-8f77-2754ec60a5d7",
+    "dependencies": ["TASK-202611-000"],
+    "critical_path": true,
+    "done_when": "所有单元测试通过，DAG 状态机三态流转验证无死锁，且输出标准交付报告。",
+    "timeout_seconds": 600,
+    "max_rework_strikes": 2
+  }
+}

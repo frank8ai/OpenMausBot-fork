@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: production-service-rollout
+  namespace: production
+spec:
+  replicas: 10
+  strategy:
+    canary:
+      analysis:
+        templates:
+          - templateName: canary-health-metrics
+        args:
+          - name: service-name
+            value: production-service
+      steps:
+        - setWeight: 5
+        - pause: {duration: 5m}
+        - setWeight: 25
+        - pause: {duration: 5m}
+        - setWeight: 50
+        - pause: {duration: 10m}
+      abortScaleDownDelaySeconds: 30
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: canary-health-metrics
+  namespace: production
+spec:
+  metrics:
+    - name: error-rate-5xx
+      interval: 30s
+      successCondition: result[0] <= 0.01
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus-k8s.monitoring.svc:9090
+          query: |
+            sum(rate(http_requests_total{status=~"5.*", service="production-service"}[2m]))
+            /
+            sum(rate(http_requests_total{service="production-service"}[2m]))
+    - name: p99-latency-threshold
+      interval: 30s
+      successCondition: result[0] <= 0.500
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus-k8s.monitoring.svc:9090
+          query: |
+            histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service="production-service"}[2m])) by (le))

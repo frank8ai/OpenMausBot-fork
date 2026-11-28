@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HeadlessPRReviewChecklist",
+  "version": "4.0.0",
+  "scoring_model": {
+    "total_max_score": 100,
+    "pass_threshold": 85,
+    "hard_blocks_any": true
+  },
+  "dimensions": [
+    {
+      "name": "Security & Taint Defense (安全与污点防护)",
+      "weight": 30,
+      "checks": [
+        {
+          "id": "SEC-01",
+          "description": "零凭证与敏感秘钥硬编码 (无 API Key, Token, 私钥泄露)",
+          "severity": "BLOCKING"
+        },
+        {
+          "id": "SEC-02",
+          "description": "OWASP Top 10 污点追踪闭环 (无原生 SQL/命令/SSRF 拼接)",
+          "severity": "BLOCKING"
+        },
+        {
+          "id": "SEC-03",
+          "description": "依赖合法性核验 (无虚假包、臆造包，版本锁定)",
+          "severity": "BLOCKING"
+        }
+      ]
+    },
+    {
+      "name": "Architecture & System Invariants (架构契约与不变性)",
+      "weight": 25,
+      "checks": [
+        {
+          "id": "ARCH-01",
+          "description": "根因深度审查 (Fix the class, not the site，禁止表象防御)",
+          "severity": "BLOCKING"
+        },
+        {
+          "id": "ARCH-02",
+          "description": "防腐层契约完整性 (禁止底层直接穿透或破坏模块解耦)",
+          "severity": "BLOCKING"
+        },
+        {
+          "id": "ARCH-03",
+          "description": "变更爆炸半径评估 (单次 PR <= 200 行，微颗粒度)",
+          "severity": "WARNING"
+        }
+      ]
+    },
+    {
+      "name": "Mutation & Test Verification (变异测试与反转验证)",
+      "weight": 25,
+      "checks": [
+        {
+          "id": "TEST-01",
+          "description": "具备有效反转测试 (用例能先失败，断言非假断言)",
+          "severity": "BLOCKING"
+        },
+        {
+          "id": "TEST-02",
+          "description": "消灭 Mock 自证循环 (严禁直接断言 Mock 自身的假测试)",
+          "severity": "BLOCKING"
+        },
+        {
+          "id": "TEST-03",
+          "description": "测试隔离度 (单元测试无外部网络/生产存储强依赖)",
+          "severity": "WARNING"
+        }
+      ]
+    },
+    {
+      "name": "Concurrency & Resource Cleanup (并发时序与资源释放)",
+      "weight": 10,
+      "checks": [
+        {
+          "id": "CONC-01",
+          "description": "异步请求竞态防护 (具备 AbortController 或状态时序锁)",
+          "severity": "WARNING"
+        },
+        {
+          "id": "CONC-02",
+          "description": "资源生命周期释放 (定时器、订阅、文件句柄具备严格清理)",
+          "severity": "BLOCKING"
+        }
+      ]
+    },
+    {
+      "name": "Code Readability & Hygiene (代码可读性与无废话准入)",
+      "weight": 10,
+      "checks": [
+        {
+          "id": "READ-01",
+          "description": "通过机器 linter/formatter 静态扫描 (零格式争论)",
+          "severity": "BLOCKING"
+        },
+        {
+          "id": "READ-02",
+          "description": "命名清晰自解释，关键边界附带说明而非机械废话",
+          "severity": "NIT"
+        }
+      ]
+    }
+  ]
+}
