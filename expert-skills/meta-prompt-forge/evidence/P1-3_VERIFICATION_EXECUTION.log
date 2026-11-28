@@ -1,0 +1,95 @@
+================================================================================
+ORCHESTRATOR EVIDENCE GENERATION AND VERIFICATION EXECUTION LOG
+Timestamp: 2026-11-25T10:29:41Z
+Run ID: run-20261125-phase1-p13-final-002
+Target: expert-skills
+Composite Digest: 05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301
+HMAC Env Var: OPENMAUSBOT_ORCHESTRATOR_HMAC_KEY (active)
+================================================================================
+
+--- METADATA SIGNATURES ---
+Prod Valid Meta Signature: d74035673c2cc9079359cd039a9720d803d81fdcf1ccec88a4326aeddd5aba6f
+Same Family Meta Signature: fa64a96f43bd7895dc62bfbcb655386e2dbabe4f3ebce0de94fbe58998a4a37f
+Digest Mismatch Meta Signature: 0db40f57155fa75d870af80e6abf028c47a8c9d8316fba5b5db3b6252d142432
+
+--- EXECUTION RECEIPTS (5/5 CASES) ---
+[case_1_production_signed_valid]
+Command: python expert-skills/meta-prompt-forge/scripts/audit_12dim_soul.py --target expert-skills --kind skill --orchestrator-meta expert-skills/meta-prompt-forge/evidence/orchestrator_meta_prod_valid.json
+Exit Code: 0
+Stdout:
+{
+  "status": "PASS",
+  "kind": "skill",
+  "provenance": "ORCHESTRATOR_VERIFIED",
+  "production_gate_eligible": true,
+  "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+  "lines": 230,
+  "bytes": 20169,
+  "author_family": "gemini",
+  "reviewer_family": "openai",
+  "errors": [],
+  "warnings": []
+}
+------------------------------------------------------------
+[case_2_local_self_check_ineligible]
+Command: python expert-skills/meta-prompt-forge/scripts/audit_12dim_soul.py --target expert-skills --kind skill --allow-self-check --author-family gemini --reviewer-family openai
+Exit Code: 0
+Stdout:
+{
+  "status": "PASS",
+  "kind": "skill",
+  "provenance": "LOCAL_SELF_CHECK_ONLY",
+  "production_gate_eligible": false,
+  "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+  "lines": 230,
+  "bytes": 20169,
+  "author_family": "gemini",
+  "reviewer_family": "openai",
+  "errors": [],
+  "warnings": [
+    "local self-check mode enabled; ineligible for production gate"
+  ]
+}
+------------------------------------------------------------
+[case_3_same_family_blocked_exit30]
+Command: python expert-skills/meta-prompt-forge/scripts/audit_12dim_soul.py --target expert-skills --kind skill --orchestrator-meta expert-skills/meta-prompt-forge/evidence/orchestrator_meta_same_family.json
+Exit Code: 30
+Stdout:
+{
+  "status": "BLOCKED_SAME_FAMILY",
+  "provenance": "ORCHESTRATOR_VERIFIED",
+  "author_family": "openai",
+  "reviewer_family": "openai",
+  "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+  "reason": "Cross-family heterogeneous review required (e.g., gemini <-> openai/anthropic)"
+}
+------------------------------------------------------------
+[case_4_production_unverified_rejected]
+Command: python expert-skills/meta-prompt-forge/scripts/audit_12dim_soul.py --target expert-skills --kind skill
+Exit Code: 2
+Stdout:
+{
+  "status": "PROVENANCE_UNVERIFIED",
+  "provenance": "SELF_DECLARED_REJECTED",
+  "production_gate_eligible": false,
+  "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+  "errors": [
+    "production gate requires signed orchestrator-meta (--orchestrator-meta)"
+  ]
+}
+------------------------------------------------------------
+[case_5_candidate_digest_mismatch_exit2]
+Command: python expert-skills/meta-prompt-forge/scripts/audit_12dim_soul.py --target expert-skills --kind skill --orchestrator-meta expert-skills/meta-prompt-forge/evidence/orchestrator_meta_digest_mismatch.json
+Exit Code: 2
+Stdout:
+{
+  "status": "PROVENANCE_UNVERIFIED",
+  "provenance": "DIGEST_MISMATCH",
+  "production_gate_eligible": false,
+  "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+  "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "errors": [
+    "candidate digest mismatch: expected 0000000000000000000000000000000000000000000000000000000000000000, got 05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301"
+  ]
+}
+------------------------------------------------------------

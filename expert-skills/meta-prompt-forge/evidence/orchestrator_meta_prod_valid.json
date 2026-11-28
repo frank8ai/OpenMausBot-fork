@@ -1,0 +1,9 @@
+{
+  "author_model": "gemini-4-neon",
+  "reviewer_model": "gpt-6.2-sol",
+  "issuer": "OpenMausBot-ChiefOfStaff-Orchestrator",
+  "issued_at": "2026-11-25T10:29:41Z",
+  "run_id": "run-20261125-phase1-p13-final-002",
+  "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+  "signature": "d74035673c2cc9079359cd039a9720d803d81fdcf1ccec88a4326aeddd5aba6f"
+}

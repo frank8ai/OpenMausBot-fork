@@ -1,0 +1,40 @@
+rules:
+  - id: zero-trust-sqli-template-literal
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: "检测到直接在数据库 query 中使用模板字符串或拼接表达式。此操作违反零信任安全门禁，极易引发 SQL 注入漏洞。请使用参数化绑定查询 ($1, ?) 代替。"
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: $DB.query(`...${...}...`)
+          - pattern: $DB.query($A + $B)
+          - pattern: $DB.raw(`...${...}...`)
+      - pattern-not: $DB.query("...")
+      - pattern-not: $DB.query('...')
+
+  - id: zero-trust-child-process-exec
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: "禁止使用 child_process.exec 执行含动态入参的 shell 命令。此举易导致 Shell 注入漏洞。请改用 child_process.execFile 或 child_process.spawn 并显式指定参数数组且关闭 shell。"
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern: child_process.exec($CMD, ...)
+      - pattern-not: child_process.exec("...", ...)
+      - pattern-not: child_process.exec('...', ...)
+
+  - id: zero-trust-hardcoded-secret
+    languages: [typescript, javascript, python]
+    severity: ERROR
+    message: "检测到疑似硬编码的高危凭证、私钥或 API Key。严禁在源码中保留任何明文机密，必须使用环境变量或安全的凭证管理服务加载。"
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+    patterns:
+      - pattern-regex: (?:api[_-]?key|secret|token|password|auth[_-]?token)\s*[:=]\s*["'][A-Za-z0-9_\-]{20,}["']

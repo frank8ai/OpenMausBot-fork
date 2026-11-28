@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SREProductionIncidentRunbook",
+  "version": "4.1.0",
+  "incident_triage": {
+    "severity_levels": [
+      {
+        "level": "P0",
+        "definition": "核心主流程中断、全站不可用或高危数据泄露",
+        "mttd_target_seconds": 60,
+        "mttr_target_seconds": 300,
+        "immediate_action": "0-60s 止血：无需申请即刻执行自动化版本回滚与流量切换"
+      },
+      {
+        "level": "P1",
+        "definition": "非核心业务线不可用、错误预算燃烧率 > 6.0x 或严重性能退化",
+        "mttd_target_seconds": 180,
+        "mttr_target_seconds": 900,
+        "immediate_action": "执行金丝雀缩容至 0，拉起应急会诊并开启 D2 功能降级"
+      },
+      {
+        "level": "P2",
+        "definition": "偶发告警抖动或单实例故障但有冗余副本承载",
+        "mttd_target_seconds": 600,
+        "mttr_target_seconds": 3600,
+        "immediate_action": "只读探测排查，次日工单排期修复"
+      }
+    ]
+  },
+  "stop_bleeding_playbook": {
+    "phase_1_telemetry": [
+      "k9s --readonly: 检查 CrashLoopBackOff 与 OOMKilled 容器状态",
+      "sentry-mcp: 检索过去 15 分钟 Top 1 突增异常堆栈与 Release Tag",
+      "git log -n 5: 确认最近 1 小时内合并入主干并触发部署的最新 Commit"
+    ],
+    "phase_2_rollback_commands": [
+      "kubectl rollout undo deployment/autofabric-core --to-revision=0 -n production",
+      "kubectl rollout status deployment/autofabric-core -n production --timeout=60s",
+      "litestream verify /var/lib/autofabric/state.db"
+    ],
+    "phase_3_degradation_switches": [
+      "curl -X POST http://localhost:8080/api/v1/flags/degrade_level -d '{"level": "D2"}'",
+      "curl -X POST http://localhost:8080/api/v1/circuit-breaker/force-open"
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DAGGraphDefinition",
+  "version": "4.1.0",
+  "graph_id": "DAG-20261117-FULL-FACTORY",
+  "nodes": [
+    {
+      "id": "Phase-1",
+      "name": "工程攻坚双子星 (全栈开发 & 测试质保员)",
+      "status": "COMPLETED",
+      "depends_on": []
+    },
+    {
+      "id": "Phase-2",
+      "name": "质量与基建双子星 (代码评审员 & 运维工程师)",
+      "status": "COMPLETED",
+      "depends_on": ["Phase-1"]
+    },
+    {
+      "id": "Phase-3",
+      "name": "产品与体验双子星 (产品战略师 & 体验设计师)",
+      "status": "COMPLETED",
+      "depends_on": ["Phase-2"]
+    },
+    {
+      "id": "Phase-4",
+      "name": "调度与版本双子星 (项目调度员 & 文档版本员)",
+      "status": "RUNNING",
+      "depends_on": ["Phase-3"]
+    }
+  ],
+  "deadlock_protection": {
+    "enabled": true,
+    "two_strike_escalate": true,
+    "auto_gc_settled_threads": true
+  }
+}

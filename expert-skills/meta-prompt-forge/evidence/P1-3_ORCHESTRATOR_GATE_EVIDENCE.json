@@ -1,0 +1,79 @@
+{
+  "evidence_id": "P1-3-ORCHESTRATOR-HMAC-VERIFICATION-EVIDENCE",
+  "timestamp": "2026-11-25T10:29:41Z",
+  "orchestrator_hmac_key_env": "OPENMAUSBOT_ORCHESTRATOR_HMAC_KEY",
+  "test_target": "expert-skills",
+  "run_id": "run-20261125-phase1-p13-final-002",
+  "runs": {
+    "case_1_production_signed_valid": {
+      "exit_code": 0,
+      "stdout": {
+        "status": "PASS",
+        "kind": "skill",
+        "provenance": "ORCHESTRATOR_VERIFIED",
+        "production_gate_eligible": true,
+        "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+        "lines": 230,
+        "bytes": 20169,
+        "author_family": "gemini",
+        "reviewer_family": "openai",
+        "errors": [],
+        "warnings": []
+      }
+    },
+    "case_2_local_self_check_ineligible": {
+      "exit_code": 0,
+      "stdout": {
+        "status": "PASS",
+        "kind": "skill",
+        "provenance": "LOCAL_SELF_CHECK_ONLY",
+        "production_gate_eligible": false,
+        "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+        "lines": 230,
+        "bytes": 20169,
+        "author_family": "gemini",
+        "reviewer_family": "openai",
+        "errors": [],
+        "warnings": [
+          "local self-check mode enabled; ineligible for production gate"
+        ]
+      }
+    },
+    "case_3_same_family_blocked_exit30": {
+      "exit_code": 30,
+      "stdout": {
+        "status": "BLOCKED_SAME_FAMILY",
+        "provenance": "ORCHESTRATOR_VERIFIED",
+        "author_family": "openai",
+        "reviewer_family": "openai",
+        "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+        "reason": "Cross-family heterogeneous review required (e.g., gemini <-> openai/anthropic)"
+      }
+    },
+    "case_4_production_unverified_rejected": {
+      "exit_code": 2,
+      "stdout": {
+        "status": "PROVENANCE_UNVERIFIED",
+        "provenance": "SELF_DECLARED_REJECTED",
+        "production_gate_eligible": false,
+        "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+        "errors": [
+          "production gate requires signed orchestrator-meta (--orchestrator-meta)"
+        ]
+      }
+    },
+    "case_5_candidate_digest_mismatch_exit2": {
+      "exit_code": 2,
+      "stdout": {
+        "status": "PROVENANCE_UNVERIFIED",
+        "provenance": "DIGEST_MISMATCH",
+        "production_gate_eligible": false,
+        "candidate_sha256": "05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301",
+        "expected_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "errors": [
+          "candidate digest mismatch: expected 0000000000000000000000000000000000000000000000000000000000000000, got 05401c2101d77e93bd93e3aeaaa473b7d4aabaf0ce0f1f743de70b52eaa62301"
+        ]
+      }
+    }
+  }
+}

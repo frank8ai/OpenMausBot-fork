@@ -1,0 +1,40 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "global": {
+    "color": {
+      "neutral": {
+        "0": { "$value": "oklch(0.99 0 0)", "$type": "color" },
+        "100": { "$value": "oklch(0.95 0.01 265)", "$type": "color" },
+        "200": { "$value": "oklch(0.90 0.01 265)", "$type": "color" },
+        "800": { "$value": "oklch(0.20 0.02 265)", "$type": "color" },
+        "900": { "$value": "oklch(0.12 0.02 265)", "$type": "color" }
+      },
+      "brand": {
+        "500": { "$value": "oklch(0.62 0.22 265)", "$type": "color" }
+      }
+    },
+    "duration": {
+      "fast": { "$value": "120ms", "$type": "duration" },
+      "normal": { "$value": "180ms", "$type": "duration" },
+      "slow": { "$value": "260ms", "$type": "duration" }
+    },
+    "easing": {
+      "linear-spring": { "$value": "cubic-bezier(0.16, 1, 0.3, 1)", "$type": "cubicBezier" }
+    }
+  },
+  "semantic": {
+    "color": {
+      "surface": {
+        "canvas": { "$value": "{global.color.neutral.900}", "$type": "color" },
+        "panel": { "$value": "{global.color.neutral.800}", "$type": "color" }
+      },
+      "text": {
+        "primary": { "$value": "{global.color.neutral.0}", "$type": "color" },
+        "muted": { "$value": "{global.color.neutral.200}", "$type": "color" }
+      },
+      "interactive": {
+        "accent": { "$value": "{global.color.brand.500}", "$type": "color" }
+      }
+    }
+  }
+}
