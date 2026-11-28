@@ -165,7 +165,6 @@ const READS: Record<string, number> = {
   "src/components/app/AppFrame.tsx": 1,
   "src/components/app/AppMessage.tsx": 2,
   "src/components/app/PageTools.tsx": 1,
-  "src/components/bot-panel/use-memory-doc.ts": 1,
   "src/components/browser/PasskeyNotice.tsx": 1,
   "src/components/cloud-welcome/CloudWelcome.tsx": 1,
   "src/components/cloud-welcome/WelcomeKeeper.tsx": 1,

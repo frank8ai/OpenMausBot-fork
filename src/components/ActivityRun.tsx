@@ -5,6 +5,9 @@ import { describeRun } from "@/lib/activity-runs";
 import { t } from "@/lib/i18n";
 import { useAdvancedMode } from "@/lib/interface-mode";
 import { toolStepLabel } from "@/lib/tool-step-label";
+import { useSoloHubMode } from "@/lib/solo-hub";
+import { extractPipelinePhases } from "@/lib/solo-decision-flow";
+import { PipelineStatusCapsule } from "./solo-hub/PipelineStatusCapsule";
 
 export function ActivityRun({
   messages,
@@ -17,10 +20,21 @@ export function ActivityRun({
 }) {
   const [open, setOpen] = useState(forceOpen);
   const advanced = useAdvancedMode();
+  const soloHub = useSoloHubMode();
   const summary = advanced ? describeRun(messages) : describeRun(messages, toolStepLabel);
   useEffect(() => {
     if (forceOpen) setOpen(true);
   }, [forceOpen]);
+  if (soloHub) {
+    const phases = extractPipelinePhases(messages);
+    if (phases.length > 0) {
+      return (
+        <PipelineStatusCapsule phases={phases} metaLabel={summary} forceOpen={forceOpen}>
+          {children}
+        </PipelineStatusCapsule>
+      );
+    }
+  }
   if (open) {
     return (
       <div className="flex flex-col gap-1">

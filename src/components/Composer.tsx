@@ -10,7 +10,7 @@ import { visibleMessages, currentTaskBot, type Action, type Bot, type Group, typ
 import { cn } from "@/lib/cn";
 import { PHONE_LAYOUT, useMediaQuery } from "@/lib/use-media-query";
 import { useMenuMotion } from "./MenuMotion";
-import { ELEVATED_CARD, ELEVATED_COMPOSER, ELEVATED_FLOAT } from "./elevated";
+import { ELEVATED_COMPOSER, ELEVATED_FLOAT } from "./elevated";
 import { uploadDraftImage } from "@/lib/composer-uploads";
 import { intakeFilesWithNotice } from "@/lib/attach-notice";
 import { activeLocale, t } from "@/lib/i18n";
@@ -70,7 +70,8 @@ import {
 } from "@/lib/composer-attachments";
 import { goalCoordinatorForComposer, jevRoomRoutingOn, openTaskWorking, roomRouteForComposer } from "@/lib/group-routing";
 import { composerForkOwner, composerPlaceholder, sendLabels, SIMPLE_COMPOSER, SIMPLE_CONTROL, slotColors } from "./composer-simple"; import { ComposerSendButton } from "./ComposerSendButton"; import { ComposerContextMenu } from "./ComposerContextMenu";
-import { PendingApprovalActions, PendingApprovalPanel, pendingApprovals } from "./PendingApproval";
+import { pendingApprovals } from "./PendingApproval";
+import { ComposerApprovalSlot } from "./solo-hub/ComposerApprovalSlot";
 import { CallButton } from "./CallView";
 import { GroupCallButton } from "./GroupCallView";
 import { ApprovalChip, ComposerPlusMenu, GoalToggle } from "./ComposerPlusMenu";
@@ -736,20 +737,7 @@ export function Composer({
           onPick={pickCommand} onHighlight={setHighlight} />
         <MentionMenu listRef={mentionListRef} motion={mentionMotion} choices={candidates} highlight={highlight}
           everyoneCount={mentionEveryoneCount} onPick={pickMention} onHighlight={setHighlight} />
-        {approval && (
-          <div className={cn("mb-2 overflow-hidden rounded-[18px]", ELEVATED_CARD)}>
-            <PendingApprovalPanel
-              key={approval.requestId}
-              pending={approval}
-              botName={approvalBot?.name} asker={approvalBot}
-              count={approvals.length}
-              index={0}
-              locale={activeLocale()}
-              actions={<PendingApprovalActions part="primary" pending={approval} threadId={threadId} bot={approvalBot} onCancelTurn={interruptTurn} />}
-              more={approval.message.inbox ? undefined : <PendingApprovalActions part="more" pending={approval} threadId={threadId} bot={approvalBot} onCancelTurn={interruptTurn} />}
-            />
-          </div>
-        )}
+        <ComposerApprovalSlot approval={approval} approvalsCount={approvals.length} bot={approvalBot} threadId={threadId} onCancelTurn={interruptTurn} />
         <PointedChips threadId={threadId} />{!group && bot && <SetupRequestChip bot={bot} threadId={threadId} />}
         <ComposerAttachments
           items={attachments}
