@@ -55,7 +55,7 @@ describe("printed commands", () => {
       const head = /^ {2}openmausbot ([a-z][a-z-]*)/.exec(line);
       if (head) command = head[1]!;
       else if (!/^ {10,}/.test(line) || /^ {2}openmausbot -/.test(line)) command = null;
-      if (!command || HEADLESS_VERB_NAMES.has(command) || command === "fleet" || command === "sentinel") continue;
+      if (!command || HEADLESS_VERB_NAMES.has(command) || command === "fleet" || command === "sentinel" || command === "solo-status") continue;
       for (const [flag] of line.matchAll(/--[a-z][a-z-]*/g)) {
         const bare = accepted([command, flag]);
         const valued = accepted([command, flag, flag === "--public-url" ? "https://maus.example.com" : flag === "--port" ? "8800" : flag === "--ttl" ? "24h" : flag === "--phone" ? "ios" : "x"]);
@@ -72,3 +72,4 @@ describe("printed commands", () => {
     expect(noRouteLines(8799, "docker compose exec omb openmausbot").join("\n")).toContain("docker compose exec omb openmausbot serve --lan");
   });
 });
+

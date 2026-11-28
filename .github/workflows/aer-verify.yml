@@ -37,8 +37,8 @@ jobs:
           [ -z "$BASE_REF" ] && BASE_REF="HEAD~1"
 
           TARGET_SCRIPT=$(grep -oE 'scripts/[a-zA-Z0-9_-]+\.py' .aer/acceptance/default.yml | head -n 1)
-          [ -z "$TARGET_SCRIPT" ] && TARGET_SCRIPT="scripts/reproduce_solo_hub.py"
-          TARGET_TEST="tests/test_solo_hub.py"
+          [ -z "$TARGET_SCRIPT" ] && TARGET_SCRIPT="scripts/reproduce_solo_watcher.py"
+          TARGET_TEST="tests/test_solo_watcher.py"
 
           CONTRACT_BLOB=$(git hash-object -w .aer/acceptance/default.yml)
           SCRIPT_BLOB=$(git hash-object -w "$TARGET_SCRIPT")
