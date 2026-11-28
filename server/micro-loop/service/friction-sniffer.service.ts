@@ -1,4 +1,4 @@
-﻿import { redactSecretsInText, scrubHeldSecrets } from "../../redact.ts";
+import { redactSecretsInText, scrubHeldSecrets } from "../../redact.ts";
 import {
   computeContextHash,
   computeEventId,

@@ -393,7 +393,17 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
           try {
             const sniffer = getGlobalFrictionSniffer();
             if (sniffer.isExplicitCorrection(typed)) {
-              const prevMsg = target?.role === "bot" ? target.text : undefined;
+              let prevMsg = target?.role === "bot" ? target.text : undefined;
+              if (!prevMsg) {
+                const threadMsgs = store.messagesFor(threadId);
+                for (let i = threadMsgs.length - 1; i >= 0; i--) {
+                  const m = threadMsgs[i];
+                  if (m?.role === "bot" && typeof m.text === "string") {
+                    prevMsg = m.text;
+                    break;
+                  }
+                }
+              }
               void sniffer.sniffExplicitCorrection({
                 botId: bot.id,
                 threadId,
@@ -624,11 +634,22 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
         ...(CLOUD_HOME ? { sender: messageSender(auth) } : {}) });
       try {
         const sniffer = getGlobalFrictionSniffer();
+        const sourceIndex = threadMessages.findIndex((msg) => msg.id === messageId);
+        let abandonedAssistantMsgText: string | undefined;
+        if (sourceIndex >= 0) {
+          for (let i = sourceIndex + 1; i < threadMessages.length; i++) {
+            const candidate = threadMessages[i];
+            if (candidate?.role === "bot" && typeof candidate.text === "string") {
+              abandonedAssistantMsgText = candidate.text;
+              break;
+            }
+          }
+        }
         void sniffer.sniffEditRetry({
           botId: bot.id,
           threadId: bot.threadId,
           editedText: text,
-          abandonedAssistantMsgText: source.text,
+          abandonedAssistantMsgText,
           producerModel: bot.modelSelection?.model,
         });
       } catch {

@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export const FrictionSignalKindSchema = z.enum([
@@ -108,7 +108,17 @@ export function verifyFrictionEventHmac(event: SignedFrictionEvent, secret: stri
   const { hmac_sha256, ...payload } = event;
   const canonical = canonicalizeFrictionPayload(payload);
   const expectedHmac = createHmac("sha256", secret).update(canonical).digest("hex");
-  if (hmac_sha256.length !== expectedHmac.length) return false;
-  return timingSafeEqual(Buffer.from(hmac_sha256, "hex"), Buffer.from(expectedHmac, "hex"));
+  if (
+    typeof hmac_sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/i.test(hmac_sha256)
+  ) {
+    return false;
+  }
+  const actualBuf = Buffer.from(hmac_sha256, "hex");
+  const expectedBuf = Buffer.from(expectedHmac, "hex");
+  if (actualBuf.length !== expectedBuf.length) {
+    return false;
+  }
+  return timingSafeEqual(actualBuf, expectedBuf);
 }
 

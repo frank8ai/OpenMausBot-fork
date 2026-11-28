@@ -44,12 +44,20 @@ export function verifyManifestHmac(
 ): boolean {
   const { manifest_hmac_sha256, ...payload } = manifest;
   const expectedHmac = computeManifestHmac(payload, secret);
-  if (!manifest_hmac_sha256 || manifest_hmac_sha256.length !== expectedHmac.length) {
+  if (
+    typeof manifest_hmac_sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/i.test(manifest_hmac_sha256)
+  ) {
+    return false;
+  }
+  const actualBuf = Buffer.from(manifest_hmac_sha256, "hex");
+  const expectedBuf = Buffer.from(expectedHmac, "hex");
+  if (actualBuf.length !== expectedBuf.length) {
     return false;
   }
   return timingSafeEqual(
-    Buffer.from(manifest_hmac_sha256, "hex"),
-    Buffer.from(expectedHmac, "hex"),
+    actualBuf,
+    expectedBuf,
   );
 }
 
@@ -111,11 +119,14 @@ export class LkgHotReloadRuntime implements ILkgHotReloadPort {
     }
   }
 
-  private saveManifestToDisk(manifest: LkgActiveManifest): void {
-    if (existsSync(this.config.lkgManifestPath)) {
+  private saveManifestToDisk(manifest: LkgActiveManifest, backupCurrent = true): void {
+    if (backupCurrent && existsSync(this.config.lkgManifestPath)) {
       try {
         const prev = readFileSync(this.config.lkgManifestPath, "utf8");
-        writeFileAtomic(this.config.lkgPrevManifestPath, prev, { durable: true });
+        const parsed: LkgActiveManifest = JSON.parse(prev);
+        if (verifyManifestHmac(parsed, this.secret)) {
+          writeFileAtomic(this.config.lkgPrevManifestPath, prev, { durable: true });
+        }
       } catch {
         // ignore prev backup failure
       }
@@ -138,6 +149,7 @@ export class LkgHotReloadRuntime implements ILkgHotReloadPort {
         this.debounceTimer = setTimeout(() => {
           this.reloadIfChanged();
         }, 500);
+        this.debounceTimer?.unref?.();
       });
       this.fileWatcher.unref();
     } catch {
@@ -197,7 +209,7 @@ export class LkgHotReloadRuntime implements ILkgHotReloadPort {
         const raw = readFileSync(this.config.lkgPrevManifestPath, "utf8");
         const parsed: LkgActiveManifest = JSON.parse(raw);
         if (verifyManifestHmac(parsed, this.secret)) {
-          this.saveManifestToDisk(parsed);
+          this.saveManifestToDisk(parsed, false);
           this.currentManifest = parsed;
           return {
             rollbackWallMs: Date.now() - startTime,
@@ -219,7 +231,7 @@ export class LkgHotReloadRuntime implements ILkgHotReloadPort {
     };
     const hmac = computeManifestHmac(baseline, this.secret);
     const restored: LkgActiveManifest = { ...baseline, manifest_hmac_sha256: hmac };
-    this.saveManifestToDisk(restored);
+    this.saveManifestToDisk(restored, false);
     this.currentManifest = restored;
 
     return {

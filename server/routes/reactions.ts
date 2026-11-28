@@ -1,4 +1,4 @@
-﻿import { normalizeReaction, REACTIONS, type Reaction, type ReactionDelivery } from "../../shared/reactions.ts";
+import { normalizeReaction, REACTIONS, type Reaction, type ReactionDelivery } from "../../shared/reactions.ts";
 import type { Reactor } from "../reactions.ts";
 import type { RequestAuth } from "../request-auth.ts";
 import type { Message } from "../store.ts";
@@ -26,7 +26,7 @@ export function createReactionRoutes(deps: ReactionRouteDeps): RouteHandler {
     if (notYours) return json(res, 403, { error: notYours });
     try {
       const result = await deps.react({ auth, threadId: m[1], messageId: m[2], emoji, reactor: deps.reactorFor(auth), on: body.on });
-      if (emoji === "👎" && body.on !== false) {
+      if (emoji === "👎" && body.on !== false && result.message?.role === "bot") {
         try {
           void getGlobalFrictionSniffer().sniffThumbsDown({
             botId: "default-bot",

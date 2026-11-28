@@ -37,10 +37,9 @@ jobs:
           [ -z "$BASE_REF" ] && BASE_REF="HEAD~1"
 
           TARGET_SCRIPT=$(grep -oE 'scripts/[a-zA-Z0-9_-]+\.py' .aer/acceptance/default.yml | head -n 1)
-          [ -z "$TARGET_SCRIPT" ] && TARGET_SCRIPT="scripts/reproduce_solo_watcher.py"
-          BASE_NAME=$(basename "$TARGET_SCRIPT" .py | sed 's/^reproduce_//')
-          TARGET_TEST="tests/test_$BASE_NAME.py"
-          [ ! -f "$TARGET_TEST" ] && TARGET_TEST="tests/test_solo_watcher.py"
+          [ -z "$TARGET_SCRIPT" ] && TARGET_SCRIPT="scripts/reproduce_phase_c_cognitive_bridge.py"
+          SCRIPT_BASE=$(basename "$TARGET_SCRIPT")
+          TARGET_TEST="tests/test_${SCRIPT_BASE#reproduce_}"
 
           CONTRACT_BLOB=$(git hash-object -w .aer/acceptance/default.yml)
           SCRIPT_BLOB=$(git hash-object -w "$TARGET_SCRIPT")

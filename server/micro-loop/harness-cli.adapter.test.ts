@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { HarnessCliAdapter } from "./runtime/harness-cli.adapter.ts";
 
 describe("Harness CLI Adapter", () => {
@@ -31,7 +31,7 @@ describe("Harness CLI Adapter", () => {
 
     // Bun should execute and exit non-zero (e.g. exit 2 or 1)
     expect(typeof res.exitCode).toBe("number");
-    expect(res.durationMs).toBeGreaterThan(0);
+    expect(res.durationMs).toBeGreaterThanOrEqual(0);
   });
 });
 

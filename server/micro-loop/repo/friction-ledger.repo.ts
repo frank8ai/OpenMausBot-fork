@@ -1,4 +1,4 @@
-﻿import {
+import {
   closeSync,
   existsSync,
   mkdirSync,
@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { renameWithRetry, writeFileAtomic } from "../../atomic.ts";
 import {
   SignedFrictionEventSchema,
+  verifyFrictionEventHmac,
   type SignedFrictionEvent,
 } from "../contracts/friction-event.schema.ts";
 import type { CompiledRuleDraft } from "../contracts/compiled-rule.schema.ts";
@@ -38,9 +39,6 @@ interface LockContent {
   ttlMs: number;
 }
 
-function sleepSync(ms: number): void {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
 
 function isPidAlive(pid: number): boolean {
   try {
@@ -105,7 +103,7 @@ export class FrictionLedgerRepo implements IFrictionLedgerPort {
     }
   }
 
-  private acquireLockWithBackoff(lockPath: string): number | null {
+  private async acquireLockWithBackoff(lockPath: string): Promise<number | null> {
     for (let attempt = 0; attempt <= LOCK_RETRIES; attempt++) {
       const fd = this.tryAcquireLock(lockPath);
       if (fd !== null) return fd;
@@ -123,7 +121,7 @@ export class FrictionLedgerRepo implements IFrictionLedgerPort {
       if (attempt < LOCK_RETRIES) {
         const baseDelay = LOCK_DELAYS_MS[attempt] ?? 40;
         const jitter = Math.floor(Math.random() * (baseDelay / 2));
-        sleepSync(baseDelay + jitter);
+        await new Promise((r) => setTimeout(r, baseDelay + jitter));
       }
     }
     return null;
@@ -189,7 +187,7 @@ export class FrictionLedgerRepo implements IFrictionLedgerPort {
     }
 
     const lockPath = join(this.config.frictionEventsDir, ".write.lock");
-    const lockFd = this.acquireLockWithBackoff(lockPath);
+    const lockFd = await this.acquireLockWithBackoff(lockPath);
 
     if (lockFd === null) {
       if (this.fallbackQueue.length < MAX_QUEUE_SIZE) {
@@ -219,25 +217,33 @@ export class FrictionLedgerRepo implements IFrictionLedgerPort {
     }
   }
 
-  private scheduleQueueFlush(): void {
+  private scheduleQueueFlush(retriesLeft = 5): void {
     if (this.flushingQueue) return;
     this.flushingQueue = true;
     setTimeout(async () => {
-      this.flushingQueue = false;
-      if (this.fallbackQueue.length === 0) return;
-      const lockPath = join(this.config.frictionEventsDir, ".write.lock");
-      const lockFd = this.acquireLockWithBackoff(lockPath);
-      if (lockFd === null) return;
       try {
-        while (this.fallbackQueue.length > 0) {
-          const event = this.fallbackQueue.shift();
-          if (event && !this.recentEventIds.has(event.event_id)) {
-            const p = this.getDailyJsonlPath(new Date(event.timestamp));
-            this.writeEventUnderLock(p, event);
+        if (this.fallbackQueue.length === 0) return;
+        const lockPath = join(this.config.frictionEventsDir, ".write.lock");
+        const lockFd = await this.acquireLockWithBackoff(lockPath);
+        if (lockFd === null) {
+          if (retriesLeft > 0 && this.fallbackQueue.length > 0) {
+            setTimeout(() => this.scheduleQueueFlush(retriesLeft - 1), 100).unref();
           }
+          return;
+        }
+        try {
+          while (this.fallbackQueue.length > 0) {
+            const event = this.fallbackQueue.shift();
+            if (event && !this.recentEventIds.has(event.event_id)) {
+              const p = this.getDailyJsonlPath(new Date(event.timestamp));
+              this.writeEventUnderLock(p, event);
+            }
+          }
+        } finally {
+          this.releaseLock(lockPath, lockFd);
         }
       } finally {
-        this.releaseLock(lockPath, lockFd);
+        this.flushingQueue = false;
       }
     }, 100).unref();
   }
@@ -268,9 +274,12 @@ export class FrictionLedgerRepo implements IFrictionLedgerPort {
             const json = JSON.parse(trimmed);
             const parsed = SignedFrictionEventSchema.safeParse(json);
             if (parsed.success) {
-              const eventTime = Date.parse(parsed.data.timestamp);
-              if (eventTime >= cutoff && parsed.data.fingerprint_id === fingerprintId) {
-                results.push(parsed.data);
+              const isValidHmac = verifyFrictionEventHmac(parsed.data, this.config.hmacSecret);
+              if (isValidHmac) {
+                const eventTime = Date.parse(parsed.data.timestamp);
+                if (eventTime >= cutoff && parsed.data.fingerprint_id === fingerprintId) {
+                  results.push(parsed.data);
+                }
               }
             }
           } catch {

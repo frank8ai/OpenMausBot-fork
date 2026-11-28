@@ -1,4 +1,4 @@
-﻿import type { SignedFrictionEvent } from "../contracts/friction-event.schema.ts";
+import type { SignedFrictionEvent } from "../contracts/friction-event.schema.ts";
 import {
   CompiledRuleDraftSchema,
   type CompiledContrastiveProbe,

@@ -1,4 +1,4 @@
-﻿import type { SignedFrictionEvent } from "./friction-event.schema.ts";
+import type { SignedFrictionEvent } from "./friction-event.schema.ts";
 import type { CompiledRuleDraft } from "./compiled-rule.schema.ts";
 
 /** 与 Harness-Runner-Kit contracts/oracle-isolation.schema.ts V22_EXIT_CODES 1:1 对齐 */
