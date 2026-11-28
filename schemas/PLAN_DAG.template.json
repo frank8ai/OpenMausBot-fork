@@ -1,0 +1,167 @@
+{
+  "$schema": "./PLAN_DAG.schema.json",
+  "dag_id": "DAG-20261117-AUTOFABRIC-AGENT-BUS",
+  "title": "Autofabric 逻辑三域总线跨节点通信与防腐层工程落地",
+  "version": "1.0.0",
+  "north_star_goal": "构建单层物理总线 + 逻辑三域前缀聚类消息路由与防腐层，实现零人工介入自治交付与全绿自动化闭环。",
+  "created_at": "2026-11-17T20:50:00Z",
+  "updated_at": "2026-11-17T20:50:00Z",
+  "orchestrator": {
+    "bot_name": "项目调度员",
+    "bot_id": "90d143d7-379f-4b40-ab2a-ad878cb9be7d",
+    "role": "技术项目经理与 DAG 调度器 (TPM & DAG Orchestrator)"
+  },
+  "concurrency_limit": 2,
+  "global_status": "RUNNING",
+  "strike_policy": {
+    "max_strikes": 2,
+    "action_on_breach": "ESCALATE_ARCHITECT_CPO"
+  },
+  "gc_policy": {
+    "auto_cleanup_scratchpad": true,
+    "auto_terminate_threads": true,
+    "delete_feature_branch_on_merge": true
+  },
+  "nodes": [
+    {
+      "node_id": "N01-SPEC-LOCK",
+      "phase": "PHASE_1_SPEC_GATE",
+      "action_title": "锁定 逻辑三域总线数据契约与防腐层 ADR",
+      "assigned_bot": {
+        "bot_name": "软件架构师",
+        "bot_id": "484c328a-5a3a-4b40-ab4e-65c03126eb91",
+        "thread_id": "th-spec-lock-01"
+      },
+      "depends_on": [],
+      "status": "COMPLETED",
+      "strike_count": 0,
+      "entry_criteria": [
+        "接收到商业与技术复合需求简报",
+        "CPO 认知预算门禁审查完成 (O >= 12, CL-01至CL-06无红线)"
+      ],
+      "done_when": "出具结构化架构决策记录 ADR 与 JSON Schema 接口契约，并通过语法与幂等性审查",
+      "exit_gate": {
+        "verification_type": "ADR_LOCK",
+        "evidence_required": "物理 ADR 文档及接口 Schema 校验日志",
+        "evidence_path": "C:/Users/frank/Documents/frank/Projects/Decisions/ADR-20261117-agent-bus-acl.md",
+        "verified_at": "2026-11-17T20:55:00Z",
+        "verifier_bot": "项目调度员"
+      },
+      "rework_history": [],
+      "started_at": "2026-11-17T20:50:30Z",
+      "completed_at": "2026-11-17T20:55:00Z"
+    },
+    {
+      "node_id": "N02-TDD-CORE",
+      "phase": "PHASE_2_TDD_ATOMIC",
+      "action_title": "实现 总线消息防腐层编解码器与单元测试套件",
+      "assigned_bot": {
+        "bot_name": "全栈开发",
+        "bot_id": "486bda01-f875-40a3-8407-a974dba32ac3",
+        "thread_id": "th-tdd-core-02"
+      },
+      "depends_on": ["N01-SPEC-LOCK"],
+      "status": "COMPLETED",
+      "strike_count": 0,
+      "entry_criteria": [
+        "N01-SPEC-LOCK 状态为 COMPLETED 且 exit_gate 凭证物理存在",
+        "检出独立特性分支 feat/agent-bus-acl-core（严禁推 main）"
+      ],
+      "done_when": "完成防腐层编解码器实现，新增至少10个单元测试用例，覆盖率 >= 90% 且本地单测全部 PASS",
+      "exit_gate": {
+        "verification_type": "UNIT_TEST_PASS",
+        "evidence_required": "Git commit hash + 本地测试套件全绿运行报告",
+        "evidence_path": "commit: 4a9f81d, tests: 12 passed, 0 failed, cov: 94.2%",
+        "verified_at": "2026-11-17T21:10:00Z",
+        "verifier_bot": "项目调度员"
+      },
+      "rework_history": [],
+      "started_at": "2026-11-17T20:55:30Z",
+      "completed_at": "2026-11-17T21:10:00Z"
+    },
+    {
+      "node_id": "N03-QA-E2E",
+      "phase": "PHASE_3_QA_E2E",
+      "action_title": "验证 跨域消息路由与超时降级端到端测试",
+      "assigned_bot": {
+        "bot_name": "测试质保员",
+        "bot_id": "b537ed1e-2744-4217-a7bd-98d752a13f5d",
+        "thread_id": "th-qa-e2e-03"
+      },
+      "depends_on": ["N02-TDD-CORE"],
+      "status": "RUNNING",
+      "strike_count": 0,
+      "entry_criteria": [
+        "N02-TDD-CORE 状态为 COMPLETED，单测凭证全绿",
+        "集成测试沙箱环境就绪，Mock 依赖配置齐备"
+      ],
+      "done_when": "端到端集成测试通过，包含异常丢包、乱序注入与超时降级演练，出具 QA PASS 报告",
+      "exit_gate": {
+        "verification_type": "E2E_QA_PASS",
+        "evidence_required": "自动化 E2E 测试运行报告与退出码 0",
+        "evidence_path": null,
+        "verified_at": null,
+        "verifier_bot": null
+      },
+      "rework_history": [],
+      "started_at": "2026-11-17T21:10:30Z",
+      "completed_at": null
+    },
+    {
+      "node_id": "N04-AUDIT-PR",
+      "phase": "PHASE_4_AUDIT_PR",
+      "action_title": "终审 代码安全审计与发布 Runbook 并发起 PR",
+      "assigned_bot": {
+        "bot_name": "代码评审员",
+        "bot_id": "bb1549bf-4d96-4e91-bb92-2597dcd585c4",
+        "thread_id": null
+      },
+      "depends_on": ["N03-QA-E2E"],
+      "status": "LOCKED",
+      "strike_count": 0,
+      "entry_criteria": [
+        "N03-QA-E2E 状态为 COMPLETED 且 QA 状态为 PASS",
+        "无未解决的高危缺陷"
+      ],
+      "done_when": "SAST 静态扫描零高危，代码符合 Clean Architecture 规约，PR 创建并完成专家签字",
+      "exit_gate": {
+        "verification_type": "CR_APPROVED",
+        "evidence_required": "GitHub PR URL 及代码评审员 APPROVED 签名凭据",
+        "evidence_path": null,
+        "verified_at": null,
+        "verifier_bot": null
+      },
+      "rework_history": [],
+      "started_at": null,
+      "completed_at": null
+    },
+    {
+      "node_id": "N05-GC-CLOSURE",
+      "phase": "PHASE_5_GC_CLOSURE",
+      "action_title": "回收 会话生命周期与清理临时分支 Scratchpad",
+      "assigned_bot": {
+        "bot_name": "项目调度员",
+        "bot_id": "90d143d7-379f-4b40-ab2a-ad878cb9be7d",
+        "thread_id": null
+      },
+      "depends_on": ["N04-AUDIT-PR"],
+      "status": "LOCKED",
+      "strike_count": 0,
+      "entry_criteria": [
+        "N04-AUDIT-PR 状态为 COMPLETED，PR 已合并或具备合并批准",
+        "部署演练与台账最终核算完毕"
+      ],
+      "done_when": "物理销毁特性临时分支与本地 Scratchpad，向所有协作 Bot 发送 Thread GC 终止信号，台账标记为 SETTLED",
+      "exit_gate": {
+        "verification_type": "BRANCH_MERGED_GC",
+        "evidence_required": "分支删除日志与会话关闭确认",
+        "evidence_path": null,
+        "verified_at": null,
+        "verifier_bot": null
+      },
+      "rework_history": [],
+      "started_at": null,
+      "completed_at": null
+    }
+  ]
+}

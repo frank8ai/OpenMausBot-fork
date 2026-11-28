@@ -1,0 +1,117 @@
+{
+    "planId":  "PLAN-20261117-SOP-MATRIX",
+    "title":  "全团队12位垂直专家Bot标准化工作流程(SOP)深度调研与铸造DAG",
+    "createdAt":  "2026-11-17T22:45:00+08:00",
+    "completedAt": "2026-11-17T23:10:00+08:00",
+    "status":  "COMPLETED",
+    "phases":  [
+                   {
+                       "id":  "Phase-SOP-1",
+                       "name":  "核心研发与质保中台 SOP (全栈开发 & 测试质保员)",
+                       "status":  "COMPLETED",
+                       "dependsOn":  [],
+                       "roles":  [
+                                     {
+                                         "name":  "全栈开发",
+                                         "sopName":  "Dev-Engineer-Workflow-SOP.md",
+                                         "target":  "Surgical-TDD-Isolation, AST-Patching, Hermetic-Sandbox, Red-Green-Refactor, Non-Blocking-CLI"
+                                     },
+                                     {
+                                         "name":  "测试质保员",
+                                         "sopName":  "QA-Engineer-Workflow-SOP.md",
+                                         "target":  "Deterministic-E2E, Playwright-Trace-Authority, Netflix-Chaos-Injection, Flaky-Self-Healing, Repro-Pack"
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "Phase-SOP-2",
+                       "name":  "安全守门与系统基建中台 SOP (代码评审员 & 运维工程师)",
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+                                         "Phase-SOP-1"
+                                     ],
+                       "roles":  [
+                                     {
+                                         "name":  "代码评审员",
+                                         "sopName":  "Code-Reviewer-Workflow-SOP.md",
+                                         "target":  "Google-Critique, Meta-Stacked-Diffs, Zero-Trust-AST-Taint, Ship-Show-Ask, Anti-Bikeshedding"
+                                     },
+                                     {
+                                         "name":  "运维工程师",
+                                         "sopName":  "DevOps-SRE-Workflow-SOP.md",
+                                         "target":  "Google-SRE-Multi-Burn-Rate, L2-Physical-Fuse, 60s-Canary-Rollback, Immutable-Production, Read-Write-Airgap"
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "Phase-SOP-3",
+                       "name":  "战略证伪与体验设计中台 SOP (产品战略师 & 体验设计师)",
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+                                         "Phase-SOP-2"
+                                     ],
+                       "roles":  [
+                                     {
+                                         "name":  "产品战略师",
+                                         "sopName":  "Product-Strategist-Workflow-SOP.md",
+                                         "target":  "Shreyas-CPSR, Tony-Ulwick-JTBD, 6-Cognitive-Budget-Gates, Amazon-PRFAQ, Kill-Scope-ADR"
+                                     },
+                                     {
+                                         "name":  "体验设计师",
+                                         "sopName":  "Design-Engineer-Workflow-SOP.md",
+                                         "target":  "W3C-DTCG-3-Tier, Tailwind-v4-OKLCH, Linear-120ms-Microinteractions, 9-UI-States-Defense, Zero-CLS"
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "Phase-SOP-4",
+                       "name":  "架构设计与提示词工程中台 SOP (软件架构师 & 提示词架构师)",
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+                                         "Phase-SOP-3"
+                                     ],
+                       "roles":  [
+                                     {
+                                         "name":  "软件架构师",
+                                         "sopName":  "Software-Architect-Workflow-SOP.md",
+                                         "target":  "Hexagonal-Ports-Adapters, 4-AI-Giants-Native-ACL, Second-Order-Thinking, Zero-Hallucination-Schema"
+                                     },
+                                     {
+                                         "name":  "提示词架构师",
+                                         "sopName":  "Meta-Prompt-Architect-Workflow-SOP.md",
+                                         "target":  "L0-L6-SOUL-Pipeline, 12-Dimensional-Cold-Review, Promptfoo-Gate, Few-Shot-Distillation"
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "Phase-SOP-5",
+                       "name":  "调度编排、版本发布、逆向净室与情报前哨终局 SOP (项目调度员 & 文档版本员 & 逆向分析师 & 技术情报官)",
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+                                         "Phase-SOP-4"
+                                     ],
+                       "roles":  [
+                                     {
+                                         "name":  "项目调度员",
+                                         "sopName":  "Project-Manager-Workflow-SOP.md",
+                                         "target":  "Linear-Stripe-DAG, Verb-Object-DoneWhen-Issue, Two-Strike-Deadlock-Fuse, Thread-GC"
+                                     },
+                                     {
+                                         "name":  "文档版本员",
+                                         "sopName":  "Docs-Release-Workflow-SOP.md",
+                                         "target":  "Diataxis-4-Quadrants, Stripe-DX, Keep-a-Changelog, OpenAPI-Diff-Breaking-Gate, SemVer-Automation"
+                                     },
+                                     {
+                                         "name":  "逆向分析师",
+                                         "sopName":  "REA-Engineer-Workflow-SOP.md",
+                                         "target":  "NEC-v-Intel-Cleanroom, AST-Deobfuscation, Schema-Reverse, Copyright-Airgap-Spec"
+                                     },
+                                     {
+                                         "name":  "技术与竞品情报官",
+                                         "sopName":  "Market-Intelligence-Workflow-SOP.md",
+                                         "target":  "Bloomberg-Gartner-Intelligence, Triangulation-Gate, Vanity-Metric-Dewatering, BLUF-Delivery"
+                                     }
+                                 ]
+                   }
+               ]
+}

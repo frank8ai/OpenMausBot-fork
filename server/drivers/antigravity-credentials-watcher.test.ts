@@ -130,4 +130,34 @@ describe("GeminiCredentialsWatcher", () => {
 
     watcher.stop();
   });
+
+  it("does not overwrite an existing isolated acp_token.json on start()", async () => {
+    const existing: OmAcpToken = {
+      client_id: "isolated-client",
+      client_secret: "isolated-secret",
+      refresh_token: "1//isolated_instance_token",
+      token_uri: "https://oauth2.googleapis.com/token",
+      scopes: ["https://www.googleapis.com/auth/aicode"],
+      project_id: "aicode-consumers",
+    };
+    await writeFile(targetTokenPath, JSON.stringify(existing));
+    await writeFile(join(geminiDir, "oauth_creds.json"), JSON.stringify({
+      refresh_token: "1//global_frank_token",
+    }));
+
+    const switched = vi.fn();
+    const watcher = new GeminiCredentialsWatcher("antigravity-isolated-id", switched, {
+      geminiDir,
+      targetTokenPath,
+      debounceMs: 20,
+    });
+    watcher.start();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    const afterStart = JSON.parse(await readFile(targetTokenPath, "utf8")) as OmAcpToken;
+    expect(afterStart.refresh_token).toBe("1//isolated_instance_token");
+    expect(switched).not.toHaveBeenCalled();
+
+    watcher.stop();
+  });
 });

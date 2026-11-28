@@ -319,22 +319,31 @@ export async function prepareAntigravityProfile(input: {
     PYTHONUNBUFFERED: "1",
     ELECTRON_RUN_AS_NODE: "1",
   });
+  const hasExplicitProxy = Boolean(
+    environment.HTTP_PROXY || environment.HTTPS_PROXY || environment.ALL_PROXY,
+  );
+  const allowGlobalProxyLookup = Boolean(
+    input.activeEmail || input.geminiDir || input.toolsDir || process.env.OMB_ANTIGRAVITY_GLOBAL_PROXY_RESOLVER === "1",
+  );
   let activeEmail = input.activeEmail;
-  if (!activeEmail) {
-    try {
-      const geminiDir = input.geminiDir ?? join(homedir(), ".gemini");
-      const accContent = await readFile(join(geminiDir, "google_accounts.json"), "utf8");
-      const acc = JSON.parse(accContent);
-      activeEmail = typeof acc?.active === "string" ? acc.active : undefined;
-    } catch {}
-  }
-  const assignedProxy = await resolveAccountProxy(activeEmail, input.toolsDir);
-  if (assignedProxy) {
-    Object.assign(environment, {
-      HTTP_PROXY: assignedProxy,
-      HTTPS_PROXY: assignedProxy,
-      ALL_PROXY: assignedProxy,
-    });
+  let assignedProxy: string | undefined;
+  if (!hasExplicitProxy && allowGlobalProxyLookup) {
+    if (!activeEmail) {
+      try {
+        const geminiDir = input.geminiDir ?? join(homedir(), ".gemini");
+        const accContent = await readFile(join(geminiDir, "google_accounts.json"), "utf8");
+        const acc = JSON.parse(accContent);
+        activeEmail = typeof acc?.active === "string" ? acc.active : undefined;
+      } catch {}
+    }
+    assignedProxy = await resolveAccountProxy(activeEmail, input.toolsDir);
+    if (assignedProxy) {
+      Object.assign(environment, {
+        HTTP_PROXY: assignedProxy,
+        HTTPS_PROXY: assignedProxy,
+        ALL_PROXY: assignedProxy,
+      });
+    }
   }
   // On Windows the runtime unpacks 0.34-1.26 GB into TEMP per launch: one OMB folder per instance,
   // stable so the pooled spawn contract (which hashes this env) holds.

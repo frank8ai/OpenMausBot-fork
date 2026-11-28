@@ -1,0 +1,615 @@
+{
+  "language": "zh",
+  "theme": "light",
+  "auto_refresh": false,
+  "refresh_interval": 1800,
+  "startup_refresh": false,
+  "refresh_concurrency": 1,
+  "refresh_slide_delay_secs": 3,
+  "auto_sync": false,
+  "sync_interval": 5,
+  "default_export_path": null,
+  "proxy": {
+    "enabled": true,
+    "allow_lan_access": true,
+    "auth_mode": "auto",
+    "port": 8045,
+    "api_key": "sk-***sanitized***",
+    "admin_password": null,
+    "auto_start": true,
+    "custom_mapping": {
+      "claude-fable-*": "auto:claude-opus",
+      "claude-opus-4-7*": "auto:claude-opus-4-7",
+      "claude-haiku-*": "auto:gemini-flash-low"
+    },
+    "custom_mapping_expose": {
+      "claude-opus-4-7*": false,
+      "claude-fable-*": false,
+      "claude-haiku-*": false
+    },
+    "builtin_mapping_version": 1,
+    "request_timeout": 120,
+    "enable_logging": false,
+    "capture_health_logs": false,
+    "log_retention": {
+      "max_body_age_hours": 24,
+      "max_age_days": 30,
+      "max_rows": 100000,
+      "max_disk_mb": 1024,
+      "max_storage_gb": 1
+    },
+    "internal_error_log_retention": {
+      "max_storage_mb": 500
+    },
+    "debug_logging": {
+      "enabled": false,
+      "output_dir": null
+    },
+    "upstream_proxy": {
+      "enabled": false,
+      "url": ""
+    },
+    "only_raw_quota_models": false,
+    "user_agent_override": null,
+    "hub_version": null,
+    "hub_cl": null,
+    "scheduling": {
+      "mode": "Balance",
+      "max_wait_seconds": 60,
+      "request_429_grace_ms": 3000,
+      "max_spillover_accounts": 0,
+      "affinity_scope": "session",
+      "cache_settling_delay_ms": 2500
+    },
+    "experimental": {
+      "enable_signature_cache": true,
+      "enable_tool_loop_recovery": true,
+      "enable_cross_model_checks": true,
+      "enable_usage_scaling": false,
+      "payload_storage_mode": "simple",
+      "log_retention_days": 30,
+      "thinking_store_enabled": true,
+      "thinking_retention_days": 15,
+      "thinking_max_memory_turns": 600,
+      "enable_cowork_auto_compact": false,
+      "cowork_compact_threshold": 200000,
+      "enable_cowork_manual_compact": false,
+      "enable_global_compaction_strip": false
+    },
+    "security_monitor": {
+      "blacklist": {
+        "enabled": false,
+        "block_message": "Access denied"
+      },
+      "whitelist": {
+        "enabled": false,
+        "whitelist_priority": true
+      }
+    },
+    "preferred_account_id": null,
+    "saved_user_agent": null,
+    "thinking_budget": {
+      "control_source": "gateway",
+      "flash_mode": "custom",
+      "flash_low": -1,
+      "flash_medium": -1,
+      "flash_high": -1,
+      "flash_high_legacy_migrated": true,
+      "thinking_budget_32k_legacy_migrated": true,
+      "flash_tiered": -1,
+      "pro_mode": "custom",
+      "pro_low": -1,
+      "pro_high": -1,
+      "claude_mode": "custom",
+      "claude_budget": -1,
+      "claude_low": -1,
+      "claude_medium": -1,
+      "claude_high": -1,
+      "mode": "custom",
+      "custom_value": 24576,
+      "custom_low": -1,
+      "custom_medium": -1,
+      "custom_high": -1,
+      "custom_tiered": -1
+    },
+    "global_system_prompt": {
+      "enabled": false,
+      "content": ""
+    },
+    "prompt_rewrite": {
+      "enabled": true,
+      "normalize_identity": true,
+      "sideload_mode": "auto",
+      "sanitize_tools_description": true,
+      "rules": [
+        {
+          "id": "preset-opencode",
+          "pattern": "You are an AI agent running in OpenCode*",
+          "replacement": "",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-claude-code-agent",
+          "pattern": "You are an interactive agent that helps users with software engineering tasks*",
+          "replacement": "",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-opencode-session-move",
+          "pattern": "*tools.opencode.session*move*",
+          "replacement": "tools.opencode.session_relocate",
+          "scope": "all",
+          "enabled": true
+        },
+        {
+          "id": "preset-dsh-identity",
+          "pattern": "You are an AI agent powered by DeepSeek Harness*",
+          "replacement": "",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-dsh-model",
+          "pattern": "You are a coding agent powered by *gemini*",
+          "replacement": "",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-dsh-browser-context",
+          "pattern": "*The browser provides no implicit DOM, route, or screenshot context*",
+          "replacement": "The browser exposes no DOM tree, route list, or page screenshot context",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-workbuddy",
+          "pattern": "*WorkBuddy*",
+          "replacement": "",
+          "scope": "all",
+          "enabled": true
+        },
+        {
+          "id": "preset-workbuddy-powered-by",
+          "pattern": "*This conversation is powered by *",
+          "replacement": "Selected model: ",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-codex-desktop-context",
+          "pattern": "*# Codex desktop context*",
+          "replacement": "# Desktop application context",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-codex-as-role",
+          "pattern": "*as Codex:*",
+          "replacement": "as an assistant:",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-codex-intro",
+          "pattern": "*the codex cli is an open*source project*",
+          "replacement": "",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-anthropic-billing",
+          "pattern": "*x-anthropic-billing-header:*",
+          "replacement": "",
+          "scope": "prompt",
+          "enabled": true
+        },
+        {
+          "id": "preset-omb-identity",
+          "pattern": "*OpenMausBot*",
+          "replacement": "Assistant",
+          "scope": "all",
+          "enabled": true
+        },
+        {
+          "id": "preset-mausbot-identity",
+          "pattern": "*MausBot*",
+          "replacement": "Assistant",
+          "scope": "all",
+          "enabled": true
+        },
+        {
+          "id": "preset-team-roster",
+          "pattern": "*[TEAM ROSTER]*",
+          "replacement": "",
+          "scope": "prompt",
+          "enabled": true
+        }
+      ]
+    },
+    "image_thinking_mode": null,
+    "image_scheduler": {
+      "per_account_concurrency": 1
+    },
+    "proxy_pool": {
+      "enabled": true,
+      "proxies": [
+        {
+          "id": "proxy-48223",
+          "name": "云 (:30082 -> 368a:03cc)",
+          "url": "http://45.149.172.129:30082",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30082",
+            "id-48223"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48226",
+          "name": "delida (:30055 -> 18ca:4ac8)",
+          "url": "http://45.149.172.129:30055",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30055",
+            "id-48226"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48238",
+          "name": "Solomon Ibeh (:30052 -> 5eb0:593e)",
+          "url": "http://45.149.172.129:30052",
+          "auth": null,
+          "enabled": false,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30052",
+            "id-48238"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48241",
+          "name": "frank (:30066 -> 6230:9217)",
+          "url": "http://45.149.172.129:30066",
+          "auth": null,
+          "enabled": false,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30066",
+            "id-48241"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48244",
+          "name": "Sherrell (:30054 -> c774:fcfd)",
+          "url": "http://45.149.172.129:30054",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30054",
+            "id-48244"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48245",
+          "name": "Tyrell (:30058 -> ffea:f564)",
+          "url": "http://45.149.172.129:30058",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30058",
+            "id-48245"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48253",
+          "name": "Harsha Kub (:30057 -> 3765:2dfa)",
+          "url": "http://45.149.172.129:30057",
+          "auth": null,
+          "enabled": false,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30057",
+            "id-48253"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48254",
+          "name": "Kenneth (:30060 -> ded6:9e9c)",
+          "url": "http://45.149.172.129:30060",
+          "auth": null,
+          "enabled": false,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30060",
+            "id-48254"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48257",
+          "name": "Eversman Everitt (:30065 -> 2e0d:0295)",
+          "url": "http://45.149.172.129:30065",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30065",
+            "id-48257"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48258",
+          "name": "Mohamed Yusuf James (:30061 -> d279:66f2)",
+          "url": "http://45.149.172.129:30061",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30061",
+            "id-48258"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48261",
+          "name": "NSUBUGA EMMANUEL (:30072 -> 222f:16d3)",
+          "url": "http://45.149.172.129:30072",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30072",
+            "id-48261"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48264",
+          "name": "leon (:30068 -> c0d4:6fa0)",
+          "url": "http://45.149.172.129:30068",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30068",
+            "id-48264"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48270",
+          "name": "Joseph Cela (:30069 -> 4a97:e7ac)",
+          "url": "http://45.149.172.129:30069",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30069",
+            "id-48270"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48275",
+          "name": "Simone (:30075 -> 9301:11c2)",
+          "url": "http://45.149.172.129:30075",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-30075",
+            "id-48275"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        },
+        {
+          "id": "proxy-48277",
+          "name": "lee toms (:20002 -> d171:89ee)",
+          "url": "http://45.149.172.129:20002",
+          "auth": null,
+          "enabled": true,
+          "priority": 1,
+          "tags": [
+            "ipv6",
+            "port-20002",
+            "id-48277"
+          ],
+          "max_accounts": 1,
+          "health_check_url": null,
+          "last_check_time": 1794824059,
+          "is_healthy": true,
+          "latency": null
+        }
+      ],
+      "health_check_interval": 300,
+      "auto_failover": false,
+      "strategy": "priority",
+      "account_bindings": {
+        "1f6e9012-d3a5-415f-9048-b98a7330846f": "proxy-48223",
+        "9afd95da-3ddc-5f79-888d-6b6f13d49da3": "proxy-48244",
+        "80e5a56d-57db-5e0f-8b06-7e45b0282b70": "proxy-48261",
+        "853bacaa-392f-51e6-8075-4ea51d5b8f65": "proxy-48277",
+        "775190a0-3776-5f4e-b5df-050fd455c5e6": "proxy-48258",
+        "2f2e563d-dcd1-59db-b445-ec73101db0df": "proxy-48264",
+        "00661593-0e06-57f8-81c6-6a5900d4710a": "proxy-48257",
+        "e7588a90-5566-5f62-b376-c557bcb62490": "proxy-48270",
+        "1025ab1c-0db6-53a1-b0f1-788d4e3439e2": "proxy-48226",
+        "f8b09936-f8d2-5d93-bcb2-27d1e90162db": "proxy-48245",
+        "4a06f547-9b9c-5d2b-9664-178ab65ab4bd": "proxy-48275"
+      }
+    },
+    "multimodal": {
+      "enable_sliding_window": true,
+      "strategy": "count",
+      "max_fresh_images": 5,
+      "strip_remote_urls": false,
+      "max_total_image_mb": 32
+    },
+    "stream_timeouts": {
+      "initial_ttft_secs": 180,
+      "transition_secs": 180,
+      "streaming_sliding_secs": 120
+    },
+    "upload_timeouts": {
+      "connect_secs": 10,
+      "min_upload_mbps": 0.8,
+      "extra_wait_ratio": 0.4,
+      "stall_secs": 45,
+      "header_wait_secs": 0,
+      "large_body_threshold_mb": 8,
+      "large_body_endpoint_attempts": 1
+    },
+    "qos_auto_jail": true
+  },
+  "antigravity_executable": "C:\\Users\\frank\\AppData\\Local\\Programs\\antigravity\\Antigravity.exe",
+  "antigravity_ide_executable": "C:\\Users\\frank\\AppData\\Local\\Programs\\antigravity\\Antigravity.exe",
+  "antigravity_cli_executable": null,
+  "antigravity_args": null,
+  "auto_launch": false,
+  "quiet_autostart": false,
+  "scheduled_warmup": {
+    "enabled": false,
+    "monitored_models": [
+      "gemini-3-flash",
+      "claude",
+      "gemini-3-pro-high",
+      "gemini-3.8-flash-low"
+    ]
+  },
+  "quota_protection": {
+    "enabled": true,
+    "threshold_percentage": 5,
+    "monitored_models": [
+      "claude",
+      "gemini-3-pro-high",
+      "gemini-3-flash",
+      "gemini-3.8-flash-low"
+    ]
+  },
+  "pinned_quota_models": {
+    "models": [
+      "gemini-3-pro-high",
+      "gemini-3-flash",
+      "gemini-3.1-flash-image",
+      "claude-sonnet-4-6"
+    ]
+  },
+  "circuit_breaker": {
+    "enabled": true,
+    "backoff_steps": [
+      60,
+      300,
+      1800,
+      7200
+    ],
+    "lock_on_zero_quota": true
+  },
+  "hidden_menu_items": [],
+  "cloudflared": {
+    "enabled": false,
+    "mode": "quick",
+    "port": 8045,
+    "token": "",
+    "use_http2": true
+  },
+  "lightweight_mode": false,
+  "suggestion_delete_thinking_store": null,
+  "thinking_cleanup_dismissed": null,
+  "dismissed_thinking_cleanup_version": null,
+  "auto_switch_classic_depleted": false,
+  "classic_auto_switch": {
+    "enabled": false,
+    "threshold_percentage": 3,
+    "monitored_models": [
+      "gemini",
+      "claude"
+    ]
+  },
+  "tray_click_action": "mini"
+}

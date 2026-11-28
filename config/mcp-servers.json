@@ -1,0 +1,16 @@
+[
+  {
+    "name": "exa",
+    "enabled": true,
+    "owner": "shared",
+    "transport": "http",
+    "url": "https://mcp.exa.ai/mcp"
+  },
+  {
+    "name": "context7",
+    "enabled": true,
+    "owner": "shared",
+    "transport": "http",
+    "url": "https://mcp.context7.com/mcp"
+  }
+]

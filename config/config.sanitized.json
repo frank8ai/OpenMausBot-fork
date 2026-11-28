@@ -1,0 +1,316 @@
+{
+  "onboarding": {
+    "completedAt": "2026-11-06T00:52:48.153Z",
+    "version": 1,
+    "hintsSeen": [
+      "met-chief-v1",
+      "grok-move-2026-11",
+      "whats-new-2026-11",
+      "boat-credit-2026-11",
+      "github-star-dismissed",
+      "modelgo-offer-2026-11",
+      "teams-2026-11",
+      "teams-2026-11b"
+    ]
+  },
+  "profile": {
+    "name": "",
+    "email": "",
+    "aboutMe": "- 2026-11-06 · learned by MausBot · 所有产品的最高设计原则：在满足用户需求的前提下，尽量减少人的认知资源消耗（降低心智负担、消除多余交互确认、采取合理默认并实现自闭环）。项目资料与知识库根目录为 C:\\Users\\frank\\Documents\\frank\\Projects。\n- 2026-11-06 · learned by MausBot · 工具链与流程最高准则：坚决摒弃“唯大众/唯星星多”的浅层标准，全面对齐硅谷 Top 0.01% 顶尖人员的硬核工具链、工作流程与工程规范；系统原生面板支持的优先直接挂载，无原生支持的直接在本地/环境安装落地，确保真实闭环。\n- 2026-11-06 · learned by MausBot · AI 相关工具链与模型生态重点锁定四大顶级核心梯队：Claude (Anthropic)、OpenAI、Gemini (Google) 与 Grok (xAI)。坚决摒弃非必要的平庸包装，全面对齐四家官方原生标准（原生 SDK、结构化输出、Prompt Caching、端到端流控与防腐层架构）。\n- 2026-11-12 · learned by MausBot · The person prefers the assistant to act directly rather than explain UI steps or workarounds, and becomes frustrated when told to perform manual actions themselves.\n- 2026-11-13 · learned by MausBot · The person considers multi-project, multi-agent development and management to be the most core capability (多项目多agent的开发和管理才是最核心的).\n- 2026-11-13 · learned by MausBot · The person uses MausBot together with OpenAI Codex and discovered that tracking project progress across multiple projects is a key workflow need.\n- 2026-11-13 · learned by MausBot · The person requires that new-user onboarding for their product have zero cognitive friction, be as simple and intuitive as Apple products — \"一看就会\" (understand at a glance).\n- 2026-11-14 · learned by 全栈开发 · The person's workflow for PRs is to submit directly, check for problems, merge if none, and fix if there are issues.\n- 2026-11-15 · learned by MausBot · The person routinely delegates implementation to MausBot but then checks whether specialist bots (代码评审员, 测试质保员, 全栈开发工程师, 架构师bot, 技术与竞品情报官) were actually dispatched, and escalates if MausBot did the work itself instead of assigning the proper expert bot.\n- 2026-11-15 · learned by MausBot · The person follows a recurring workflow loop: assign a batch of tasks → check completion status → instruct to continue unfinished items → have expert bots review → submit PR, and expects MausBot to drive this loop autonomously without repeated prompting.\n- 2026-11-15 · learned by MausBot · The person expects top-level expert review as a gate before finalizing plans or merging code, often phrasing it as '作为顶级专家审核' or '用专家bot审核'.\n- 2026-11-16 · learned by MausBot · PR 提交与分支规约：提交 PR 必须使用独立特性分支（如 feat/*、fix/*），严禁直接向 main 分支推送或由 main 直接向远端发起 PR；main 分支保持干净并严格对齐上游。\n- 2026-11-20 · learned by MausBot · Before starting new development, the person expects MausBot to first scan existing work (community PRs, other bots' partial deliverables) to avoid duplicating effort already done.\n- 2026-11-20 · learned by MausBot · The person sends screenshots of error states as the entire bug report and expects immediate root-cause diagnosis plus fix dispatch with no clarifying questions asked back."
+  },
+  "instances": {
+    "grok": {
+      "driver": "grokAgent"
+    },
+    "kimi": {
+      "driver": "kimiAgent"
+    },
+    "droid": {
+      "driver": "droidAgent"
+    },
+    "cursor": {
+      "driver": "cursorAgent"
+    },
+    "githubCopilot": {
+      "driver": "copilotAgent"
+    },
+    "claude": {
+      "driver": "claudeAgent"
+    },
+    "codex": {
+      "driver": "codex"
+    },
+    "chatgpt": {
+      "driver": "codex",
+      "displayName": "ChatGPT plan"
+    },
+    "antigravity": {
+      "driver": "antigravityAgent",
+      "environment": {
+        "HTTP_PROXY": "http://45.149.172.129:30082",
+        "HTTPS_PROXY": "http://45.149.172.129:30082",
+        "ALL_PROXY": "http://45.149.172.129:30082"
+      }
+    },
+    "opencodeGo": {
+      "driver": "opencodeGo",
+      "hidden": true
+    },
+    "mistral": {
+      "driver": "mistral"
+    },
+    "cerebras": {
+      "driver": "cerebras"
+    },
+    "groq": {
+      "driver": "groq"
+    },
+    "greenference": {
+      "driver": "greenference"
+    },
+    "meta": {
+      "driver": "meta"
+    },
+    "deepseek": {
+      "driver": "deepseekAgent"
+    },
+    "museCode": {
+      "driver": "museCode"
+    },
+    "openai": {
+      "driver": "openai-compat",
+      "displayName": "OpenAI",
+      "icon": {
+        "kind": "preset",
+        "preset": "openai"
+      },
+      "access": "api"
+    },
+    "claudeApi": {
+      "driver": "claudeAgent",
+      "displayName": "Claude (API key)",
+      "icon": {
+        "kind": "preset",
+        "preset": "anthropic"
+      },
+      "access": "api"
+    },
+    "xaiApi": {
+      "driver": "grok",
+      "displayName": "xAI",
+      "icon": {
+        "kind": "preset",
+        "preset": "xai"
+      },
+      "access": "api"
+    },
+    "openrouter": {
+      "driver": "openai-compat",
+      "displayName": "OpenRouter",
+      "icon": {
+        "kind": "preset",
+        "preset": "openrouter"
+      },
+      "access": "api"
+    },
+    "qwen": {
+      "driver": "qwenAgent"
+    },
+    "hermes": {
+      "driver": "hermesAgent"
+    },
+    "cline": {
+      "driver": "clineAgent"
+    },
+    "pi": {
+      "driver": "piAgent"
+    },
+    "openai-compat-fffa6c49-8ee8-4a9c-8985-13bd19e6f973": {
+      "driver": "openai-compat",
+      "displayName": "bit",
+      "access": "api",
+      "config": {
+        "key": "sk-***sanitized***",
+        "url": "https://newapi.relayon.cc.cd/v1"
+      }
+    },
+    "openai-compat-0caec19c-48ac-4512-85a7-f93fa28c06e3": {
+      "driver": "openai-compat",
+      "displayName": "codex2api",
+      "access": "api",
+      "config": {
+        "key": "sk-***sanitized***",
+        "url": "https://codex2api.relayon.cc.cd/v1",
+        "managedModels": [
+          "claude-opus-4-6-thinking",
+          "claude-opus-5-5",
+          "claude-sonnet-4-6",
+          "claude-sonnet-5-5",
+          "codex-auto-review",
+          "gemini-3-flash",
+          "gemini-3.1-flash-lite",
+          "gemini-3.5-flash-lite",
+          "gemini-3.8-flash",
+          "gemini-4-argon",
+          "gpt-5.3-codex-spark",
+          "gpt-5.5",
+          "gpt-5.6-luna",
+          "gpt-5.6-sol",
+          "gpt-5.6-terra",
+          "gpt-6-astra",
+          "gpt-6-chat-thinking",
+          "gpt-6-luna",
+          "gpt-6-sol",
+          "gpt-6.1-sol",
+          "gpt-6.1-terra",
+          "gpt-image-2",
+          "gpt-image-2-2k",
+          "gpt-image-2-4k",
+          "gpt-image-2.5-flare",
+          "gpt-image-2.5-flare-2k",
+          "gpt-image-2.5-flare-4k",
+          "gpt-image-2.5-sunburst",
+          "gpt-image-2.5-sunburst-2k",
+          "gpt-image-2.5-sunburst-4k",
+          "gpt-oss-120b-medium",
+          "gpt-reserve"
+        ]
+      }
+    },
+    "antigravity-e7588a90-5566-5f62-b376-c557bcb62490": {
+      "driver": "antigravityAgent",
+      "displayName": "Antigravity · Joseph Cela (PRO)",
+      "environment": {
+        "HTTP_PROXY": "http://45.149.172.129:30069",
+        "HTTPS_PROXY": "http://45.149.172.129:30069",
+        "ALL_PROXY": "http://45.149.172.129:30069"
+      },
+      "config": {}
+    },
+    "antigravity-80e5a56d-57db-5e0f-8b06-7e45b0282b70": {
+      "driver": "antigravityAgent",
+      "displayName": "Antigravity · NSUBUGA EMMANUEL (PRO)",
+      "environment": {
+        "HTTP_PROXY": "http://45.149.172.129:30072",
+        "HTTPS_PROXY": "http://45.149.172.129:30072",
+        "ALL_PROXY": "http://45.149.172.129:30072"
+      },
+      "config": {}
+    },
+    "antigravity-853bacaa-392f-51e6-8075-4ea51d5b8f65": {
+      "driver": "antigravityAgent",
+      "displayName": "Antigravity · lee toms (FREE)",
+      "environment": {
+        "HTTP_PROXY": "http://45.149.172.129:20002",
+        "HTTPS_PROXY": "http://45.149.172.129:20002",
+        "ALL_PROXY": "http://45.149.172.129:20002"
+      },
+      "config": {}
+    },
+    "antigravity-local-gateway": {
+      "driver": "openai-compat",
+      "displayName": "Antigravity Local Gateway (Backup)",
+      "enabled": true,
+      "access": "api",
+      "config": {
+        "url": "http://127.0.0.1:8045/v1",
+        "key": "sk-***sanitized***",
+        "managedModels": [
+          "gemini-3.8-flash",
+          "gemini-3.8-flash-high",
+          "gemini-3.8-flash-medium",
+          "gemini-3.8-flash-low",
+          "claude-sonnet-5-5-high",
+          "claude-opus-5-5-high",
+          "gemini-4-neon-high",
+          "gemini-4-argon-high"
+        ],
+        "replyWaitMinutes": 5
+      }
+    },
+    "antigravity-2f2e563d-dcd1-59db-b445-ec73101db0df": {
+      "driver": "antigravityAgent",
+      "displayName": "Antigravity · leon (PRO)",
+      "environment": {
+        "HTTP_PROXY": "http://45.149.172.129:30068",
+        "HTTPS_PROXY": "http://45.149.172.129:30068",
+        "ALL_PROXY": "http://45.149.172.129:30068"
+      },
+      "config": {}
+    },
+    "commandCode": {
+      "driver": "commandCodeAgent"
+    },
+    "kiro": {
+      "driver": "kiroAgent"
+    },
+    "devin": {
+      "driver": "devinAgent"
+    },
+    "modelgo": {
+      "driver": "modelgo"
+    },
+    "omp": {
+      "driver": "ompAgent"
+    },
+    "mistralVibe": {
+      "driver": "mistralVibeAgent"
+    },
+    "chatgpt-d12a7f77-86ad-4bd5-bd36-e8e6afd7b533": {
+      "driver": "codex",
+      "displayName": "frank",
+      "config": {
+        "authMode": "chatgpt-plan"
+      }
+    },
+    "antigravity-4a06f547-9b9c-5d2b-9664-178ab65ab4bd": {
+      "driver": "antigravityAgent",
+      "displayName": "Antigravity · Simone (PRO)",
+      "environment": {
+        "HTTP_PROXY": "http://45.149.172.129:30075",
+        "HTTPS_PROXY": "http://45.149.172.129:30075",
+        "ALL_PROXY": "http://45.149.172.129:30075"
+      },
+      "config": {}
+    }
+  },
+  "mcpServers": {
+    "exa": {
+      "type": "http",
+      "url": "https://mcp.exa.ai/mcp",
+      "headers": {},
+      "enabled": true
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {},
+      "enabled": true
+    },
+    "agentcard": {
+      "type": "http",
+      "url": "https://mcp.agentcard.sh/mcp",
+      "headers": {},
+      "enabled": false
+    },
+    "silent_terminal": {
+      "command": "C:\\\\Program Files\\\\nodejs\\\\node.exe",
+      "args": [
+        "-e",
+        "const readline = require('readline'); const { exec } = require('child_process'); const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false }); rl.on('line', (line) => { if (!line.trim()) return; try { const msg = JSON.parse(line); if (msg.method === 'initialize') { const resp = { jsonrpc: '2.0', id: msg.id, result: { protocolVersion: msg.params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'silent-terminal', version: '1.0.0' } } }; process.stdout.write(JSON.stringify(resp) + '\\n'); } else if (msg.method === 'tools/list') { const resp = { jsonrpc: '2.0', id: msg.id, result: { tools: [{ name: 'execute_command', description: 'Run PowerShell command silently in background without any window.', inputSchema: { type: 'object', properties: { command: { type: 'string', description: 'PowerShell command to execute' } }, required: ['command'] } }] } }; process.stdout.write(JSON.stringify(resp) + '\\n'); } else if (msg.method === 'tools/call') { const id = msg.id; const cmd = msg.params?.arguments?.command; if (!cmd) { process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Error: No command' }], isError: true } }) + '\\n'); return; } exec(cmd, { shell: 'powershell.exe', maxBuffer: 10 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => { let text = stdout || ''; if (stderr) text += '\\n[stderr]\\n' + stderr; if (err) text += '\\n[error: ' + err.message + ']'; process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: text || '(done)' }], isError: !!err } }) + '\\n'); }); } else if (msg.id !== undefined) { process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result: {} }) + '\\n'); } } catch (e) {} });"
+      ],
+      "env": {},
+      "enabled": true
+    },
+    "mcp_shell_server": {
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\frank\\AppData\\Roaming\\npm\\node_modules\\mcp-shell-server\\bin\\server.js"
+      ],
+      "env": {},
+      "enabled": true
+    }
+  },
+  "deepseek": {},
+  "computerName": "frank"
+}

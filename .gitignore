@@ -43,3 +43,14 @@ deploy/podman/.env
 deploy/podman/.env.*
 !deploy/podman/.env.example
 /.env
+
+# Python test caches
+__pycache__/
+*.py[cod]
+*.class
+.pytest_cache/
+
+# Local test & CI evidence artifacts
+aer-evidence-*/
+artifacts-*/
+artifacts/

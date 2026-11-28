@@ -1,4 +1,4 @@
-﻿import { existsSync, watch, type FSWatcher } from "node:fs";
+﻿import { existsSync, readFileSync, watch, type FSWatcher } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -63,12 +63,24 @@ export class GeminiCredentialsWatcher {
     this.debounceMs = options?.debounceMs ?? DEFAULT_DEBOUNCE_MS;
   }
 
+  private seedInitialRefreshToken(credsPath: string): void {
+    if (!existsSync(this.targetTokenPath) || !existsSync(credsPath)) return;
+    try {
+      const globalCreds = JSON.parse(readFileSync(credsPath, "utf8")) as GlobalOAuthCreds;
+      if (typeof globalCreds.refresh_token === "string" && globalCreds.refresh_token) {
+        this.lastRefreshToken = globalCreds.refresh_token;
+      }
+    } catch {}
+  }
+
   public start(): void {
     if (this.watcher) return;
     const credsPath = join(this.geminiDir, "oauth_creds.json");
     if (!existsSync(this.geminiDir) && !existsSync(credsPath)) {
       return;
     }
+
+    this.seedInitialRefreshToken(credsPath);
 
     try {
       if (existsSync(this.geminiDir)) {
@@ -77,7 +89,9 @@ export class GeminiCredentialsWatcher {
             this.scheduleSync();
           }
         });
-        this.syncCredentials().catch(() => {});
+        if (!existsSync(this.targetTokenPath)) {
+          this.syncCredentials().catch(() => {});
+        }
         return;
       }
     } catch {}
@@ -87,7 +101,9 @@ export class GeminiCredentialsWatcher {
         this.watcher = watch(credsPath, { persistent: false }, () => {
           this.scheduleSync();
         });
-        this.syncCredentials().catch(() => {});
+        if (!existsSync(this.targetTokenPath)) {
+          this.syncCredentials().catch(() => {});
+        }
       }
     } catch {}
   }

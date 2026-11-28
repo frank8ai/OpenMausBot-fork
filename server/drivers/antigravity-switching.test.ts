@@ -109,6 +109,45 @@ describe("Antigravity Proxy & Auto Switching", () => {
       expect(profile.environment.HTTP_PROXY).toBeUndefined();
       expect(profile.environment.HTTPS_PROXY).toBeUndefined();
     });
+
+    it("preserves explicit per-instance proxy from baseEnv instead of overwriting with global account proxy", async () => {
+      const toolsDir = join(tempDir, ".antigravity_tools");
+      const geminiDir = join(tempDir, ".gemini");
+      await mkdir(toolsDir, { recursive: true });
+      await mkdir(geminiDir, { recursive: true });
+
+      const guiConfig = {
+        proxy_pool: {
+          enabled: true,
+          proxies: [{ id: "proxy-global", url: "http://127.0.0.1:30082", enabled: true }],
+          account_bindings: { "uuid-global": "proxy-global" },
+        },
+      };
+      const accountsIndex = {
+        accounts: [{ id: "uuid-global", email: "global@example.com" }],
+      };
+      await writeFile(join(toolsDir, "gui_config.json"), JSON.stringify(guiConfig));
+      await writeFile(join(toolsDir, "accounts.json"), JSON.stringify(accountsIndex));
+      await writeFile(join(geminiDir, "google_accounts.json"), JSON.stringify({ active: "global@example.com" }));
+
+      const profile = await prepareAntigravityProfile({
+        instanceId: "antigravity-isolated",
+        runtime: fakeRuntime,
+        profileDirectory: join(tempDir, "profile-isolated"),
+        baseEnv: {
+          HTTP_PROXY: "http://127.0.0.1:30068",
+          HTTPS_PROXY: "http://127.0.0.1:30068",
+          ALL_PROXY: "http://127.0.0.1:30068",
+        },
+        toolsDir,
+        geminiDir,
+      });
+
+      expect(profile.assignedProxy).toBeUndefined();
+      expect(profile.environment.HTTP_PROXY).toBe("http://127.0.0.1:30068");
+      expect(profile.environment.HTTPS_PROXY).toBe("http://127.0.0.1:30068");
+      expect(profile.environment.ALL_PROXY).toBe("http://127.0.0.1:30068");
+    });
   });
 
   describe("handleQuotaExhaustedWithAutoSwitch", () => {

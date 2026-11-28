@@ -1,0 +1,1019 @@
+{
+  "version": 2,
+  "sections": {
+    "": [
+      {
+        "key": "architecture/multi-project-matrix",
+        "replaces": [],
+        "id": "520c5041-f744-4796-8eee-24f246ff5d18",
+        "kind": "decision",
+        "name": "13个并发项目蜂窝矩阵架构与TPM-Bot设立",
+        "detail": "为支持 13 个项目并发研发，建立两级联邦总控 + 蜂窝矩阵拓扑。设立 TPM-Bot 作为确定性 DAG 状态机对账器与线程生命周期调度器，共享 Dev-Engineer、PR-Reviewer、Release-Syncer 等算子池；各项目按独立工作树与 STATE.json 隔离运作。",
+        "aliases": [],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793940431176
+        },
+        "updatedAt": 1793940431180
+      },
+      {
+        "key": "decision:产品最高原则：最小化用户认知资源消耗",
+        "replaces": [],
+        "id": "40d0a818-cb28-4ef8-a4f5-57dd2cca2ce6",
+        "kind": "decision",
+        "name": "产品最高原则：最小化用户认知资源消耗",
+        "detail": "在满足业务与用户需求的前提下，将减少人的认知资源（心智负担、交互摩擦、重复确认）消耗作为系统最高设计红线。项目知识库统一锚定于 C:\\Users\\frank\\Documents\\frank\\Projects。",
+        "aliases": [],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793940770720
+        },
+        "updatedAt": 1793940770726
+      },
+      {
+        "key": "product/cognitive-load-and-obsidian-path",
+        "replaces": [],
+        "id": "3d4f0792-7f7c-45ee-8a1a-eff17de505e3",
+        "kind": "decision",
+        "name": "最高产品原则（最小化人类认知资源消耗）与 Obsidian 知识库物理路径绑定",
+        "detail": "1. 最高产品原则（北极星指标）：所有产品与研发必须在满足用户需求的前提下，最大限度减少人的认知资源消耗（降低心智负担、消除无谓交互摩擦与冗余确认、自闭环与合理默认优先）。Software-Architect 须将其作为顶层架构与交互评估指标，Dev-Engineer 须实现极简短路、零打扰与无痛回退，PR-Reviewer 须将“引入不必要的认知负担/交互冗余”列为一票否决红线。2. Obsidian 长期记忆知识库物理根路径绑定为 `C:\\Users\\frank\\Documents\\frank\\Projects`（项目卡片为 `C:\\Users\\frank\\Documents\\frank\\Projects\\<Project>.md`，重大技术选型沉淀于 `C:\\Users\\frank\\Documents\\frank\\Projects\\Decisions\\`）。",
+        "aliases": [
+          "认知降噪原则",
+          "Obsidian知识库路径",
+          "Codex AGENTS.md规范"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "2f8471fb-4b77-4cf5-a91f-575cd387febd",
+          "botName": "PromptArchitect",
+          "threadId": "42b31ff5-ac8c-4adc-a8c0-db2d0d148c1c",
+          "at": 1793940821861
+        },
+        "updatedAt": 1793940821864
+      },
+      {
+        "key": "software_lifecycle_team_expansion",
+        "replaces": [],
+        "id": "a01cbdca-b88f-4ffc-bdd4-e9c2be38fc3f",
+        "kind": "decision",
+        "name": "研发团队全周期角色补齐与体验设计/QA专家设立",
+        "detail": "在通用研发部门补齐前端体验与视觉设计专家 UIUX-Designer 以及端到端质量与自动化测试工程师 QA-Engineer。形成了包含架构规划(Software-Architect)、元提示词(PromptArchitect)、调度总控(TPM-Bot)、体验与视觉(UIUX-Designer)、编码落地(Dev-Engineer)、代码评审(PR-Reviewer)、端到端质保(QA-Engineer)、文档与发版(Release-Syncer)的闭环产研生命周期矩阵。坚持最高产品原则：极致降低人类认知负担，并确保软件颜值出众、好用吸睛、物理稳定。",
+        "aliases": [
+          "前端设计专家",
+          "Design Engineer",
+          "UIUX-Designer",
+          "QA-Engineer",
+          "全周期产研战队"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793942983449
+        },
+        "updatedAt": 1793942983453
+      },
+      {
+        "key": "team/full-lifecycle-10-agent-matrix",
+        "replaces": [],
+        "id": "02665b1e-c3aa-435d-aa66-4570aa0ad625",
+        "kind": "decision",
+        "name": "产研全周期黄金十人矩阵设立与规范封板",
+        "detail": "在通用研发部门补齐开发前置关键角色：Tech-Researcher（技术与竞品情报研究员，负责全网开源车轮与X情报嗅探）与 Product-Strategist（产品战略与决策专家/CPO，负责第一性原理痛点穿透、奥卡姆剃刀伪需求砍削与认知负荷终审）。与既有角色（Software-Architect、UIUX-Designer、TPM-Bot、PromptArchitect、Dev-Engineer、PR-Reviewer、QA-Engineer、Release-Syncer）共同形成全周期 10 节点黄金产研矩阵。所有角色系统提示词均已通过 PromptArchitect 12维量规冷审满分验收，工作目录统一绑定至 C:\\Users\\frank\\Documents\\frank\\Projects。",
+        "aliases": [
+          "产研十人阵列",
+          "研发生命周期十人团",
+          "研发矩阵闭环"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793944375450
+        },
+        "updatedAt": 1793944375454
+      },
+      {
+        "key": "research/codex-skill-matrix-13roles",
+        "replaces": [],
+        "id": "4bbcaa99-dbb6-423c-88b1-48ed3cdf3448",
+        "kind": "decision",
+        "name": "13角色Skill顶配矩阵与Codex技能资产清算",
+        "detail": "2026-11-06 完成 Codex Skill 实盘清算与 13 角色匹配。skills_inventory.csv 的 104 行已过期：盘上实有 81 个目录，54 行失效（7 个已迁至 C:\\Users\\frank\\.config\\opencode\\skills 并对全 bot 生效），另有 30 个盘上技能未登记。分级 S 13 / A 33 / B 35 / C 23，另盘上未登记 S 级 5 项（plan-generation-gates、blast-radius、create-verification-skill、technical-writing、unslop）。全员三件套定为 verification-before-completion + unslop + technical-writing。gstack 507.6MB（占 99.3%）无 LICENSE、依赖 bash 与 ~/.codex 路径，只可借鉴量规；relayon-* 12 件禁用。交付：Projects\\Research\\Skill-Matrix-13Roles-2026-11-06.md、codex-skills-grading-104.csv、install-skill-baseline.ps1（默认 dry-run）。",
+        "aliases": [
+          "Skill矩阵",
+          "技能分级",
+          "104技能清算",
+          "角色技能顶配"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "d25420bf-4c7e-449a-8389-2a4e552aad43",
+          "botName": "Tech-Researcher",
+          "threadId": "d5bdabb8-b9be-4f38-af13-21aab0844103",
+          "at": 1793948742575
+        },
+        "updatedAt": 1793948742578
+      },
+      {
+        "key": "Skill矩阵",
+        "replaces": [],
+        "id": "bb28892c-a62f-467b-8b2b-26d265581feb",
+        "kind": "decision",
+        "name": "全团队行业顶尖Skill生态v2.0矩阵与设计双核设立",
+        "detail": "2026-11-06 全面跳出本地存量限制，面向 Anthropic 官方与行业顶级开源生态升级全员 Skill 矩阵 v2.0。1. 部署落地：12项核心基线技能 + Anthropic 官方 frontend-design 均已落盘校验通过，全局技能生效区达 22 个。2. 设计双核确立：UIUX-Designer 采用 Anthropic 官方 frontend-design（宏观骨架与反AI模板味）+ Peter Bakaus impeccable（总监级微观尼尔森可用性与排版审查）。3. 全员13角色天花板换装：全面引入 obra/superpowers（TDD、系统化排障、实施计划）、getsentry/skills（安全漏洞推演）、Anthropic 官方 skill-creator 与 webapp-testing 等统治级工具。详见 Projects\\Research\\Skill-Matrix-TopTier-v2.md。",
+        "aliases": [
+          "Skill矩阵",
+          "行业顶尖Skill",
+          "frontend-design",
+          "设计双核",
+          "impeccable"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793949765784
+        },
+        "updatedAt": 1793949765788
+      },
+      {
+        "key": "tech-researcher-upgrade-sop",
+        "replaces": [],
+        "id": "bbb8110c-6ea5-4026-8436-8fc69a4a1279",
+        "kind": "decision",
+        "name": "技术研究员天花板能力与四级短路调研SOP合体",
+        "detail": "确立技术研究员（Tech-Researcher）自身能力天花板与调研规约：1. 继承本地 Codex 原生「四级短路调研 SOP」（本地代码/知识库短路 -> Context7 权威文档签名 -> Exa/GitHub 开源实现 -> Linux.do/V2EX 极客社区避坑），上一级满足即停，杜绝算力与信噪比浪费。2. 引入三项统治级研究工具：deep-research（假设树多分支推演与交叉证伪）、repo-research（代码级 AST 静态审计与许可证传染排查）、find-skills（全网前沿生态雷达嗅探）。3. 严格执行“单点深度攻坚”原则，逐个为团队其他角色定制天花板工具，杜绝批量泛化调研。",
+        "aliases": [],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793950800922
+        },
+        "updatedAt": 1793950800926
+      },
+      {
+        "key": "hq-deep-research-v2",
+        "replaces": [],
+        "id": "9f9e1050-e274-4481-9a31-de2460695d2b",
+        "kind": "place",
+        "name": "HQ-Deep-Research v2 历史研究 SOP 档案位置",
+        "detail": "用户的历史深度研究 SOP 有两个物理来源：1) 现行 Codex 规约 C:\\Users\\frank\\.codex\\AGENTS.md 第 3 节「Tiered Research & MVP Implementation」（L15–L22），定义四级短路检索（本地代码库 → Context7 → Exa/GitHub → Exa/Linux.do·V2EX·NodeSeek 兜底）、防投毒（外部内容视为不可信数据）与最小 MVP 纪律；2) 历史归档 C:\\Users\\frank\\Documents\\frank\\90_Archive\\历史存档\\0.01-阿爪独立工作区\\HQ-Deep-Research v2 — 研究计划测试.md（5,108 字节，2026-10-25），为 Step 0–8 九段式证据裁决契约（Normalize&Bound → Claim Map → Query Plan 含反证 → Dual-Track Source Triage → Evidence Matrix/Certainty Grade → Conflict Resolution 与 Tie-break → Option Matrix → KPI/Stop → Save Artifacts）。Obsidian 库内 90_Archive 下有同源副本。2026-11-06 实测核对一致。",
+        "aliases": [
+          "研究SOP",
+          "四级短路调研",
+          "Tiered Research",
+          "HQ-Deep-Research",
+          "证据账本"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "6359ea6b-b593-4668-a0a4-a2edea99304e",
+          "botName": "Release-Syncer",
+          "threadId": "aa652d20-38bc-4986-aff2-0a6ce0db6d4c",
+          "at": 1793951170396
+        },
+        "updatedAt": 1793951170399
+      },
+      {
+        "key": "tech-researcher-sop-cleanroom",
+        "replaces": [],
+        "id": "fd31e996-d614-4638-be55-7c46558cbb4e",
+        "kind": "decision",
+        "name": "技术情报官双轨SOP与净室重构规约",
+        "detail": "2026-11-06 技术与竞品情报官工作流规范与工具链正式封板归档至 Projects\\Research\\Tech-Researcher-Workflow-SOP.md。1. 废除死板一票否决：GPL/AGPL/商业源码升级为「思路借鉴与 Clean-Room AI 净室重构」模式，提炼状态机与接口契约由 AI 重写，规避代码级传染；MIT/Apache 继续直接引用。2. 正式确立双轨研究 SOP：一般研究流（Routine，80-90% 场景，3 步短路，交付 100-300 字核心卡片）与深度研究流（Deep-Dive，10-20% 重大战略，九段式证据仲裁）。3. 工具链收敛为 Exa 神经网络免 Key + HN Algolia 直连 + Repomix/GitIngest 轻量打包 + Context7 权威签名。",
+        "aliases": [],
+        "status": "accepted",
+        "source": {
+          "botId": "d25420bf-4c7e-449a-8389-2a4e552aad43",
+          "botName": "技术与竞品情报官",
+          "threadId": "39a1ccc9-43b6-47f7-add5-029f94994566",
+          "at": 1793955869696
+        },
+        "updatedAt": 1793955869701
+      },
+      {
+        "key": "cpo/toolchain-and-sop-20261106",
+        "replaces": [],
+        "id": "150e5556-661b-4b2b-8271-2cb0bb26b824",
+        "kind": "decision",
+        "name": "产品战略师CPO顶尖工具链与SOP规范",
+        "detail": "2026-11-06 产品战略师 (CPO) 0.01%顶尖工作流与工具链闭环封板：1. 工具链：以 GitHub（已激活，实时穿透全球开源与标杆痛点原声）、PostHog（留存漏斗与行为路径硬数据）、Figma（原型交互节点与步数物理审计）及本地 DuckDB（JTBD 机会算法与认知熵测算）为核心核武器；2. 0.01% 顶尖 SOP：贯彻 Amazon Working Backwards + Tony Ulwick JTBD 最小能量路径 + 反事实留存 + 控制论认知熵减，执行 S1 物理还原与 5-Why、S2 方案短路与 Clean-Room 分流、S3 奥卡姆剃刀与零基反事实证伪、S4 六大认知负荷物理阈值量表对账（CL-01~06 步数<=3、分叉<=1、黑话=0、配置=0、常规弹窗=0、Aha<=3s）、S5 签发标准《Product Gate ADR》；3. 契约红线：非核心特性坚决打入 Killed Scope，架构师严禁预留死表与虚接口。",
+        "aliases": [],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793957414102
+        },
+        "updatedAt": 1793957414107
+      },
+      {
+        "key": "software_architect_toptier_sop",
+        "replaces": [],
+        "id": "a29df6b0-95ab-40c2-b1c5-c2592bd0e84d",
+        "kind": "decision",
+        "name": "软件架构师0.01%顶尖工具链与实操SOP规范",
+        "detail": "2026-11-06 软件架构师 (Software Architect) 0.01%顶尖工作流与工具链闭环封板：1. 工具链甄选：系统原生挂载 GitHub Toolkit（契约防线与 PR 架构硬审）+ 本地直装三核武器：Stoplight Spectral CLI（API/数据契约静态裁决）、Structurizr CLI/D2（C4 模型架构即代码，单源真理自动派生多视图）、XState CLI（业务流与状态机数学级完备性守门人）；2. 0.01% 顶尖 SOP 规约：贯穿二阶思维（'And then what?' 物理推演）、系统动力学（存量/流量/时滞/反馈回路，背压与断路器自愈）、六边形架构防腐层（ACL 隔离外部异构污染，领域模型零框架依赖）与状态机闭环（正常流/自愈流/回退流，零悬空状态）；3. 架构交付契约：严禁画不可落地的纯图片，架构产物必须是代码化 DSL、Spectral 规则集与严密 ADR。",
+        "aliases": [],
+        "status": "accepted",
+        "source": {
+          "botId": "d25420bf-4c7e-449a-8389-2a4e552aad43",
+          "botName": "技术与竞品情报官",
+          "threadId": "d5be7fb5-a4e6-4a76-9470-6e3dd04b47bf",
+          "at": 1793958405527
+        },
+        "updatedAt": 1793958405532
+      },
+      {
+        "key": "architect/soul-v4-apex-and-4giant-ai-acl",
+        "supersededBy": "ef0e3f54-b77d-46a5-88a3-43aa11d112bd",
+        "replaces": [],
+        "history": [
+          {
+            "name": "软件架构师v4.0.0-APEX顶配规约与四大AI巨头原生防腐层铁律",
+            "detail": "2026-11-06 软件架构师 (Software-Architect) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 定位为认知降噪北极星、二阶思维守门人、六边形防腐系统架构师，上承 CPO《Product Gate ADR》（Killed Scope 严禁建死表与虚接口），下达全栈开发机器级零歧义《System Spec & API Contract》；2. AI 相关工具链与防腐层核心铁律：六边形端口与适配器（Ports & Adapters）强制原生直连四大核心巨头——Claude (Anthropic)、OpenAI、Gemini (Google)、Grok (xAI)，严禁引入脆弱臃肿的过度抽象层（如 LangChain 套壳），强制在适配器层落实四大原语（严格结构化输出 JSON Schema 校验、按厂商异构机制设计的 Prompt Caching 命中架构、标准化含缓存/推理 Token 的物理成本与时延预算、基于 HTTP 状态码与预算的确定性熔断回退矩阵）；3. 融合二阶思维《二阶效应物理对账单》（推演 T+6个月数据膨胀、状态爆炸、单点故障与认知税）、系统动力学（存量/流量/时滞/正反馈雪崩斩断）、奥卡姆剃刀二态性法则（N<2 严禁引入设计模式）及 10 要素架构门禁。",
+            "at": 1793958433727
+          }
+        ],
+        "id": "f529b05f-9120-41e7-bf7c-46737208619b",
+        "kind": "decision",
+        "name": "软件架构师v4.0.0-APEX顶配规约与四大AI巨头原生防腐层铁律",
+        "detail": "2026-11-06 软件架构师 (Software-Architect) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 定位为认知降噪北极星、二阶思维守门人、六边形防腐系统架构师，上承 CPO《Product Gate ADR》（Killed Scope 严禁建死表与虚接口），下达全栈开发机器级零歧义《System Spec & API Contract》；2. AI 相关工具链与防腐层核心铁律：六边形端口与适配器（Ports & Adapters）强制原生直连四大核心巨头——Claude (Anthropic)、OpenAI、Gemini (Google)、Grok (xAI)，严禁引入脆弱臃肿的过度抽象层（如 LangChain 套壳），强制在适配器层落实四大原语（严格结构化输出 JSON Schema 校验、按厂商异构机制设计的 Prompt Caching 命中架构、标准化含缓存/推理 Token 的物理成本与时延预算、基于 HTTP 状态码与预算的确定性熔断回退矩阵）；3. 融合二阶思维《二阶效应物理对账单》（推演 T+6个月数据膨胀、状态爆炸、单点故障与认知税）、系统动力学（存量/流量/时滞/正反馈雪崩斩断）、奥卡姆剃刀二态性法则（N<2 严禁引入设计模式）及 10 要素架构门禁。",
+        "aliases": [
+          "软件架构师规约",
+          "四大AI巨头原生防腐层",
+          "Software-Architect v4.0.0-APEX",
+          "10要素架构门禁",
+          "二阶效应物理对账单"
+        ],
+        "status": "superseded",
+        "source": {
+          "botId": "2f8471fb-4b77-4cf5-a91f-575cd387febd",
+          "botName": "提示词架构师",
+          "threadId": "75e1cf42-7fb7-4ad3-98e8-68bbd2f93b89",
+          "at": 1793958433724
+        },
+        "updatedAt": 1793958433727
+      },
+      {
+        "key": "fullstack-coder-harness-sop",
+        "replaces": [],
+        "id": "51297d3c-da5e-4f62-b8f5-3a86dd0b8ea9",
+        "kind": "decision",
+        "name": "全栈开发0.01%Harness工程规范与TDD红绿闭环SOP",
+        "detail": "2026-11-06 全栈开发工程师 (Coder & Implementer) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 对齐 OpenAI Harness Engineering 单向依赖原则（Types → Config → Repo → Service → Runtime → UI，横切关注点一律通过 Providers 接口注入，严禁逆向与环状调用）；2. 贯穿 Anthropic Claude Code TDD 红绿循环（Red-Green-Refactor，先写失败测试并物理运行验证失败，再写最简代码通过，实现通过后严禁修改测试用例以掩盖缺陷）；3. 两振出局熔断纪律（Two-Strike Circuit Breaker：同一 Bug 修复 2 次未果必须停机熔断，出具物理复现包会诊，严禁陷入反复盲目猜谜的第 3 次试错）；4. 0.01% 顶尖工具链：Python 统一采用 uv，JS/TS 统一采用 bun/pnpm + biome，严禁 git add . 盲目全量暂存，必须精确原子暂存。",
+        "aliases": [
+          "全栈开发规范",
+          "Harness工程规范",
+          "TDD红绿重构规约",
+          "两振熔断纪律"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959286134
+        },
+        "updatedAt": 1793959286140
+      },
+      {
+        "key": "code-reviewer-google-gate-sop",
+        "replaces": [],
+        "id": "83504827-a818-434b-92f3-8f73195d8f98",
+        "kind": "decision",
+        "name": "代码与安全评审员0.01%质量门禁与SOP规约",
+        "detail": "2026-11-06 代码与安全评审员 (Quality Gate) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 严格践行 Google 卓越代码审查核心准则（持续改善高于虚幻完美，只要显著提升整体系统健康度且无致命缺陷即可放行，不因吹毛求疵阻滞节奏）；2. 表象修复一票否决红线（Root Cause Invariant，凡未解根本成因、仅靠 try-catch 吞异常或掩耳盗铃跳过校验的补丁坚决打回）；3. 零凭证外泄（Zero Secret Policy）与单向依赖分层守门；4. 0.01% 顶尖审查工具链对齐：gitleaks 敏感信息阻断 + semgrep/OWASP 漏洞扫描 + biome/ruff 格式自动化过滤（人工/AI 评审绝不在格式排版上浪费精力）+ GitHub CLI (gh) PR 联动。",
+        "aliases": [
+          "代码评审规范",
+          "Google代码审查准则",
+          "OWASP代码安全门禁",
+          "表象修复一票否决"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959331489
+        },
+        "updatedAt": 1793959331493
+      },
+      {
+        "key": "devops-sre-google-rollback-sop",
+        "replaces": [],
+        "id": "70193fb0-beb0-46aa-8697-2db6e8d6711d",
+        "kind": "decision",
+        "name": "运维工程师0.01%Google-SRE生产可用性与回退SOP",
+        "detail": "2026-11-06 系统运维与可靠性工程师 (DevOps & SRE) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 践行 Google SRE 生产可用性准则，贯彻「回退优先、诊断在后（Rollback First, Diagnose Second）」铁律，线上故障 60 秒内拉起回退闭环；2. 高危破坏性命令物理二级熔断（DROP TABLE/DATABASE, rm -rf 等必须显式出具范围与回退脚本，未经确认严禁执行）；3. 基础设施即代码（IaC）与渐进式金丝雀发布；4. 0.01% 顶尖工具链：Docker Compose + Nginx (强制 nginx -t 校验) + PostgreSQL/Litestream 备份验证 + Cloudflare 边缘安全。",
+        "aliases": [
+          "SRE准则",
+          "Google运维规范",
+          "回退优先铁律",
+          "高危命令熔断SOP"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959390447
+        },
+        "updatedAt": 1793959390451
+      },
+      {
+        "key": "design-engineer-linear-vercel-sop",
+        "replaces": [],
+        "id": "43631d72-3a6b-485b-b2fc-3440dd54b48c",
+        "kind": "decision",
+        "name": "体验设计师0.01%Linear-Vercel体验工程与全状态SOP",
+        "detail": "2026-11-06 前端体验与视觉设计专家 (Design Engineer) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 全面对齐 Linear 美学与 Vercel Web Interface Guidelines；2. 贯彻 9 大 UI 状态全防御（Default, Hover/Focus, Active, Skeleton Loading 1:1 防布局跳变, 有界 Empty State 带产生原因与唯一下一步 CTA, Overflow 极值溢出截断, Inline Validation 行内校验, Server Error Boundary 局部熔断降级, RBAC 无权限态）；3. W3C 三层 Design Tokens 契约，严禁原生代码中硬编码 Hex/魔法数值；4. 120-200ms Linear 级黄金微交互动效与 WCAG 2.2 AA 键盘无障碍全覆盖。",
+        "aliases": [
+          "体验设计规范",
+          "Linear微交互标准",
+          "9大UI状态全防御",
+          "DesignTokens契约"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959437841
+        },
+        "updatedAt": 1793959437845
+      },
+      {
+        "key": "reverse-engineer-cleanroom-sop",
+        "replaces": [],
+        "id": "39f7055b-df55-4139-ab2e-8ec7a4ec1f66",
+        "kind": "decision",
+        "name": "逆向分析师0.01%净室解构与API契约还原SOP",
+        "detail": "2026-11-06 自动化逆向与资产解构专家 (REA Engineer) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 严守「净室重构（Clean-Room Reverse Engineering）」法则，逆向仅提炼数据流动拓扑、状态转移矩阵与请求/响应 JSON Schema，彻底规避代码级知识产权传染；2. AST 结构化分析优于纯正则正则（AST Over Regex），采用 Webcrack/Wakaru 解包与反混淆，精准还原 Next.js/RSC/Webpack 生产 bundle；3. 商业架构物理成本对账（反向推演其调用的底层模型、输入输出 Token 与单次交互计算开销）。",
+        "aliases": [
+          "逆向分析规范",
+          "净室重构规约",
+          "AST解包反混淆",
+          "API契约还原"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959538544
+        },
+        "updatedAt": 1793959538548
+      },
+      {
+        "key": "tpm-dag-stripe-linear-sop",
+        "replaces": [],
+        "id": "8ef7f276-5b73-403c-8071-5df1eee940ea",
+        "kind": "decision",
+        "name": "项目调度员0.01%DAG无环调度与线程GCSOP",
+        "detail": "2026-11-06 技术项目经理与 DAG 调度器 (TPM) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 全面对齐 Stripe TPM 架构与 Linear Method 异步工作流；2. 严格践行「DAG 无环依赖拓扑调度（Acyclic Dependency Invariant）」，前置任务未通过质保前下游严格锁定，严禁违背依赖强行抢跑；3. 零打扰自治推进（Zero-Interruption Scheduling），任务流转完全由事件与交付结果触发，杜绝无效催促；4. 任务完结后自动触发线程生命周期垃圾回收（Thread GC），消除悬挂与僵尸线程。",
+        "aliases": [
+          "项目调度规范",
+          "DAG编排准则",
+          "零打扰自治调度",
+          "线程GC机制"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959548184
+        },
+        "updatedAt": 1793959548188
+      },
+      {
+        "key": "docs-release-diataxis-stripe-sop",
+        "replaces": [],
+        "id": "0ba8a970-2e4a-4785-9169-3aee9ab78c9b",
+        "kind": "decision",
+        "name": "文档版本员0.01%Diataxis四象限与Stripe文档SOP",
+        "detail": "2026-11-06 文档与版本发布员 (Docs & Release Notes) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 全面对齐 Diataxis 国际文档架构标准（教程 Tutorials、操作指南 How-to、参考手册 Reference、原理解释 Explanation 四象限严格单态，严禁混合）；2. 践行 Stripe Docs 极简开发者体验（DX），首屏交付可运行代码与真实输出，代码与文档在同一 PR 内共生演进（Docs-as-Code）；3. Keep a Changelog 与 SemVer 2.0 语义版本发布门禁（按 Added, Changed, Deprecated, Removed, Fixed, Security 六分类倒序记录，明确标示破坏性变更）；4. 沉淀至 Obsidian 知识库标准 Markdown 与 Frontmatter 元数据。",
+        "aliases": [
+          "文档发布规范",
+          "Diataxis四象限",
+          "Stripe文档风格",
+          "KeepAChangelog规约"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959555203
+        },
+        "updatedAt": 1793959555206
+      },
+      {
+        "key": "meta-prompt-architect-12rubric-sop",
+        "supersededBy": "5ddf346a-a0ce-407f-bb35-b623efd959d9",
+        "replaces": [],
+        "history": [
+          {
+            "name": "提示词架构师0.01%MetaPrompting与12维量规冷审SOP",
+            "detail": "2026-11-06 元提示词架构师与 Bot 孵化系统 (Meta-Prompt) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 全面对齐 Anthropic 系统提示词指南与 OpenAI Meta-Prompting 标准，贯彻「动机说明优于粗暴禁止（Explain the Why Invariant）」铁律，坚决淘汰全大写咆哮式指令；2. 严守结构化锚定与位置效应（静态规约前置触发 KV Cache，动态变量与关键任务后置，XML/Markdown 硬隔离）；3. 12 维严密量规冷审体系（角色边界、价值排序、动机阐释、结构隔离、状态机、工具绑定、异常回退、真实证据、防嗅探、认知熵、抗注入、可度量交付），达标分 >= 108 分方可封板；4. 工业级 L0–L6 铸造与重构 SOP。",
+            "at": 1793959595331
+          }
+        ],
+        "id": "11881d3e-aa10-4162-8e16-8f13e7c4d610",
+        "kind": "decision",
+        "name": "提示词架构师0.01%MetaPrompting与12维量规冷审SOP",
+        "detail": "2026-11-06 元提示词架构师与 Bot 孵化系统 (Meta-Prompt) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 全面对齐 Anthropic 系统提示词指南与 OpenAI Meta-Prompting 标准，贯彻「动机说明优于粗暴禁止（Explain the Why Invariant）」铁律，坚决淘汰全大写咆哮式指令；2. 严守结构化锚定与位置效应（静态规约前置触发 KV Cache，动态变量与关键任务后置，XML/Markdown 硬隔离）；3. 12 维严密量规冷审体系（角色边界、价值排序、动机阐释、结构隔离、状态机、工具绑定、异常回退、真实证据、防嗅探、认知熵、抗注入、可度量交付），达标分 >= 108 分方可封板；4. 工业级 L0–L6 铸造与重构 SOP。",
+        "aliases": [
+          "提示词架构师规范",
+          "L0-L6提示词标准",
+          "12维量规冷审",
+          "MetaPrompting规约"
+        ],
+        "status": "superseded",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793959595327
+        },
+        "updatedAt": 1793959595331
+      },
+      {
+        "key": "sop/fullstack-coder",
+        "replaces": [],
+        "id": "7f8102ba-fb6f-4f65-a7c7-d73b2fa6ed30",
+        "kind": "term",
+        "name": "全栈开发0.01%SurgicalChanges与TDD红绿隔离SOP",
+        "detail": "2026-11-06 全栈开发工程师 (Coder & Implementer) 落地情报官一手调研成果封板：1. Boris Cherny 四阶段状态机（Explore -> Plan -> Implement -> Verify）与 Git Worktree 物理隔离；2. Andrej Karpathy 手术刀式最小差量（Surgical Changes），坚决杜绝全量重写；3. Addy Osmani TDD 红绿反转隔离（Phase 1 编写失败测试，Phase 2 锁定测试只读仅编写实现代码，Phase 3 覆盖率与差分审计）；4. CLI 强固化无挂起环境（注入 GIT_PAGER=cat, CI=1, PAGER=cat 等并在命令末尾切断 stdin 阻止死锁）；5. 0.01% 极速收敛工具链（Python: uv + ruff + basedpyright；TS/JS: bun + pnpm + Biome）。",
+        "aliases": [
+          "全栈开发规范",
+          "SurgicalDiff规约",
+          "TDD红绿隔离",
+          "CLI无挂起环境"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793960045806
+        },
+        "updatedAt": 1793960045809
+      },
+      {
+        "key": "代码评审员0.01%Google-Meta审查与反表象修补SOP",
+        "replaces": [],
+        "id": "f4c4ff0d-6b17-434f-bfaf-add217b358d7",
+        "kind": "decision",
+        "name": "代码评审员0.01%Google-Meta审查与反表象修补SOP",
+        "detail": "2026-11-06 代码与安全评审员 (Reviewer & Quality Gate) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 全面对齐 Google Critique 极简颗粒度哲学（变更行数中位数 24 行，上限 200 行，超标一票否决打回）；2. 严守「高程审查（Altitude Check）」铁律，一票否决未深究根因、仅在消费端打补丁的「表象修补（Symptom Patching）」；3. 严防四大 AI 隐蔽缺陷（并发时序冒险、测试自证循环 Mock Tautology、闭包监听器泄漏、臆造包抢注投毒）；4. Meta Ship/Show/Ask AI 分级审查与机器 CI 硬隔离（ast-grep + Semgrep + Gitleaks 机器拦截，审查员聚焦二阶风险）；5. 强制结构化交付（BLOCKER/HIGH/MEDIUM/NIT + 行号 + Surgical Diff），杜绝空洞废话。",
+        "aliases": [
+          "代码评审规范",
+          "GoogleCritique规约",
+          "反表象修补SOP",
+          "MetaShipShowAsk"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793960390008
+        },
+        "updatedAt": 1793960390012
+      },
+      {
+        "key": "rea-toolchain-v5",
+        "replaces": [],
+        "id": "9f0d07a8-ceea-4ca9-9169-50a39dd61bb6",
+        "kind": "decision",
+        "name": "逆向分析师0.01%工具链与净室契约还原SOP v5",
+        "detail": "2026-11-06 REA v5.0.0-APEX 封板：1. 解包顺序 SourceMap→wakaru(--unpack=strict)→webcrack→Babel/@codemod/matchers→humanify(仅命名)；2. 采集首选 Chrome DevTools MCP，Playwright MCP 跨浏览器，Burp MCP 授权重放，mitmproxy-MCP 做 HAR/TLS 指纹，同一时刻只开一条链路；3. 证据分级 L1 可回放流量/SourceMap 原件、L2 AST 推演、L3 假设，L3 不入规格；4. 净室按 NEC v. Intel 分离规格组/实现组+守门人+留痕，≥40 字符连续复制即阻断；5. 成本按厂商口径归一（Anthropic input_tokens 不含缓存，OpenAI prompt_tokens 含缓存），输出区间；6. 禁止纯 grep 猜端点与把 LLM 输出当证据。",
+        "aliases": [
+          "REA工具链",
+          "逆向SOP",
+          "净室契约还原"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "29cf6cf1-e3bb-4bc3-acd0-591348a078e7",
+          "botName": "逆向分析师",
+          "threadId": "262f46f7-2a7e-4795-953a-aedf74c163c8",
+          "at": 1793960665986
+        },
+        "updatedAt": 1793960665990
+      },
+      {
+        "key": "devops-sre-sre-axioms-and-blast-radius-sop",
+        "replaces": [],
+        "id": "5967494c-e94a-4f22-9fd9-83c791b69cc5",
+        "kind": "decision",
+        "name": "运维工程师0.01%GoogleSRE与物理二级熔断SOP",
+        "detail": "2026-11-06 运维工程师 (DevOps & SRE) v4.0.0-APEX 封板：1. 止血回退永远先于探因（Rollback First, Diagnose Later），通用三板斧秒级切断故障；2. 不可变基础设施，严禁生产容器原地热修；3. 读写物理隔离，排查默认只读；4. 破坏性变更强制 Dry-Run 并过物理二级熔断（审批单+备份验证）；5. 工具链收敛至 kubernetes-mcp, sentry-mcp, docker-mcp 与 k9s/litestream/dive/dust 单二进制。",
+        "aliases": [
+          "SRE规范",
+          "运维SOP",
+          "二级熔断规约"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793961141896
+        },
+        "updatedAt": 1793961141900
+      },
+      {
+        "key": "design-engineer-dtcg-tokens-and-nine-ui-states-sop",
+        "replaces": [],
+        "id": "62684bee-16dc-40a9-8d23-b2b5a74e7c60",
+        "kind": "decision",
+        "name": "体验设计师0.01%Linear-Vercel美学与9大UI状态全防御SOP",
+        "detail": "2026-11-06 体验设计师 (Design Engineer) v4.0.0-APEX 封板：1. W3C DTCG 三层 Design Tokens 契约，严禁裸色与魔法值；2. 9 大 UI 状态全防御（Initial, Loading骨架屏防CLS, Empty带CTA, Partial, Success, Error就地重试, Disabled说明原因, Hover/Focus WCAG可达, Optimistic乐观回滚）；3. 动效 120-260ms 只动 transform/opacity；4. 工具链采用 Base UI 1.9 + Tailwind v4 (OKLCH) + Figma MCP + Chrome DevTools MCP。",
+        "aliases": [
+          "体验设计规范",
+          "9大UI状态SOP",
+          "DTCG契约"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793961141922
+        },
+        "updatedAt": 1793961141926
+      },
+      {
+        "key": "docs-releases-diataxis-and-contract-drift-sop",
+        "replaces": [],
+        "id": "e1109d6d-0464-4e81-b83a-61ca954e5169",
+        "kind": "decision",
+        "name": "文档版本员0.01%Diataxis四象限与契约漂移对账SOP",
+        "detail": "2026-11-06 文档与版本发布员 (Docs & Releases) v4.1.0-APEX 封板：1. Diataxis 国际架构四象限（教程、指南、参考、解释）单态隔离；2. Docs-as-Code，文档代码同 PR 演进；3. 契约漂移对账门禁，散文与 OpenAPI Schema 双向对齐；4. Keep a Changelog 与 SemVer 2.0 门禁；5. 套件归档至 frank/Projects/Research/Docs-Release-Kit。",
+        "aliases": [
+          "文档发布规范",
+          "Diataxis四象限v1.1",
+          "契约漂移对账SOP"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793961141945
+        },
+        "updatedAt": 1793961141949
+      },
+      {
+        "key": "qa-e2e-kit-v4",
+        "supersededBy": "7477c3e0-1fa7-4665-a229-64b9fffc4277",
+        "replaces": [],
+        "history": [
+          {
+            "name": "测试质保员0.01%变异混沌与7要素复现SOP",
+            "detail": "2026-11-06 测试质保员 (Reliability & E2E) v4.0.0 封板：1. 六层工具链实测：Playwright 1.60.0（E2E）、@playwright/mcp 0.0.75（探索取证）、Hurl 8.1.0（契约）、k6 2.3.0（负载）、fast-check/Hypothesis（属性）、Stryker 9.6.1（变异）；2. 反 Mock Tautology：核心域变异分 ≥80%、新增文件 ≥90%，thresholds.break 熔断；实测同一代码弱断言 15.79% vs 真实断言 100%；3. Netflix 四步混沌：稳态→可证伪假设→单变量注入→对照反证；生产 ≤5% 流量、仅工作时间、5 分钟内自动停止；4. 7 要素确定性复现包，P0/P1 需 5/5 复现；5. 套件归档 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\QA-E2E-Kit，verify-kit.ps1 六项全过。",
+            "at": 1793961688571
+          }
+        ],
+        "id": "10d2d505-6572-4e17-bd66-fcdd7cb83add",
+        "kind": "decision",
+        "name": "测试质保员0.01%变异混沌与7要素复现SOP",
+        "detail": "2026-11-06 测试质保员 (Reliability & E2E) v4.0.0 封板：1. 六层工具链实测：Playwright 1.60.0（E2E）、@playwright/mcp 0.0.75（探索取证）、Hurl 8.1.0（契约）、k6 2.3.0（负载）、fast-check/Hypothesis（属性）、Stryker 9.6.1（变异）；2. 反 Mock Tautology：核心域变异分 ≥80%、新增文件 ≥90%，thresholds.break 熔断；实测同一代码弱断言 15.79% vs 真实断言 100%；3. Netflix 四步混沌：稳态→可证伪假设→单变量注入→对照反证；生产 ≤5% 流量、仅工作时间、5 分钟内自动停止；4. 7 要素确定性复现包，P0/P1 需 5/5 复现；5. 套件归档 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\QA-E2E-Kit，verify-kit.ps1 六项全过。",
+        "aliases": [
+          "QA-E2E-Kit",
+          "测试工具链v4",
+          "变异审计SOP",
+          "混沌四步模型",
+          "7要素复现包"
+        ],
+        "status": "superseded",
+        "source": {
+          "botId": "b537ed1e-2744-4217-a7bd-98d752a13f5d",
+          "botName": "测试质保员",
+          "threadId": "7296d356-a50e-44c9-b529-af32bdccf917",
+          "at": 1793961688565
+        },
+        "updatedAt": 1793961688571
+      },
+      {
+        "key": "qa-e2e-kit-v4",
+        "replaces": [
+          {
+            "id": "10d2d505-6572-4e17-bd66-fcdd7cb83add",
+            "revision": "d04d5f662c53856c18ae4583941562f852f6184b6cfaf6e108be6235a879b8e8"
+          }
+        ],
+        "history": [
+          {
+            "name": "测试质保员0.01%变异混沌与7要素复现SOP",
+            "detail": "2026-11-06 测试质保员 (Reliability & E2E) v4.0.0 封板：1. 六层工具链实测：Playwright 1.60.0（E2E）、@playwright/mcp 0.0.75（探索取证）、Hurl 8.1.0（契约）、k6 2.3.0（负载）、fast-check/Hypothesis（属性）、Stryker 9.6.1（变异）；2. 反 Mock Tautology：核心域变异分 ≥80%、新增文件 ≥90%，thresholds.break 熔断；实测同一代码弱断言 15.79% vs 真实断言 100%；3. Netflix 四步混沌：稳态→可证伪假设→单变量注入→对照反证；生产 ≤5% 流量、仅工作时间、5 分钟内自动停止；4. 7 要素确定性复现包，P0/P1 需 5/5 复现；5. 套件归档 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\QA-E2E-Kit，verify-kit.ps1 六项全过。",
+            "at": 1793961688571
+          }
+        ],
+        "id": "7477c3e0-1fa7-4665-a229-64b9fffc4277",
+        "kind": "term",
+        "name": "测试质保员0.01%变异混沌与7要素复现SOP (v1.1.0)",
+        "detail": "2026-11-06 QA-E2E-Kit 升至 1.1.0，路径 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\QA-E2E-Kit。六项物理验证重跑全过（KIT_VERIFY=PASS）：E2E、混沌 500+500ms、Hurl 契约、k6 负载、变异弱断言 15.79% exit 1、真实断言 100% exit 0。证据台账新增三项已核验纠偏：① OpenAI 2026-02-23 官方停止使用 SWE-bench Verified，审计 27.6% 子集发现 ≥59.4% 测试用例拒绝正确解；② Karpathy autoresearch 三文件隔离（prepare.py 只读、train.py agent 写、program.md 人写）；③ Addy Osmani 2026-09-08 离开 Google 加入 Anthropic（Claude Code），《Agentic Verification》归 Anthropic L2。xAI \"physical proof\" 逐字引语未取得原文，已降级为未核验，不得引用。",
+        "aliases": [
+          "QA-E2E-Kit 1.1",
+          "证据台账 v1.1",
+          "OpenAI SWE-bench 撤回",
+          "Karpathy 三文件隔离"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "b537ed1e-2744-4217-a7bd-98d752a13f5d",
+          "botName": "测试质保员",
+          "threadId": "7296d356-a50e-44c9-b529-af32bdccf917",
+          "at": 1793962048361
+        },
+        "updatedAt": 1793962048365
+      },
+      {
+        "key": "meta-prompt-architect-12rubric-sop",
+        "replaces": [
+          {
+            "id": "11881d3e-aa10-4162-8e16-8f13e7c4d610",
+            "revision": "eb71235f6a23a6c6e2a3f7c5e8699ec3bc4a831891e44babfbad8df4f1a4ae9a"
+          }
+        ],
+        "history": [
+          {
+            "name": "提示词架构师0.01%MetaPrompting与12维量规冷审SOP",
+            "detail": "2026-11-06 元提示词架构师与 Bot 孵化系统 (Meta-Prompt) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 全面对齐 Anthropic 系统提示词指南与 OpenAI Meta-Prompting 标准，贯彻「动机说明优于粗暴禁止（Explain the Why Invariant）」铁律，坚决淘汰全大写咆哮式指令；2. 严守结构化锚定与位置效应（静态规约前置触发 KV Cache，动态变量与关键任务后置，XML/Markdown 硬隔离）；3. 12 维严密量规冷审体系（角色边界、价值排序、动机阐释、结构隔离、状态机、工具绑定、异常回退、真实证据、防嗅探、认知熵、抗注入、可度量交付），达标分 >= 108 分方可封板；4. 工业级 L0–L6 铸造与重构 SOP。",
+            "at": 1793959595331
+          }
+        ],
+        "id": "5ddf346a-a0ce-407f-bb35-b623efd959d9",
+        "kind": "decision",
+        "name": "提示词架构师0.01%L0-L6铸造与Promptfoo去偏门禁SOP (v5.0.0-APEX)",
+        "detail": "2026-11-06 提示词架构师 (Meta-Prompt) v5.0.0-APEX 封板：1. 完整闭合 L0-L6 七层架构（L0定位、L1冲突裁决、L2状态机、L3执行表面与四大模型原语、L4负向与红队防御、L5接口契约、L6 D0-D4容灾降级阶梯）；2. 落地四大巨头一手隐性SOP：Amanda Askell「Explain the Why + 异构域类比泛化 + 反迎合骨气」、Boris Cherny「80% Delete 去疤痕组织」、Zack Witten「心智剥离 + 反事实探测 + 防Sandbagging」、OpenAI「Model Spec六级权力链 + Strict Schema受限解码 + Reasoning-before-Conclusion」；3. 异构KV缓存前缀物理锁死（静态置顶、动态时间戳/会话ID沉底；对齐Claude ephemeral断点512~4096、OpenAI 1024+128块、Gemini前缀不变性、Grok 128块+x-grok-conv-id+加密推理回放）；4. Promptfoo CLI/MCP(14工具) + ATR确定性拦截 + 四大去偏铁律（二元Pass/Fail废除1-5伪量表、单一失效模式一裁判、双向Position Swap、跨家族交叉裁判+啰嗦惩罚），12维冷审>=108/120方可封板。",
+        "aliases": [
+          "Meta-Prompt规范v5",
+          "L0-L6铸造体系",
+          "Promptfoo去偏门禁",
+          "12维冷审量规v5"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "2f8471fb-4b77-4cf5-a91f-575cd387febd",
+          "botName": "提示词架构师",
+          "threadId": "c39581b7-c365-42df-9899-91bacc08e6fc",
+          "at": 1793962578119
+        },
+        "updatedAt": 1793962578124
+      },
+      {
+        "key": "architect/soul-v4-apex-and-4giant-ai-acl",
+        "replaces": [
+          {
+            "id": "f529b05f-9120-41e7-bf7c-46737208619b",
+            "revision": "a9496a8f3d35a63242df2a57f66f67c4aaa025eaf9a6e72dc51ab52392a2329f"
+          }
+        ],
+        "history": [
+          {
+            "name": "软件架构师v4.0.0-APEX顶配规约与四大AI巨头原生防腐层铁律",
+            "detail": "2026-11-06 软件架构师 (Software-Architect) L0-L6 顶配 SOUL.md v4.0.0-APEX 规范封板：1. 定位为认知降噪北极星、二阶思维守门人、六边形防腐系统架构师，上承 CPO《Product Gate ADR》（Killed Scope 严禁建死表与虚接口），下达全栈开发机器级零歧义《System Spec & API Contract》；2. AI 相关工具链与防腐层核心铁律：六边形端口与适配器（Ports & Adapters）强制原生直连四大核心巨头——Claude (Anthropic)、OpenAI、Gemini (Google)、Grok (xAI)，严禁引入脆弱臃肿的过度抽象层（如 LangChain 套壳），强制在适配器层落实四大原语（严格结构化输出 JSON Schema 校验、按厂商异构机制设计的 Prompt Caching 命中架构、标准化含缓存/推理 Token 的物理成本与时延预算、基于 HTTP 状态码与预算的确定性熔断回退矩阵）；3. 融合二阶思维《二阶效应物理对账单》（推演 T+6个月数据膨胀、状态爆炸、单点故障与认知税）、系统动力学（存量/流量/时滞/正反馈雪崩斩断）、奥卡姆剃刀二态性法则（N<2 严禁引入设计模式）及 10 要素架构门禁。",
+            "at": 1793958433727
+          }
+        ],
+        "id": "ef0e3f54-b77d-46a5-88a3-43aa11d112bd",
+        "kind": "decision",
+        "name": "软件架构师v4.2.0-APEX四大AI巨头原生防腐与TypeSpec契约门禁SOP",
+        "detail": "2026-11-06 软件架构师 v4.2.0-APEX 封板并启用 Skill `hexagonal-4giant-architecture`：1. 摒弃 LangChain 等胶水框架，六边形 `IModelGatewayPort` 直连 `@anthropic-ai/sdk`、`openai`(Responses API)、`@google/genai`、`xai-sdk`(gRPC)，全量启用原生 CFG 结构化输出；2. KV Cache 严守 `字典序Tools→静态System→含推理签名的History→尾部动态时间戳` 拓扑，Claude 主会话 1h TTL/子任务严锁 5m TTL 防 2x 写入惩罚，xAI/OpenAI 必传 `x-grok-conv-id`/`prompt_cache_key` 粘性路由；3. 归一化物理成本对账（拉平 Anthropic 不含缓存与 OpenAI/Gemini/xAI 含缓存口径差异）与全抖动退避+10%重试预算容灾；4. 弃用手写裸 OpenAPI YAML，切换至 TypeSpec+Spectral+Buf+D2+XState v5 与 OpenAI Harness 单向分层（Types→Config→Repo→Service→Runtime→UI）。",
+        "aliases": [
+          "Architect-Kit v4.2",
+          "四大AI巨头原生防腐层规约",
+          "KV-Cache前缀工程SOP",
+          "TypeSpec契约门禁SOP"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "484c328a-5a3a-4b40-ab4e-65c03126eb91",
+          "botName": "软件架构师",
+          "threadId": "27bbfbb8-9619-4f94-aac8-d54026347151",
+          "at": 1793962652830
+        },
+        "updatedAt": 1793962652833
+      },
+      {
+        "key": "cpo-apex-sop-and-cognitive-gates",
+        "replaces": [],
+        "id": "c6c10dc3-0171-4fcf-aedb-3b17f4d8536f",
+        "kind": "decision",
+        "name": "产品战略师0.01%第一性原理与6大认知预算门禁SOP (v4.1.0)",
+        "detail": "2026-11-06 产品战略师 (CPO) v4.1.0-APEX 封板：1. 践行 Shreyas Doshi CPSR（客户问题栈式排序），严格防御聚焦错觉，非真实 Top 3 痛点一票否决；2. 落地 Tony Ulwick JTBD 机会算法（O = I + max(I - S, 0)），仅推进 O >= 12 黄金区需求，过度服务区严禁立项；3. 实施 Amazon PR/FAQ 逆向证伪与 6 大人类认知预算门禁（CL-01 步数<=3、CL-02 黑话=0、CL-03 常规弹窗=0、CL-04 初次零配置、CL-05 焦点分支<=1、CL-06 价值触达<=3s）；4. 签发机器可读《Product Gate ADR》并明确声明《Killed Scope》。",
+        "aliases": [
+          "CPO规范v4.1",
+          "奥卡姆剃刀门禁",
+          "6大认知预算门禁",
+          "JTBD机会算法"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793962815958
+        },
+        "updatedAt": 1793962815969
+      },
+      {
+        "key": "tpm-apex-dag-orchestration-and-gc-sop",
+        "replaces": [],
+        "id": "c57e57a8-2333-48d9-af1b-ea6e33793439",
+        "kind": "decision",
+        "name": "项目调度员0.01%DAG拓扑自治调度与线程GC规范SOP (v4.1.0)",
+        "detail": "2026-11-06 项目调度员 (TPM) v4.1.0-APEX 封板：1. 贯彻“零打扰自治调度（Zero-Interruption Autonomous Orchestration）”，全面废除敏捷站会与形式主义 User Story，采用“动词+对象+Done-When”结构化 Issue；2. 实施严格 DAG 有向无环拓扑锁定（前置 QA != PASS 时下游绝对硬锁定，严禁违背依赖抢跑）；3. 落地两振出局（Two-Strike）死锁熔断，连续 2 次重工立即硬冻结分支并拉起架构会诊；4. 任务闭环即刻触发线程生命周期垃圾回收（Thread/Session GC），物理销毁临时分支与 Scratchpad，杜绝僵尸会话与 Token 泄漏；5. 工具链对齐 Linear MCP + GitHub Projects + D2 DSL。",
+        "aliases": [
+          "TPM规范v4.1",
+          "DAG拓扑调度SOP",
+          "两振熔断纪律",
+          "线程GC规约"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793962815985
+        },
+        "updatedAt": 1793962816001
+      },
+      {
+        "key": "decision:运维工程师0.01%止血优先与三级熔断sop (v4.1.0-apex)",
+        "replaces": [],
+        "id": "dc987195-e406-4382-a7c6-c4eaf5ee3198",
+        "kind": "decision",
+        "name": "运维工程师0.01%止血优先与三级熔断SOP (v4.1.0-APEX)",
+        "detail": "2026-11-06 运维工程师 v4.1.0-APEX 封板并已应用：1. 六阶 L0 契约→L1 边界→L2 生存铁律→L3 三级熔断→L4 工具链→L5 交付契约→L6 降级阶梯；2. 0–60s 定影响面与最近变更，60–300s 回滚/切流/降级，止血期禁源码热补丁与容器内改配置，24h 出无指责复盘；3. 只读/写凭证物理隔离，执行层对 rm -rf/DROP/kubectl delete ns/terraform destroy 做字符串+AST 双检直接拒绝；4. 金丝雀 5→25→50→100%，5xx>1% 2min 或 P99>1.5x 3min 或燃烧率>14.4x 即 <60s 自动回退；5. 卷/命名空间/DROP 类硬中断，须评估单含 restore 演练与回滚 Runbook，双人授权≤30min；6. 工具链 k8s/docker/sentry MCP + k9s/litestream/dive/dust；7. 自愈 200ms×2 cap30s 全抖动、重试预算 10%、熔断 30s/5 次、3 轮后进 D4 人工升级。",
+        "aliases": [
+          "SRE规范v4.1",
+          "止血回退优先SOP",
+          "物理二级熔断",
+          "只读写隔离门禁",
+          "自愈退避算法"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "7b90b552-5354-49d4-944a-00d0e46d7dc3",
+          "botName": "运维工程师",
+          "threadId": "6c2a03b1-d996-41b8-9ceb-e39abea94a8d",
+          "at": 1793962878804
+        },
+        "updatedAt": 1793962878808
+      },
+      {
+        "key": "decision/dev_dual_engine_integration",
+        "replaces": [],
+        "id": "f1833ddb-b3b1-4f8d-9450-78b4256ce700",
+        "kind": "decision",
+        "name": "开发执行引擎集成规约 (Codex CLI + Claude Code 双核自主编排)",
+        "detail": "经用户授权与拍板，开发任务全权由 MausBot 及开发矩阵自主编排集成 OpenAI Codex CLI 与 Anthropic Claude Code：高难度业务逻辑与系统重构路由至 Claude Code，批量构建、环境配置与终端脚本自愈路由至 Codex CLI；由全栈开发、测试质保与代码评审团队实现端到端自闭环，无需人类介入打扰。",
+        "aliases": [],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793976163064
+        },
+        "updatedAt": 1793976163069
+      },
+      {
+        "key": "dev-lifecycle-model-allocation-sop",
+        "replaces": [],
+        "id": "2160aabc-028d-4834-8d9d-9c80ed0e3ad6",
+        "kind": "decision",
+        "name": "全生命周期强模型与高吞吐模型分流裁决SOP",
+        "detail": "从主意调研到最终产品上线全生命周期，严格按认知熵与逻辑确定性分流模型算力：1. 强制使用强推理模型（Gemini 4 / 6.1 / Claude Opus）的核心环节仅限 4 处：(1) 产品战略与需求证伪（CPO奥卡姆剃刀与认知预算审查）；(2) 架构拓扑与接口契约锁定（Architect数据模型与防腐层设计）；(3) 核心算法与高难度重构（全栈开发底层核心业务逻辑，由Claude Code内核接管）；(4) 上线前红线安全与阻断审查（SRE高危回滚预案与代码安全终审）。2. 其余全生命周期环节（海量竞品信息抓取与初筛、DAG调度排期、常规功能实现、E2E测试脚本编写与运行、常规代码静态扫描、日志排错、API文档撰写）100% 由 Gemini 3.8 Flash 与本地执行内核承担，杜绝额度浪费。",
+        "aliases": [
+          "全流程强模型环节裁决",
+          "研发全生命周期模型路由SOP"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1793977666683
+        },
+        "updatedAt": 1793977666688
+      },
+      {
+        "key": "org/logical-three-domains",
+        "replaces": [],
+        "id": "efd30415-248e-45fc-870b-00cb98772804",
+        "kind": "decision",
+        "name": "物理单层总线与逻辑三域架构规约",
+        "detail": "全系统采纳【物理单层总线 + 逻辑三域前缀聚类 + 共享专家中台】组织架构，坚决不设立多层物理二级部门。划分为三大逻辑业务域：1. Infra-基座工程域（aer-runtime、relayon、autofabric、Invari等通信与运行时基座）；2. Fulfill-履约风控域（sheerid、chromium-profile-matrix、verisig、KiroX、getotp等指纹/协议/逆向/自动化流水线）；3. App-商业应用域（gptibo、citeprime等面向客户交付的商业化应用）。所有项目共享软件架构师、全栈开发、测试质保员、运维工程师、代码评审员与逆向分析师等专家中台，由 MausBot 与 TPM 统一调度，按需1跳直连并行闭环，消除多跳传话与记忆割裂。",
+        "aliases": [
+          "三域架构规约",
+          "项目组织架构SOP",
+          "多项目逻辑分域规约"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+          "botName": "MausBot",
+          "threadId": "62476207-acad-41e0-a8ef-97fbe1b997dd",
+          "at": 1794036208911
+        },
+        "updatedAt": 1794036208915
+      },
+      {
+        "key": "design-engineer-apex-0001",
+        "replaces": [],
+        "id": "75e0eb79-069c-43ae-a2a0-59057cb203ef",
+        "kind": "decision",
+        "name": "体验设计师 0.001% 顶尖设计工程规范 (v6.0.0-APEX-0.001)",
+        "detail": "体验设计师于 2026-11-19 完成向硅谷 Top 0.001% (v6.0.0-APEX-0.001) 架构全面跃迁：1. 核心引入 RK4 连续可打断物理弹簧动力学求解器与初速度继承，彻底废除离散贝塞尔过渡；2. 落地 G2 连续超椭圆曲率 (Squircle r≈4.5) 与亚像素面积矩光学居中算法；3. 部署光标轨迹锥体推测性计算 (Speculative UI)，提前 60~100ms 预热渲染层实现 0ms 感官延迟；4. 严守 W3C DTCG 3 层 Token (OKLCH)、9 大 UI 状态全生命周期防御与 CLS=0.000 铁律。相关 SOP、Skill 与算法库已在全团队持久化生效。",
+        "aliases": [
+          "体验设计师0.001规范",
+          "Design-Engineer-Apex",
+          "RK4物理弹簧规范",
+          "G2超椭圆曲率规约"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "82d7e194-ce13-4516-93af-7cdeffd23d6d",
+          "botName": "体验设计师",
+          "threadId": "f8882496-bd84-4cea-9ffa-82f8fb74729c",
+          "at": 1795057148167
+        },
+        "updatedAt": 1795057148176
+      },
+      {
+        "key": "growth/apex-0.001-spec",
+        "replaces": [],
+        "id": "73d41576-5a4c-4dd9-8cb1-07e897d97947",
+        "kind": "decision",
+        "name": "社媒运营官 0.001% 顶尖增长工程与程序化分发架构规范 (v6.0.0-APEX-0.001)",
+        "detail": "社媒运营官于 2026-11-19 完成向硅谷 Top 0.001% (v6.0.0-APEX-0.001) 架构全面跃迁：1. 核心定位重塑为【增长工程与程序化分发架构师】，彻底废除主观经验驱动的浅层文案与人工排版；2. 落地基于 Beta-Binomial 贝叶斯共轭先验的 Thompson Sampling 多臂老虎机 (MAB) 算法，实现文案 Hook、封面视觉与 CTA 的自适应动态流量倾斜；3. 逆向对齐主流平台推荐动力学（X SimClusters/Early-Bird 算法、小红书 CES 加权模型），消除外链降权因子；4. 接入代码驱动无头渲染流水线（Satori+Resvg 矢量卡片、Remotion+FFmpeg 视频矩阵），严格对齐体验设计师 G2 超椭圆曲率与 OKLCH 规范；5. 部署 Chromium Profile Matrix 物理指纹隔离与因果推断（Synthetic Controls）增量归因体系。相关 SOUL.md 与 growth-distribution-apex Skill 已持久化生效。",
+        "aliases": [
+          "社媒运营官0.001规范",
+          "Growth-Engineering-Apex",
+          "贝叶斯MAB分发规约",
+          "逆向推荐动力学SOP"
+        ],
+        "status": "accepted",
+        "source": {
+          "botId": "674a9113-278f-45d8-82de-80c1ead79886",
+          "botName": "社媒运营官",
+          "threadId": "4005c4bc-b3cb-4ac1-9b4e-32c6f575427e",
+          "at": 1795077932337
+        },
+        "updatedAt": 1795077932344
+      },
+      {
+        "id": "68b4f669-9e65-4c6e-a6e5-f2113f7a421e",
+        "kind": "decision",
+        "name": "OpenMausBot 双阶四环微循环架构 v2.0 与 Harness-Runner-Kit 封板规约",
+        "detail": "2026-11-21 OpenMausBot「双阶四环」确定性微循环架构 v2.0 Week 1 封板验收通过：1. 内核套件 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\Harness-Runner-Kit（Zod v4 单源契约 + FSM + CLI lock/run/gc），实现 L0→L1→L2 Fail-Fast 短路、SHA-256+git diff 防作弊 EXIT 99、Two-Strike EXIT 20、<=600 token ErrorCapsule 蒸馏、Rule of 2 热结晶、30天 GC 与 30s 回滚；质保只读测试 12/12 全绿（79断言，tsc 0错）。2. Meta-Loop 出厂基因锁合入 openmausbot-backup\\specs\\TOP_TIER_BOT_GENERATION_STANDARD.md（v2.0.0-APEX）。3. 3 题出厂抗压基准考落盘 Research\\evals\\bot-onboarding-v2\\ 并通过断言实测。",
+        "aliases": [
+          "双阶四环微循环v2.0",
+          "Harness-Runner-Kit",
+          "Meta-Loop出厂考",
+          "Two-Strike防作弊EXIT99"
+        ],
+        "key": "architecture/micro-loop-v2-harness-runner-kit",
+        "status": "superseded",
+        "source": {
+          "botId": "484c328a-5a3a-4b40-ab4e-65c03126eb91",
+          "botName": "软件架构师",
+          "threadId": "5fad3472-ed15-4542-9c52-f0d242bd4795",
+          "at": 1795231254288
+        },
+        "updatedAt": 1795231254295,
+        "replaces": [],
+        "history": [
+          {
+            "name": "OpenMausBot 双阶四环微循环架构 v2.0 与 Harness-Runner-Kit 封板规约",
+            "detail": "2026-11-21 OpenMausBot「双阶四环」确定性微循环架构 v2.0 Week 1 封板验收通过：1. 内核套件 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\Harness-Runner-Kit（Zod v4 单源契约 + FSM + CLI lock/run/gc），实现 L0→L1→L2 Fail-Fast 短路、SHA-256+git diff 防作弊 EXIT 99、Two-Strike EXIT 20、<=600 token ErrorCapsule 蒸馏、Rule of 2 热结晶、30天 GC 与 30s 回滚；质保只读测试 12/12 全绿（79断言，tsc 0错）。2. Meta-Loop 出厂基因锁合入 openmausbot-backup\\specs\\TOP_TIER_BOT_GENERATION_STANDARD.md（v2.0.0-APEX）。3. 3 题出厂抗压基准考落盘 Research\\evals\\bot-onboarding-v2\\ 并通过断言实测。",
+            "at": 1795231254295
+          }
+        ],
+        "supersededBy": "e3a894e5-09a6-4cf1-9336-c74239920869"
+      },
+      {
+        "id": "e3a894e5-09a6-4cf1-9336-c74239920869",
+        "kind": "decision",
+        "name": "OpenMausBot 双阶四环微循环架构 v2.0（Week 1+2）与 Harness-Runner-Kit 封板规约",
+        "detail": "2026-11-21 OpenMausBot「双阶四环」微循环架构 v2.0 Week 1+2 全量封板（代码评审 APPROVE）：1. 内核套件 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\Harness-Runner-Kit（Zod v4+FSM+IProcessRunner 六边形零 runtime 依赖，CLI lock/run/distill/canary/gc），涵盖 Fail-Fast、防作弊 EXIT 99（含未跟踪注入拦截）、Two-Strike EXIT 20、耗时熔断 EXIT 21、Rule of 2 热结晶、Canary 沙箱+LKG、30d 淘汰与 7d 窗口 ≤30s 自动回滚、slug 路径防穿越与原子落盘；双只读验收套件 22/22 全绿（171断言，tsc 0错）。2. Meta-Loop 出厂锁合入 TOP_TIER_BOT_GENERATION_STANDARD.md（v2.0.0-APEX），3题抗压考落盘 Research\\evals\\bot-onboarding-v2\\。",
+        "aliases": [
+          "双阶四环微循环v2.0",
+          "Harness-Runner-Kit",
+          "Meta-Loop出厂考",
+          "Two-Strike防作弊EXIT99",
+          "Week2热结晶Canary回滚"
+        ],
+        "key": "architecture/micro-loop-v2-harness-runner-kit",
+        "status": "superseded",
+        "source": {
+          "botId": "484c328a-5a3a-4b40-ab4e-65c03126eb91",
+          "botName": "软件架构师",
+          "threadId": "5fad3472-ed15-4542-9c52-f0d242bd4795",
+          "at": 1795233633347
+        },
+        "updatedAt": 1795233633354,
+        "replaces": [
+          {
+            "id": "68b4f669-9e65-4c6e-a6e5-f2113f7a421e",
+            "revision": "4b2df30726e6e4e950ce24ce87874e7767dd14cf02a940dfa5094a215dc2e900"
+          }
+        ],
+        "history": [
+          {
+            "name": "OpenMausBot 双阶四环微循环架构 v2.0 与 Harness-Runner-Kit 封板规约",
+            "detail": "2026-11-21 OpenMausBot「双阶四环」确定性微循环架构 v2.0 Week 1 封板验收通过：1. 内核套件 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\Harness-Runner-Kit（Zod v4 单源契约 + FSM + CLI lock/run/gc），实现 L0→L1→L2 Fail-Fast 短路、SHA-256+git diff 防作弊 EXIT 99、Two-Strike EXIT 20、<=600 token ErrorCapsule 蒸馏、Rule of 2 热结晶、30天 GC 与 30s 回滚；质保只读测试 12/12 全绿（79断言，tsc 0错）。2. Meta-Loop 出厂基因锁合入 openmausbot-backup\\specs\\TOP_TIER_BOT_GENERATION_STANDARD.md（v2.0.0-APEX）。3. 3 题出厂抗压基准考落盘 Research\\evals\\bot-onboarding-v2\\ 并通过断言实测。",
+            "at": 1795231254295
+          },
+          {
+            "name": "OpenMausBot 双阶四环微循环架构 v2.0（Week 1+2）与 Harness-Runner-Kit 封板规约",
+            "detail": "2026-11-21 OpenMausBot「双阶四环」微循环架构 v2.0 Week 1+2 全量封板（代码评审 APPROVE）：1. 内核套件 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\Harness-Runner-Kit（Zod v4+FSM+IProcessRunner 六边形零 runtime 依赖，CLI lock/run/distill/canary/gc），涵盖 Fail-Fast、防作弊 EXIT 99（含未跟踪注入拦截）、Two-Strike EXIT 20、耗时熔断 EXIT 21、Rule of 2 热结晶、Canary 沙箱+LKG、30d 淘汰与 7d 窗口 ≤30s 自动回滚、slug 路径防穿越与原子落盘；双只读验收套件 22/22 全绿（171断言，tsc 0错）。2. Meta-Loop 出厂锁合入 TOP_TIER_BOT_GENERATION_STANDARD.md（v2.0.0-APEX），3题抗压考落盘 Research\\evals\\bot-onboarding-v2\\。",
+            "at": 1795233633354
+          }
+        ],
+        "supersededBy": "98f88593-87e0-4b10-b47c-4f7288bce8cc"
+      },
+      {
+        "id": "124ae376-9ad3-4ed5-b5a6-d489ee407924",
+        "kind": "decision",
+        "name": "OpenMausBot 双阶四环微循环 v2.0 Week 3 全军灰度与 Tier 2 盲审规约",
+        "detail": "2026-11-21 OpenMausBot 双阶四环微循环架构 v2.0 Week 3 全军 14 Bot 灰度与治理规约封板：1. 全队共享治理技能 micro-loop-v2-governance（严格 ≤120 行，含标准 YAML frontmatter）已正式生效，固化 lock->run->distill->canary 四步协议与 0/1/2/20/21/30/99 七大退出码硬纪律；2. 落地三波灰度推演矩阵（Wave 1 核心研发环 4 Bot -> Wave 2 治理调度运维 5 Bot -> Wave 3 业务战略设计 5 Bot）；3. 落实 Tier 2 跨模型族盲审铁律（Gemini ↔ Claude/GPT 交叉裁判，严禁同族自审，CLI Exit 30 物理硬拦截）；4. 晋级放行要求 Wave 1 连续 7 天无 EXIT 99 且首通率波动 <5%；任意波次触发 7 天窗口回归自动执行 ≤30s 回滚至 LKG 基线。两份核心资产已落盘并回传架构师。",
+        "aliases": [
+          "micro-loop-v2-week3",
+          "fleet-rollout-playbook",
+          "Tier2跨模型族盲审规约"
+        ],
+        "key": "architecture/micro-loop-v2-week3-fleet-rollout",
+        "status": "accepted",
+        "source": {
+          "botId": "2f8471fb-4b77-4cf5-a91f-575cd387febd",
+          "botName": "提示词架构师",
+          "threadId": "005f329a-ca36-478c-8972-af54c659e481",
+          "at": 1795236687229
+        },
+        "updatedAt": 1795236687237,
+        "replaces": []
+      },
+      {
+        "id": "98f88593-87e0-4b10-b47c-4f7288bce8cc",
+        "kind": "decision",
+        "name": "OpenMausBot 双阶四环微循环架构 v2.0（Week 1+2+3）全量封板",
+        "detail": "2026-11-21 OpenMausBot 双阶四环微循环 v2.0（Week 1+2+3）代码评审 APPROVE 封板：1. Research\\Harness-Runner-Kit（Zod v4+FSM+IProcessRunner 六边形零 runtime 依赖）落地 lock/run/distill/canary/gc/blind-review/fleet-init/fleet-patrol 与 0/1/2/20/21/30/99 退出码；2. Week 3 实现 Tier 2 跨族盲审（同族 EXIT 30 硬拦截+MD/Script 零泄漏脱敏）、14-Bot 隔离仓（6子目录+2账本，防穿越）及全军巡检（单 Bot 隔离+7d 回归 <=30s 回滚）；3. 三套只读测试 41/41 PASS（438 断言，tsc EXIT 0，SHA-256 锁定），SKILL.md（53行）与 WEEK3_ROLLOUT_PLAYBOOK.md 归档 openmausbot-backup，14 仓巡检 HEALTHY。",
+        "aliases": [
+          "micro-loop-v2",
+          "Harness-Runner-Kit",
+          "双阶四环微循环v2.0",
+          "fleet-patrol",
+          "blind-review"
+        ],
+        "key": "architecture/micro-loop-v2-harness-runner-kit",
+        "status": "accepted",
+        "source": {
+          "botId": "484c328a-5a3a-4b40-ab4e-65c03126eb91",
+          "botName": "软件架构师",
+          "threadId": "dcd5510d-2492-48d9-87f9-cad59ad6b29e",
+          "at": 1795239350779
+        },
+        "updatedAt": 1795239350791,
+        "replaces": [
+          {
+            "id": "e3a894e5-09a6-4cf1-9336-c74239920869",
+            "revision": "8fb30d8a3bc4e0578425f133585505283e3720c4f2da61b4bedebf3ade8f620a"
+          }
+        ],
+        "history": [
+          {
+            "name": "OpenMausBot 双阶四环微循环架构 v2.0 与 Harness-Runner-Kit 封板规约",
+            "detail": "2026-11-21 OpenMausBot「双阶四环」确定性微循环架构 v2.0 Week 1 封板验收通过：1. 内核套件 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\Harness-Runner-Kit（Zod v4 单源契约 + FSM + CLI lock/run/gc），实现 L0→L1→L2 Fail-Fast 短路、SHA-256+git diff 防作弊 EXIT 99、Two-Strike EXIT 20、<=600 token ErrorCapsule 蒸馏、Rule of 2 热结晶、30天 GC 与 30s 回滚；质保只读测试 12/12 全绿（79断言，tsc 0错）。2. Meta-Loop 出厂基因锁合入 openmausbot-backup\\specs\\TOP_TIER_BOT_GENERATION_STANDARD.md（v2.0.0-APEX）。3. 3 题出厂抗压基准考落盘 Research\\evals\\bot-onboarding-v2\\ 并通过断言实测。",
+            "at": 1795231254295
+          },
+          {
+            "name": "OpenMausBot 双阶四环微循环架构 v2.0（Week 1+2）与 Harness-Runner-Kit 封板规约",
+            "detail": "2026-11-21 OpenMausBot「双阶四环」微循环架构 v2.0 Week 1+2 全量封板（代码评审 APPROVE）：1. 内核套件 C:\\Users\\frank\\Documents\\frank\\Projects\\Research\\Harness-Runner-Kit（Zod v4+FSM+IProcessRunner 六边形零 runtime 依赖，CLI lock/run/distill/canary/gc），涵盖 Fail-Fast、防作弊 EXIT 99（含未跟踪注入拦截）、Two-Strike EXIT 20、耗时熔断 EXIT 21、Rule of 2 热结晶、Canary 沙箱+LKG、30d 淘汰与 7d 窗口 ≤30s 自动回滚、slug 路径防穿越与原子落盘；双只读验收套件 22/22 全绿（171断言，tsc 0错）。2. Meta-Loop 出厂锁合入 TOP_TIER_BOT_GENERATION_STANDARD.md（v2.0.0-APEX），3题抗压考落盘 Research\\evals\\bot-onboarding-v2\\。",
+            "at": 1795233633354
+          }
+        ]
+      }
+    ]
+  }
+}

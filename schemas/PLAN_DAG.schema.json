@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openmausbot.internal/schemas/plan_dag.schema.json",
+  "title": "PlanDagLedger",
+  "description": "Multi-Bot DAG Task Orchestration & Ledger Schema for OpenMausBot (TPM v4.1.0-APEX)",
+  "type": "object",
+  "required": [
+    "dag_id",
+    "title",
+    "version",
+    "north_star_goal",
+    "created_at",
+    "updated_at",
+    "orchestrator",
+    "concurrency_limit",
+    "global_status",
+    "nodes"
+  ],
+  "properties": {
+    "dag_id": {
+      "type": "string",
+      "pattern": "^DAG-[0-9]{8}-[A-Za-z0-9_-]+$",
+      "description": "Unique identifier for the DAG ledger, e.g., DAG-20261117-AUTH-V1"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "description": "Concise human-readable title of the project or composite task"
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0.0"
+    },
+    "north_star_goal": {
+      "type": "string",
+      "description": "Defines the high-level objective and zero-interruption boundary"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "orchestrator": {
+      "type": "object",
+      "required": ["bot_name", "bot_id", "role"],
+      "properties": {
+        "bot_name": { "type": "string" },
+        "bot_id": { "type": "string" },
+        "role": { "type": "string" }
+      }
+    },
+    "concurrency_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8,
+      "default": 3,
+      "description": "Maximum parallel running nodes allowed concurrently"
+    },
+    "global_status": {
+      "type": "string",
+      "enum": ["INITIALIZING", "RUNNING", "COMPLETED", "CIRCUIT_BROKEN", "HALTED"],
+      "description": "Overall execution status of the DAG"
+    },
+    "strike_policy": {
+      "type": "object",
+      "required": ["max_strikes", "action_on_breach"],
+      "properties": {
+        "max_strikes": { "type": "integer", "default": 2 },
+        "action_on_breach": {
+          "type": "string",
+          "enum": ["CIRCUIT_BREAKER_HALT", "ESCALATE_ARCHITECT_CPO"],
+          "default": "ESCALATE_ARCHITECT_CPO"
+        }
+      }
+    },
+    "gc_policy": {
+      "type": "object",
+      "required": ["auto_cleanup_scratchpad", "auto_terminate_threads", "delete_feature_branch_on_merge"],
+      "properties": {
+        "auto_cleanup_scratchpad": { "type": "boolean", "default": true },
+        "auto_terminate_threads": { "type": "boolean", "default": true },
+        "delete_feature_branch_on_merge": { "type": "boolean", "default": true }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/dagNode"
+      }
+    }
+  },
+  "$defs": {
+    "dagNode": {
+      "type": "object",
+      "required": [
+        "node_id",
+        "phase",
+        "action_title",
+        "assigned_bot",
+        "depends_on",
+        "status",
+        "done_when",
+        "entry_criteria",
+        "exit_gate"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "pattern": "^N[0-9]{2}-[A-Za-z0-9_-]+$",
+          "description": "Unique node id, e.g. N01-SPEC-LOCK"
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "PHASE_1_SPEC_GATE",
+            "PHASE_2_TDD_ATOMIC",
+            "PHASE_3_QA_E2E",
+            "PHASE_4_AUDIT_PR",
+            "PHASE_5_GC_CLOSURE"
+          ],
+          "description": "Standard 5-phase DAG lifecycle position"
+        },
+        "action_title": {
+          "type": "string",
+          "description": "Structured title adhering to: [Verb] + [Object] format"
+        },
+        "assigned_bot": {
+          "type": "object",
+          "required": ["bot_name", "bot_id"],
+          "properties": {
+            "bot_name": { "type": "string" },
+            "bot_id": { "type": "string" },
+            "thread_id": { "type": ["string", "null"] }
+          }
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of upstream node_ids that must be in COMPLETED status"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["LOCKED", "READY", "RUNNING", "COMPLETED", "REWORKING", "BLOCKED"],
+          "description": "Three-state + lifecycle status: LOCKED (upstream unfinished), READY (unlocked, ready to dispatch), RUNNING, COMPLETED (evidence verified), REWORKING (rework strike <= 1), BLOCKED (strike 2 circuit broken)"
+        },
+        "strike_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0,
+          "description": "Number of failed QA/Review reworks against this node"
+        },
+        "entry_criteria": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Mandatory physical prerequisites required before switching from LOCKED to READY"
+        },
+        "done_when": {
+          "type": "string",
+          "description": "Unambiguous, verifiable completion condition ('动词 + 对象 + 确定性 Done-When')"
+        },
+        "exit_gate": {
+          "type": "object",
+          "required": ["verification_type", "evidence_required"],
+          "properties": {
+            "verification_type": {
+              "type": "string",
+              "enum": ["ADR_LOCK", "UNIT_TEST_PASS", "E2E_QA_PASS", "CR_APPROVED", "BRANCH_MERGED_GC"]
+            },
+            "evidence_required": {
+              "type": "string",
+              "description": "Description of mandatory proof required"
+            },
+            "evidence_path": {
+              "type": ["string", "null"],
+              "description": "Physical path to report, commit hash, PR link or file"
+            },
+            "verified_at": {
+              "type": ["string", "null"],
+              "format": "date-time"
+            },
+            "verifier_bot": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "rework_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["strike_index", "timestamp", "rejection_reason", "reported_by"],
+            "properties": {
+              "strike_index": { "type": "integer" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "rejection_reason": { "type": "string" },
+              "reported_by": { "type": "string" }
+            }
+          }
+        },
+        "started_at": { "type": ["string", "null"], "format": "date-time" },
+        "completed_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  }
+}

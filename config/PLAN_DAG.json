@@ -1,0 +1,56 @@
+{
+    "title":  "全团队剩余 8 位垂直专家 Bot 自研顶级技能库与前哨工作流铸造 DAG",
+    "phases":  [
+                   {
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+
+                                     ],
+                       "name":  "工程攻坚双子星 (全栈开发 \u0026 测试质保员)",
+                       "id":  "Phase-1",
+                       "bots":  [
+                                    "486bda01-f875-40a3-8407-a974dba32ac3",
+                                    "b537ed1e-2744-4217-a7bd-98d752a13f5d"
+                                ]
+                   },
+                   {
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+                                         "Phase-1"
+                                     ],
+                       "name":  "质量与基建双子星 (代码评审员 \u0026 运维工程师)",
+                       "id":  "Phase-2",
+                       "bots":  [
+                                    "bb1549bf-4d96-4e91-bb92-2597dcd585c4",
+                                    "7b90b552-5354-49d4-944a-00d0e46d7dc3"
+                                ]
+                   },
+                   {
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+                                         "Phase-2"
+                                     ],
+                       "name":  "产品与体验双子星 (产品战略师 \u0026 体验设计师)",
+                       "id":  "Phase-3",
+                       "bots":  [
+                                    "5356dd4a-0a84-47df-b87c-e2696e959414",
+                                    "82d7e194-ce13-4516-93af-7cdeffd23d6d"
+                                ]
+                   },
+                   {
+                       "status":  "COMPLETED",
+                       "dependsOn":  [
+                                         "Phase-3"
+                                     ],
+                       "name":  "调度与版本双子星 (项目调度员 \u0026 文档版本员)",
+                       "id":  "Phase-4",
+                       "bots":  [
+                                    "09e3d0a6-3a02-4a09-8f77-2754ec60a5d7",
+                                    "6359ea6b-b593-4668-a0a4-a2edea99304e"
+                                ]
+                   }
+               ],
+    "createdAt":  "2026-11-17T21:41:10.9750751+08:00",
+    "status":  "COMPLETED",
+    "planId":  "PLAN-20261117-EXPERT-SKILLS-MATRIX"
+}

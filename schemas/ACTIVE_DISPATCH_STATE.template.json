@@ -1,0 +1,78 @@
+{
+  "$schema": "./ACTIVE_DISPATCH_STATE.schema.json",
+  "schema_version": "1.0.0-APEX",
+  "project_id": "autofabric",
+  "pipeline_id": "run-20261119-sprint2",
+  "updated_at": "2026-11-19T14:45:00+08:00",
+  "overall_status": "RUNNING",
+  "summary": {
+    "total_nodes": 4,
+    "settled_count": 2,
+    "running_count": 1,
+    "locked_count": 1,
+    "frozen_count": 0
+  },
+  "active_dispatches": [
+    {
+      "node_id": "TASK-07",
+      "target_bot_id": "486bda01-f875-40a3-8407-a974dba32ac3",
+      "target_bot_name": "全栈开发",
+      "thread_id": "4b252ce8-9e60-44fa-9cdb-5b2ac51ab819",
+      "dispatched_at": "2026-11-19T14:35:00+08:00",
+      "strike_count": 0,
+      "status": "RUNNING",
+      "working_branch": "fix/task07-telemetry-runtime-and-ci-alignment",
+      "done_when": {
+        "type": "file_exists_and_test_pass",
+        "expected_artifacts": [
+          "src/autofabric/integrations/invari_telemetry_adapter.py",
+          "tests/test_invari_telemetry_readonly.py"
+        ],
+        "test_command": "pytest tests/test_invari_telemetry_readonly.py tests/test_ci_test_inventory.py -v",
+        "exit_code_expected": 0
+      }
+    }
+  ],
+  "dag_nodes": [
+    {
+      "node_id": "TASK-05",
+      "name": "高可用 PostgreSQL 与 PgBouncer 适配",
+      "role": "全栈开发",
+      "status": "SETTLED",
+      "dependencies": [],
+      "settlement_evidence": {
+        "settled_at": "2026-11-19T11:46:00+08:00",
+        "commit_hash": "0b9fe3a",
+        "pr_number": 64,
+        "verification_summary": "17/17 pytest 物理全绿，PR #64 已合入 main"
+      }
+    },
+    {
+      "node_id": "TASK-06",
+      "name": "GitHub 429/403 混沌退避与断路器",
+      "role": "全栈开发",
+      "status": "SETTLED",
+      "dependencies": ["TASK-05"],
+      "settlement_evidence": {
+        "settled_at": "2026-11-19T12:24:00+08:00",
+        "commit_hash": "a426eb7",
+        "pr_number": 65,
+        "verification_summary": "20/20 pytest 物理全绿，PR #65 已合入 main"
+      }
+    },
+    {
+      "node_id": "TASK-07",
+      "name": "Invari 只读遥测与动态运行时指标接入",
+      "role": "全栈开发",
+      "status": "RUNNING",
+      "dependencies": ["TASK-06"]
+    },
+    {
+      "node_id": "TASK-08",
+      "name": "72h 常驻压测与稳定性遥测",
+      "role": "测试质保员",
+      "status": "LOCKED",
+      "dependencies": ["TASK-07"]
+    }
+  ]
+}

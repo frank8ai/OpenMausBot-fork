@@ -28,7 +28,7 @@ export const LinearButton: React.FC<LinearButtonProps> = ({
         await onOptimisticAction();
         setInternalState('success');
         setTimeout(() => setInternalState('idle'), 1200);
-      } catch (err) {
+      } catch {
         setInternalState('error');
         setTimeout(() => setInternalState('idle'), 2000);
       }

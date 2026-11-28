@@ -1,0 +1,35 @@
+---
+title: autofabric
+aliases: [自动工厂, autofabric, worktree pool, ResourceClaim, tool guard, popup shield, flat pipeline, MergeArbiter, G3 压测, soak telemetry, 测试套件, test suite]
+---
+
+- 2026-11-10 · from dream across 2 chats · The Person frequently checks on, develops, and drives delivery for the Autofabric (自动工厂) project, expecting end-to-end execution, progress assessments, and status tracking.
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric Phase 1 Track 1.1 (Git Worktree 隔离池与 ResourceClaim 状态机) 已完成并合入主干基线，PR #36 提交 fa1142b，31 项测试全部 PASS。
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric Phase 1 Track 1.2 (Pre-Tool 动态拦截门禁与 Tier 1 弹窗降噪盾牌) 已完成并合入主干基线，PR #37 提交 3260c02，140 项测试全部 PASS。
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric Phase 2 Track 2.1 (Call Depth=1 扁平状态机与 MergeArbiter) 已完成，PR #38 提交 7d00347 及补丁 8befefa，21 项测试全部 PASS，已合入待推基线。
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric Phase 3 Track 3.1 & 3.2 (Gate G3 4×4 压测与 24/7 浸泡遥测 Harness) 代码与测试已完成（G3-A 1 passed，G3-B 8 passed），文件已落地但尚未 Commit/PR。
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric 全仓库 223 个物理测试 100% 通过，截至 2026-11-13。
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric 工程演进路线遵循三大纪律：调用深度约束 Call Depth=1、算力成本阶梯 Tier 0–3、人类主权与董事会决策卡 MBE 8 大门禁。
+- 2026-11-13 · from chat "你好" · Autofabric Phase 3 与 Phase 4（Track 3.1-3.2 压测与遥测守卫、Track 4.1-4.3 商业自动化适配器及人类董事会决策卡片）已完成代码提交与推仓，正式发起 PR #40 (https://github.com/aer-runtime/autofabric/pull/40)，全量 223 个测试物理验证 100% 通过。
+- 2026-11-13 · from chat "你好" (noticed) · PR #40 on aer-runtime/autofabric (branch codex/track-4-1-4-3-commercial-connectors) had a conflict with main caused by PR #39 (commit 5e7f74c) in src/autofabric/contracts/__init__.py; the conflict was resolved, tests passed (29 passed), and the PR is now mergeable (mergeable_state: clean).
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric 项目 PR #40 冲突已清空（mergeable_state: clean），处于随时可合入状态，Phase 0 到 Phase 4 全链路交付完成，223 个测试全部 PASS。
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric 下一步计划：合入 PR #40 到 main 分支并标记基线，然后接入真实业务样本运行 GEO 探针采样（GeoProbeAdapter）、Content 草稿生成（ContentDraftBroker）与 SDR 线索对账（SdrLeadReconciler），并将 BoardDecisionCard 接入交互层实现日常无人值守例外一键拍板。
+- 2026-11-13 · from chat "你好" (noticed) · The person considers multi-project, multi-agent development and management to be the most core capability (多项目多agent的开发和管理才是最核心的).
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric's ChiefOfStaffBot core logic and engine are completed and working locally, passing all 7 defense experiments including real model API verification, L3 action gateway hard-blocking, and fact fingerprint auditing (verified 2026-11-13).
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric's FlatPipelineDispatcher + MergeArbiter passed all 21 concurrency and atomic scheduling tests including SQLite persistence and G3 4×4 concurrent matrix stress tests (verified 2026-11-13).
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric's cross-repo dependency graph (cross_repo/dependency_graph.py) is at ~60% maturity: static topology parsing and dependency order computation exist, but cross-repo joint transactional commits and coordinated rollback are not yet implemented (as of 2026-11-13).
+- 2026-11-13 · from chat "你好" (noticed) · Autofabric's BoardDecisionCard structured contracts are implemented but not yet mounted to the OpenMausBot UI interaction cards (as of 2026-11-13).
+- 2026-11-13 · from chat "你好" (noticed) · The person's development factory (开发工厂) is an independent project with its own existing project plans, and they do not want replanning — only continuation based on existing code, completion status, and prior plans.
+- 2026-11-13 · from chat "你好" (noticed) · The person wants to develop a front-end management window for Autofabric similar to MausBot's (MausCoT) interface, and has commissioned an architecture plan and development roadmap for it.
+- 2026-11-14 · from chat "检查这个项目的任务状态以及任务完成情况，并给下一步的计划；" (noticed) · The person decided that after development tasks are completed, Gemini 4 expert sub-agents should be used for acceptance review, and then Gemini 4 should generate new plans and prompts.
+- 2026-11-14 · from chat "检查这个项目的任务状态以及任务完成情况，并给下一步的计划；" (noticed) · The person delegated the decision of whether MausBot or the prompt architect generates developer prompts to MausBot's own judgment.
+- 2026-11-14 · from chat "检查这个项目的任务状态以及任务完成情况，并给下一步的计划；" (noticed) · MausBot dispatched a task to the prompt architect to generate standardized engineering task prompts, to be followed by developer end-to-end implementation after acceptance contracts are produced.
+- 2026-11-14 · from chat "你好" (noticed) · The person decided that the Autofabric front-end control console (Portfolio Control Plane Dashboard) must not be a separate project but must live inside the main Autofabric repository at C:\Users\frank\Documents\ChatGPT\Autofabric.
+- 2026-11-14 · from chat "你好" (noticed) · The person delegated ongoing management and delivery of the Autofabric front-end control console to MausBot to push forward autonomously.
+- 2026-11-14 · from chat "你安排检查这个任务的完成情况，并继续完成后续的任务，" (noticed) · aer-runtime v0.2.2 已成功发布至 GitHub Release，关联提交为 4d714af4924f031ba314e0804c6858dffdec6cfa，资产包括 aer 二进制、provenance.json、sbom.json、build_metadata.json 和 SHA256SUMS。
+- 2026-11-14 · from chat "你安排检查这个任务的完成情况，并继续完成后续的任务，" (noticed) · aer-verify-action 的 PR #6 已合并入主干，二进制与动作层均已闭环就绪。
+- 2026-11-15 · from chat "你安排检查这个任务的完成情况，并继续完成后续的任务，" (noticed) · The person wants all their projects (AER, Autofabric, Invari, etc.) to share a single unified SaaS base/底座 for convenience.
+- 2026-11-15 · from chat "你好" (noticed) · PR #41 (aer-runtime/autofabric#41) was submitted and merged into main via Squash & Merge, delivering the Action Inbox and Sovereign Board Decision routing to the Autofabric console.
+- 2026-11-15 · from chat "你好" (noticed) · Autofabric commit ea7b9b5 integrated Apple-style Action Inbox and Sovereign Board Decision routing; merged as commit 50b73d3 on main.
+- 2026-11-15 · from chat "你好" (noticed) · Autofabric Action Inbox delivers CAS optimistic locking (409 Conflict), multi-tenant namespace hard isolation (403 Forbidden), and DOM XSS defense via HTML entity escaping.
+- 2026-11-18 · from chat "完成这个升级，现在项目有任务在推进阶段 / 任务包,任务内容与核心目标,对应分支 / PR,当…" · Autofabric SDLC v2.0 升级：成功解决 PR #49 与 #50 因 AER 契约未对齐导致的 UNKNOWN (TARGET_DEFECT_NOT_REPRODUCED_ON_BASELINE) 失败并被误合并事故。在 main 分支执行 git revert 恢复纯净安全基线后，完成 WP-01（PR #52）与 WP-02（PR #53）因果验收测试与 default.yml 契约对齐，在 GitHub Actions 中均取得真实 AER Verify PASS (Exit Code 0，reproductionTransition: CURED)，生成权威 DSSE 凭证，并通过常规 Squash Merge 合入 main 分支。当前 main 分支基线干净且全量回归测试 100% 通过。

@@ -1,0 +1,134 @@
+{
+  "learned": [
+    {
+      "id": "fae14411-f357-4026-a103-bdf564cd01df",
+      "text": "所有产品的最高设计原则：在满足用户需求的前提下，尽量减少人的认知资源消耗（降低心智负担、消除多余交互确认、采取合理默认并实现自闭环）。项目资料与知识库根目录为 C:\\Users\\frank\\Documents\\frank\\Projects。",
+      "line": "- 2026-11-06 · learned by MausBot · 所有产品的最高设计原则：在满足用户需求的前提下，尽量减少人的认知资源消耗（降低心智负担、消除多余交互确认、采取合理默认并实现自闭环）。项目资料与知识库根目录为 C:\\Users\\frank\\Documents\\frank\\Projects。",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1793940770016
+    },
+    {
+      "id": "e75c2190-7180-4186-a3ad-ab8bc858c1bb",
+      "text": "工具链与流程最高准则：坚决摒弃“唯大众/唯星星多”的浅层标准，全面对齐硅谷 Top 0.01% 顶尖人员的硬核工具链、工作流程与工程规范；系统原生面板支持的优先直接挂载，无原生支持的直接在本地/环境安装落地，确保真实闭环。",
+      "line": "- 2026-11-06 · learned by MausBot · 工具链与流程最高准则：坚决摒弃“唯大众/唯星星多”的浅层标准，全面对齐硅谷 Top 0.01% 顶尖人员的硬核工具链、工作流程与工程规范；系统原生面板支持的优先直接挂载，无原生支持的直接在本地/环境安装落地，确保真实闭环。",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1793958288770
+    },
+    {
+      "id": "17de0259-3a6a-4a8c-9d2b-7d9f6f62e847",
+      "text": "AI 相关工具链与模型生态重点锁定四大顶级核心梯队：Claude (Anthropic)、OpenAI、Gemini (Google) 与 Grok (xAI)。坚决摒弃非必要的平庸包装，全面对齐四家官方原生标准（原生 SDK、结构化输出、Prompt Caching、端到端流控与防腐层架构）。",
+      "line": "- 2026-11-06 · learned by MausBot · AI 相关工具链与模型生态重点锁定四大顶级核心梯队：Claude (Anthropic)、OpenAI、Gemini (Google) 与 Grok (xAI)。坚决摒弃非必要的平庸包装，全面对齐四家官方原生标准（原生 SDK、结构化输出、Prompt Caching、端到端流控与防腐层架构）。",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1793958393638
+    },
+    {
+      "id": "d80b095a-6524-42ca-90c3-ea770d852e6e",
+      "text": "The person prefers the assistant to act directly rather than explain UI steps or workarounds, and becomes frustrated when told to perform manual actions themselves.",
+      "line": "- 2026-11-12 · learned by MausBot · The person prefers the assistant to act directly rather than explain UI steps or workarounds, and becomes frustrated when told to perform manual actions themselves.",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794488422714
+    },
+    {
+      "id": "d547cfe1-3c6b-46a9-9eaa-fea69f19306b",
+      "text": "The person considers multi-project, multi-agent development and management to be the most core capability (多项目多agent的开发和管理才是最核心的).",
+      "line": "- 2026-11-13 · learned by MausBot · The person considers multi-project, multi-agent development and management to be the most core capability (多项目多agent的开发和管理才是最核心的).",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794562401431
+    },
+    {
+      "id": "577b9bc4-3bdc-457a-a342-c55c7472c9bb",
+      "text": "The person uses MausBot together with OpenAI Codex and discovered that tracking project progress across multiple projects is a key workflow need.",
+      "line": "- 2026-11-13 · learned by MausBot · The person uses MausBot together with OpenAI Codex and discovered that tracking project progress across multiple projects is a key workflow need.",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794564629186
+    },
+    {
+      "id": "036a8b0e-cb8e-47f8-8e48-d3ac06f2b942",
+      "text": "The person requires that new-user onboarding for their product have zero cognitive friction, be as simple and intuitive as Apple products — \"一看就会\" (understand at a glance).",
+      "line": "- 2026-11-13 · learned by MausBot · The person requires that new-user onboarding for their product have zero cognitive friction, be as simple and intuitive as Apple products — \"一看就会\" (understand at a glance).",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794570419803
+    },
+    {
+      "id": "a1addcda-5376-4341-b8dd-277aa9854436",
+      "text": "The person's workflow for PRs is to submit directly, check for problems, merge if none, and fix if there are issues.",
+      "line": "- 2026-11-14 · learned by 全栈开发 · The person's workflow for PRs is to submit directly, check for problems, merge if none, and fix if there are issues.",
+      "botId": "486bda01-f875-40a3-8407-a974dba32ac3",
+      "botName": "全栈开发",
+      "at": 1794637846730
+    },
+    {
+      "id": "fc43c549-d61e-4b1c-b4d7-c03cf55f20de",
+      "text": "The person routinely delegates implementation to MausBot but then checks whether specialist bots (代码评审员, 测试质保员, 全栈开发工程师, 架构师bot, 技术与竞品情报官) were actually dispatched, and escalates if MausBot did the work itself instead of assigning the proper expert bot.",
+      "line": "- 2026-11-15 · learned by MausBot · The person routinely delegates implementation to MausBot but then checks whether specialist bots (代码评审员, 测试质保员, 全栈开发工程师, 架构师bot, 技术与竞品情报官) were actually dispatched, and escalates if MausBot did the work itself instead of assigning the proper expert bot.",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794703310159
+    },
+    {
+      "id": "16314eb8-fdbd-4fd9-a6c3-0b268febdd90",
+      "text": "The person follows a recurring workflow loop: assign a batch of tasks → check completion status → instruct to continue unfinished items → have expert bots review → submit PR, and expects MausBot to drive this loop autonomously without repeated prompting.",
+      "line": "- 2026-11-15 · learned by MausBot · The person follows a recurring workflow loop: assign a batch of tasks → check completion status → instruct to continue unfinished items → have expert bots review → submit PR, and expects MausBot to drive this loop autonomously without repeated prompting.",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794703310159
+    },
+    {
+      "id": "6bc705b4-236b-483d-b160-69b961809cd3",
+      "text": "The person expects top-level expert review as a gate before finalizing plans or merging code, often phrasing it as '作为顶级专家审核' or '用专家bot审核'.",
+      "line": "- 2026-11-15 · learned by MausBot · The person expects top-level expert review as a gate before finalizing plans or merging code, often phrasing it as '作为顶级专家审核' or '用专家bot审核'.",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794703310159
+    },
+    {
+      "id": "958b709c-2aa8-4cea-8510-4bafb1564177",
+      "text": "PR 提交与分支规约：提交 PR 必须使用独立特性分支（如 feat/*、fix/*），严禁直接向 main 分支推送或由 main 直接向远端发起 PR；main 分支保持干净并严格对齐上游。",
+      "line": "- 2026-11-16 · learned by MausBot · PR 提交与分支规约：提交 PR 必须使用独立特性分支（如 feat/*、fix/*），严禁直接向 main 分支推送或由 main 直接向远端发起 PR；main 分支保持干净并严格对齐上游。",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1794839911320
+    },
+    {
+      "id": "9d7cde91-1657-4477-bc6e-a1ba681edd8b",
+      "text": "Before starting new development, the person expects MausBot to first scan existing work (community PRs, other bots' partial deliverables) to avoid duplicating effort already done.",
+      "line": "- 2026-11-20 · learned by MausBot · Before starting new development, the person expects MausBot to first scan existing work (community PRs, other bots' partial deliverables) to avoid duplicating effort already done.",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1795138418206
+    },
+    {
+      "id": "16bd12b3-51c3-4940-a125-227559997e55",
+      "text": "The person sends screenshots of error states as the entire bug report and expects immediate root-cause diagnosis plus fix dispatch with no clarifying questions asked back.",
+      "line": "- 2026-11-20 · learned by MausBot · The person sends screenshots of error states as the entire bug report and expects immediate root-cause diagnosis plus fix dispatch with no clarifying questions asked back.",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1795138418206
+    },
+    {
+      "id": "8d365c46-f7bb-4591-8462-d4134980f309",
+      "text": "The Person prefers scheme titles to be in Chinese for ease of viewing.",
+      "line": "- 2026-11-21 · learned by 技术与竞品情报官 · The Person prefers scheme titles to be in Chinese for ease of viewing.",
+      "botId": "d25420bf-4c7e-449a-8389-2a4e552aad43",
+      "botName": "技术与竞品情报官",
+      "at": 1795225958373
+    },
+    {
+      "id": "877ca937-49df-41aa-b9f0-734898d59f08",
+      "text": "所有工程开发与缺陷修复必须严格执行五阶闭环流水线（架构审计→全栈开发→测试质保→代码评审→GitHub特性分支PR与AER远端审查）：本地评审通过后严禁在本地直接合并main，必须推送到特性分支发起PR，强制等待远端AER Verify门禁与CI矩阵全绿无误后方可合并。",
+      "line": "- 2026-11-21 · learned by MausBot · 所有工程开发与缺陷修复必须严格执行五阶闭环流水线（架构审计→全栈开发→测试质保→代码评审→GitHub特性分支PR与AER远端审查）：本地评审通过后严禁在本地直接合并main，必须推送到特性分支发起PR，强制等待远端AER Verify门禁与CI矩阵全绿无误后方可合并。",
+      "botId": "9e5114b7-9b56-4c65-ba31-9f5e1067e552",
+      "botName": "MausBot",
+      "at": 1795233221374
+    }
+  ],
+  "removed": [],
+  "forgotten": []
+}

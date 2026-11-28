@@ -210,8 +210,7 @@ const support: AcpSupport = {
   stderrFailure: {
     line: ANTIGRAVITY_HARNESS_FAILURE_LOG,
     message: "Antigravity's local agent connection failed. Send the message again to continue in a fresh Antigravity process.",
-    // A run that failed on an exhausted quota is a usage limit, so the bot's fallback model can carry on; one that
-    // failed on an undecodable media part is not resumed.
+    // A run that failed on an exhausted quota is a usage limit, so the bot's fallback model can carry on.
     failure: (line) => antigravityHarnessFailure(support.displayName, line),
   },
   clientFileSystem: true,
@@ -354,11 +353,13 @@ export const AntigravityDriver: ProviderDriver<AcpConfig> = {
     scheduleAntigravityTempSweep(input.instanceId);
     scheduleAntigravityTempSweep(VERIFICATION_TEMP_KEY);
     const activeTurns = new Map<string, { turn: SendTurnInput; retried: boolean }>();
-    const watcher = startAntigravityWatcher(input.instanceId, async () => {
-      noteAntigravitySignedIn(antigravityTokenPath(input.instanceId));
-      await base.adapter.stopAll().catch(() => {});
-      void base.refreshModels?.();
-    });
+    const watcher = process.env.OMB_ANTIGRAVITY_GLOBAL_CREDENTIAL_SYNC === "1" && input.instanceId === "antigravity"
+      ? startAntigravityWatcher(input.instanceId, async () => {
+          noteAntigravitySignedIn(antigravityTokenPath(input.instanceId));
+          await base.adapter.stopAll().catch(() => {});
+          void base.refreshModels?.();
+        })
+      : undefined;
     // A stopped runtime's unpacked folder can be removed only once it has ended.
     void stopOrphanedAntigravityRuntimesOnce().then((stopped) => {
       if (!stopped) return;
@@ -441,7 +442,7 @@ export const AntigravityDriver: ProviderDriver<AcpConfig> = {
             const isQuotaError =
               (event.type === "runtime.error" && ((event as any).acpUsageLimit === true || (event as any).error === "quota")) ||
               (event.type === "turn.completed" && event.stopReason === "quota");
-            if (isQuotaError) {
+            if (isQuotaError && watcher) {
               const threadId = event.threadId;
               const tracked = activeTurns.get(threadId);
               if (tracked && !tracked.retried) {

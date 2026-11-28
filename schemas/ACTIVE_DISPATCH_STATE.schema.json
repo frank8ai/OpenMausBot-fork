@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActiveDispatchState",
+  "description": "物理持久化调度台账契约，用于跨上下文截断(Compaction)与异常崩溃时的确定性状态恢复与自愈对账",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "pipeline_id",
+    "updated_at",
+    "overall_status",
+    "summary",
+    "active_dispatches",
+    "dag_nodes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0-APEX"]
+    },
+    "project_id": {
+      "type": "string",
+      "description": "当前推进的项目标识符 (如 autofabric, aer-runtime, invari)"
+    },
+    "pipeline_id": {
+      "type": "string",
+      "description": "当前执行批次或流水线运行唯一标识 (如 run-20261119-01)"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "最近一次台账原子落盘时间 (ISO 8601)"
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["IDLE", "RUNNING", "BLOCKED_STRIKE_2", "PAUSED", "COMPLETED"]
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_nodes", "settled_count", "running_count", "locked_count", "frozen_count"],
+      "properties": {
+        "total_nodes": { "type": "integer", "minimum": 0 },
+        "settled_count": { "type": "integer", "minimum": 0 },
+        "running_count": { "type": "integer", "minimum": 0 },
+        "locked_count": { "type": "integer", "minimum": 0 },
+        "frozen_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "active_dispatches": {
+      "type": "array",
+      "description": "当前正在执行或挂起的活动子任务列表",
+      "items": {
+        "type": "object",
+        "required": [
+          "node_id",
+          "target_bot_id",
+          "target_bot_name",
+          "thread_id",
+          "dispatched_at",
+          "strike_count",
+          "status",
+          "done_when"
+        ],
+        "properties": {
+          "node_id": { "type": "string" },
+          "target_bot_id": { "type": "string" },
+          "target_bot_name": { "type": "string" },
+          "thread_id": { "type": "string" },
+          "dispatched_at": { "type": "string", "format": "date-time" },
+          "strike_count": { "type": "integer", "minimum": 0, "maximum": 2 },
+          "status": {
+            "type": "string",
+            "enum": ["DISPATCHED", "RUNNING", "REWORK_DISPATCHED", "SETTLED", "FROZEN"]
+          },
+          "working_branch": { "type": "string" },
+          "done_when": {
+            "type": "object",
+            "required": ["type", "expected_artifacts", "exit_code_expected"],
+            "properties": {
+              "type": { "type": "string", "enum": ["file_exists_and_test_pass", "pr_approved", "audit_clean"] },
+              "expected_artifacts": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "test_command": { "type": "string" },
+              "exit_code_expected": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "dag_nodes": {
+      "type": "array",
+      "description": "完整的 DAG 拓扑节点依赖与执行履约状态",
+      "items": {
+        "type": "object",
+        "required": ["node_id", "name", "role", "status", "dependencies"],
+        "properties": {
+          "node_id": { "type": "string" },
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["LOCKED", "READY", "RUNNING", "SETTLED", "FROZEN_BY_STRIKE_2"]
+          },
+          "dependencies": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "settlement_evidence": {
+            "type": "object",
+            "properties": {
+              "settled_at": { "type": "string", "format": "date-time" },
+              "commit_hash": { "type": "string" },
+              "pr_number": { "type": "integer" },
+              "verification_summary": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
